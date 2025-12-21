@@ -18,7 +18,8 @@ import {
   Users,
   Trash2,
   Pencil,
-  Lock
+  Lock,
+  User
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -113,20 +114,22 @@ export default function TeamDashboard() {
     setIsRegOpen(true);
   };
 
-  // ✅ UPDATED: Toggle Event with Group Logic
+  // ✅ UPDATED: Toggle Event with Unlimited General & Limited Individual Stage
   const toggleEvent = (event: any) => {
     const exists = selectedEvents.find(e => e.eventId === event._id);
     if (exists) {
       setSelectedEvents(prev => prev.filter(e => e.eventId !== event._id));
     } else {
-      // 🛑 LIMIT CHECK: Only for Individual Stage Events
-      // Logic: If it is Stage AND NOT a Group Event, it counts towards the limit.
-      const isIndividualStage = event.type === "Stage" && !event.groupEvent;
+      const isGeneral = event.category.toLowerCase().includes("general");
+      const isStage = event.type === "Stage";
+      const isGroup = event.groupEvent === true;
 
-      if (isIndividualStage) {
+      // 🛑 RULE: Limit applies ONLY to (Stage + Individual + Not General)
+      if (isStage && !isGroup && !isGeneral) {
           const currentCount = selectedEvents.filter(e => 
               e.type === "Stage" && 
-              !e.groupEvent // Check group status in selected list
+              !e.groupEvent && 
+              !e.category.toLowerCase().includes("general")
           ).length;
 
           if (currentCount >= 6) {
@@ -149,7 +152,7 @@ export default function TeamDashboard() {
     const currentStars = selectedEvents.filter(e => e.isStar).length;
     const target = selectedEvents.find(e => e.eventId === eventId);
     
-    // Safety: General/Group events shouldn't be starred usually, but keeping simple
+    // Safety: General/Group events shouldn't be starred usually
     if (target?.category && target.category.toLowerCase().includes("general")) return;
 
     if (!target?.isStar && currentStars >= 8) {
@@ -376,19 +379,25 @@ export default function TeamDashboard() {
                     {filteredEvents.length > 0 ? filteredEvents.map(ev => {
                       const isSel = selectedEvents.find(s => s.eventId === ev._id);
                       const isGeneral = ev.category.toLowerCase().includes("general");
-                      // ✅ Check group event
                       const isGroup = ev.groupEvent === true;
 
                       return (
                         <div key={ev._id} className={`flex justify-between items-center p-2 border rounded-md transition-all ${isSel ? 'bg-white border-purple-200 shadow-sm' : 'border-slate-100 hover:bg-slate-50'}`}>
                           <div className="flex items-center">
                               <span className="text-xs font-medium text-slate-700 truncate mr-2">{ev.name}</span>
+                              
+                              {/* ✅ BADGES: General / Group / Single */}
                               {isGeneral && <span className="text-[8px] bg-slate-800 text-white px-1 py-0.5 rounded font-bold uppercase mr-1">Gen</span>}
-                              {/* ✅ Show Group Badge */}
-                              {isGroup && <span className="text-[8px] bg-yellow-100 text-yellow-800 border border-yellow-200 px-1 py-0.5 rounded font-bold uppercase">Group</span>}
+                              {isGroup ? (
+                                <span className="text-[8px] bg-yellow-100 text-yellow-800 border border-yellow-200 px-1 py-0.5 rounded font-bold uppercase mr-1">Group</span>
+                              ) : (
+                                // Show "Single" badge if not group (and usually not general, but showing everywhere for clarity as requested)
+                                <span className="text-[8px] bg-white text-slate-400 border border-slate-200 px-1 py-0.5 rounded font-bold uppercase flex items-center gap-0.5 mr-1"><User className="w-2 h-2" /> Single</span>
+                              )}
+
                           </div>
                           <div className="flex gap-1">
-                              {/* Star Button only for Non-Stage & Non-General & Not Group */}
+                              {/* Star Button only for Non-Stage & Non-General */}
                               {isSel && activeRegTab === "Non-Stage" && !isGeneral && (
                                   <Button type="button" onClick={(e) => { e.stopPropagation(); toggleStar(ev._id); }} size="icon" variant="ghost" className={`h-7 w-7 rounded-full ${isSel.isStar ? 'text-yellow-500 bg-yellow-50 shadow-sm border border-yellow-200' : 'text-slate-300 hover:text-yellow-400'}`}><Star className={`w-3.5 h-3.5 ${isSel.isStar ? 'fill-current' : ''}`} /></Button>
                               )}
@@ -423,12 +432,19 @@ export default function TeamDashboard() {
                   <button onClick={() => setViewStudent(null)}><X className="w-5 h-5 text-slate-400 hover:text-white" /></button>
                 </div>
                 <div className="p-4 max-h-60 overflow-y-auto">
-                    {viewStudent.registeredEvents?.map((e:any, idx:number) => (
-                        <div key={idx} className="border-b py-2 text-sm text-slate-700 flex justify-between">
-                            <span>{e.name}</span>
-                            {e.isStar && <span className="text-[10px] bg-yellow-100 text-yellow-800 px-1 rounded">Star</span>}
-                        </div>
-                    ))}
+                    {viewStudent.registeredEvents?.map((e:any, idx:number) => {
+                        const original = events.find(ev => ev._id === e.eventId);
+                        const isGrp = original?.groupEvent === true;
+                        return (
+                          <div key={idx} className="border-b py-2 text-sm text-slate-700 flex justify-between items-center">
+                              <div>
+                                <span>{e.name}</span>
+                                {isGrp && <span className="ml-2 text-[9px] bg-yellow-100 text-yellow-800 px-1 rounded uppercase font-bold">Group</span>}
+                              </div>
+                              {e.isStar && <span className="text-[10px] bg-yellow-100 text-yellow-800 px-1 rounded">Star</span>}
+                          </div>
+                        )
+                    })}
                 </div>
             </DialogContent>
           </Dialog>

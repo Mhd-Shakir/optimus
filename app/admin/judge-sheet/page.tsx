@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react"
 import axios from "axios"
 import { Button } from "@/components/ui/button"
-import { ArrowLeft, Printer, Search, Check, ChevronsUpDown, FileText, Loader2 } from "lucide-react"
+import { ArrowLeft, Printer, Search, Check, ChevronsUpDown, FileText } from "lucide-react"
 import { useRouter } from "next/navigation"
 
 // --- TYPES ---
@@ -20,6 +20,7 @@ type Event = {
   name: string
   category: string
   type: string
+  groupEvent?: boolean // Added to check Individual/Group
 }
 
 // --- SEARCHABLE SELECT COMPONENT ---
@@ -105,50 +106,32 @@ export default function JudgeSheetPage() {
   const [selectedEventId, setSelectedEventId] = useState<string>("")
   const [loading, setLoading] = useState(true)
 
-  // Fetch Data (Improved Logic)
+  // Fetch Data
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true)
       try {
-        // Fetch Events
         const eventsRes = await axios.get('/api/events')
         setEvents(eventsRes.data)
-      } catch (error) {
-        console.error("Error fetching events", error)
-      }
+      } catch (error) { console.error("Error events", error) }
 
       try {
-        // Fetch Students (Try correct path first)
         const studentsRes = await axios.get('/api/student/list')
         setStudents(studentsRes.data)
-      } catch (error) {
-        console.error("Error fetching students", error)
-        // Fallback if needed, though '/api/student/list' is the correct one based on your setup
-        try {
-             const fallbackRes = await axios.get('/api/students/list')
-             setStudents(fallbackRes.data)
-        } catch(e) {}
-      } finally {
-        setLoading(false)
-      }
+      } catch (error) { console.error("Error students", error) } 
+      finally { setLoading(false) }
     }
     fetchData()
   }, [])
 
-  // Filter Participants & Sort by Chest No
+  // Filter Participants
   const participants = selectedEventId 
     ? students
         .filter(s => s.registeredEvents?.some((e: any) => e.eventId === selectedEventId))
-        .sort((a, b) => {
-            const chestA = parseInt(a.chestNo) || 0
-            const chestB = parseInt(b.chestNo) || 0
-            return chestA - chestB
-        })
+        .sort((a, b) => (parseInt(a.chestNo) || 0) - (parseInt(b.chestNo) || 0))
     : []
 
   const selectedEvent = events.find(e => e._id === selectedEventId)
-
-  // Options for Search
   const eventOptions = events.map(e => ({ value: e._id, label: `${e.name} (${e.category})` }))
 
   return (
@@ -161,7 +144,7 @@ export default function JudgeSheetPage() {
                 <h1 className="text-3xl font-bold text-slate-900 flex items-center gap-3">
                     <FileText className="w-8 h-8 text-slate-400" /> Judge Score Sheet
                 </h1>
-                <p className="text-slate-500 mt-1 ml-11">Generate professional score sheets for competition judges</p>
+                <p className="text-slate-500 mt-1 ml-11">Generate valuation sheets for judges</p>
             </div>
             <Button variant="outline" onClick={() => router.push('/admin')}>
                 <ArrowLeft className="w-4 h-4 mr-2" /> Back to Dashboard
@@ -175,7 +158,7 @@ export default function JudgeSheetPage() {
                     options={eventOptions} 
                     value={selectedEventId} 
                     onChange={setSelectedEventId} 
-                    placeholder="Search and select an event..." 
+                    placeholder="Search event..." 
                 />
             </div>
             <Button 
@@ -188,113 +171,94 @@ export default function JudgeSheetPage() {
         </div>
       </div>
 
-      {/* --- PRINTABLE SHEET --- */}
+      {/* --- PRINTABLE SHEET (Exact Replica of Image) --- */}
       {selectedEventId && (
-        <div className="max-w-[210mm] mx-auto bg-white p-10 shadow-lg print:shadow-none print:w-full print:p-0 print:m-0 min-h-[297mm]">
+        <div className="max-w-[210mm] mx-auto bg-white p-8 shadow-lg print:shadow-none print:w-full print:p-4 print:m-0 min-h-[297mm] text-black font-sans">
             
-            {/* 1. SHEET HEADER */}
-            <div className="border-b-2 border-black pb-4 mb-6">
-                <div className="flex justify-between items-start">
-                    <div>
-                        <h2 className="text-4xl font-black uppercase tracking-tighter text-black">Judging Sheet</h2>
-                        <p className="text-sm text-slate-500 mt-1 uppercase tracking-widest">Official Score Card</p>
-                    </div>
-                    <div className="text-right">
-                         <div className="border-2 border-black px-4 py-2 inline-block">
-                            <span className="block text-xs uppercase font-bold text-slate-500">Max Score</span>
-                            <span className="block text-2xl font-black">30</span>
-                         </div>
+            {/* 1. HEADER */}
+            <div className="flex justify-between items-start mb-6">
+                <div className="w-1/3">
+                    {/* Organization Name (Placeholder) */}
+                    <div className="flex items-center gap-2">
+                        {/* <img src="/logo.png" className="h-10 w-10" /> Optional Logo */}
+                        <div>
+                            <p className="font-bold text-xs uppercase tracking-wide">Optimus Arts Fest</p>
+                            <p className="text-[10px] text-gray-500">Event Management System</p>
+                        </div>
                     </div>
                 </div>
-
-                <div className="mt-8 grid grid-cols-3 gap-8 text-left bg-slate-50 p-4 border border-slate-200 print:bg-transparent print:border-black print:p-2">
-                    <div>
-                        <p className="text-[10px] text-slate-500 uppercase font-bold tracking-wider mb-1">Event Name</p>
-                        <p className="text-xl font-bold leading-tight">{selectedEvent?.name}</p>
-                    </div>
-                    <div className="border-l border-slate-300 pl-8 print:border-black">
-                        <p className="text-[10px] text-slate-500 uppercase font-bold tracking-wider mb-1">Category</p>
-                        <p className="text-xl font-bold">{selectedEvent?.category}</p>
-                    </div>
-                    <div className="border-l border-slate-300 pl-8 print:border-black">
-                        <p className="text-[10px] text-slate-500 uppercase font-bold tracking-wider mb-1">Judge Name / Sig.</p>
-                        <div className="border-b border-black border-dashed w-full mt-4 h-1"></div>
-                    </div>
+                <div className="w-1/3 text-center">
+                    <h2 className="text-xl font-medium uppercase tracking-wide underline underline-offset-4 decoration-1">Valuation Sheet</h2>
+                </div>
+                <div className="w-1/3 text-right">
+                    <p className="text-xs font-medium">{new Date().toLocaleDateString()} {new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
                 </div>
             </div>
 
-            {/* 2. SCORING TABLE */}
-            <table className="w-full border-collapse border border-black text-sm">
+            {/* 2. EVENT DETAILS TABLE */}
+            <div className="border border-black flex text-center text-sm font-bold uppercase mb-0">
+                <div className="flex-1 border-r border-black py-1 px-2">{selectedEvent?.name}</div>
+                <div className="w-1/4 border-r border-black py-1 px-2">{selectedEvent?.category}</div>
+                <div className="w-1/4 py-1 px-2">
+                    {selectedEvent?.groupEvent ? "Group" : "Individual"}
+                </div>
+            </div>
+
+            {/* 3. SCORING TABLE */}
+            <table className="w-full border-collapse border border-black border-t-0 text-center">
                 <thead>
-                    <tr className="bg-slate-100 print:bg-gray-100">
-                        <th className="border border-black py-4 px-2 w-16 text-center font-black text-xs uppercase">Chest No</th>
-                        {/* Removed (Max 10) as requested */}
-                        <th className="border border-black py-4 px-2 text-center w-1/4 font-bold uppercase text-xs">
-                            Criteria 1
-                        </th>
-                        <th className="border border-black py-4 px-2 text-center w-1/4 font-bold uppercase text-xs">
-                            Criteria 2
-                        </th>
-                        <th className="border border-black py-4 px-2 text-center w-1/4 font-bold uppercase text-xs">
-                            Criteria 3
-                        </th>
-                        <th className="border border-black py-4 px-2 w-20 text-center font-black text-sm uppercase bg-slate-200 print:bg-gray-200">Total</th>
-                        <th className="border border-black py-4 px-2 w-32 text-center font-bold text-xs uppercase">Remarks</th>
+                    <tr className="h-10">
+                        <th className="border border-black border-t-0 py-1 px-2 w-28 text-xs font-bold uppercase bg-gray-50">Code Letter</th>
+                        <th className="border border-black border-t-0 py-1 px-2 text-xs font-bold uppercase" colSpan={4}>Marks</th>
+                        <th className="border border-black border-t-0 py-1 px-2 w-32 text-xs font-bold uppercase bg-gray-50">Mark out of 100</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {participants.length === 0 ? (
-                        <tr>
-                            <td colSpan={6} className="text-center py-10 text-slate-400 italic">
-                                No participants registered yet.
+                    {/* Rows for Students */}
+                    {participants.map((student) => (
+                        <tr key={student._id} className="h-10">
+                            {/* Chest No mapped to Code Letter */}
+                            <td className="border border-black text-lg font-bold font-mono bg-gray-50">
+                                {student.chestNo}
                             </td>
+                            {/* 4 Empty Columns for Split Marks */}
+                            <td className="border border-black w-[15%]"></td>
+                            <td className="border border-black w-[15%]"></td>
+                            <td className="border border-black w-[15%]"></td>
+                            <td className="border border-black w-[15%]"></td>
+                            {/* Total Column */}
+                            <td className="border border-black bg-gray-50"></td>
                         </tr>
-                    ) : (
-                        participants.map((student) => (
-                            <tr key={student._id} className="h-16 print:h-14">
-                                <td className="border border-black text-center text-2xl font-black font-mono">
-                                    {student.chestNo}
-                                </td>
-                                <td className="border border-black"></td>
-                                <td className="border border-black"></td>
-                                <td className="border border-black"></td>
-                                <td className="border border-black bg-slate-50 print:bg-gray-50"></td>
-                                <td className="border border-black"></td>
-                            </tr>
-                        ))
-                    )}
-                    {/* Empty Rows for extra entries */}
-                    {[1, 2, 3].map((i) => (
-                        <tr key={`empty-${i}`} className="h-16 print:h-14">
+                    ))}
+
+                    {/* Empty Rows (Fill up to 15 rows minimum for aesthetics) */}
+                    {Array.from({ length: Math.max(0, 15 - participants.length) }).map((_, i) => (
+                        <tr key={`empty-${i}`} className="h-10">
+                            <td className="border border-black bg-gray-50"></td>
                             <td className="border border-black"></td>
                             <td className="border border-black"></td>
                             <td className="border border-black"></td>
                             <td className="border border-black"></td>
-                            <td className="border border-black bg-slate-50 print:bg-gray-50"></td>
-                            <td className="border border-black"></td>
+                            <td className="border border-black bg-gray-50"></td>
                         </tr>
                     ))}
                 </tbody>
             </table>
 
-            {/* 3. FOOTER & NOTES */}
-            <div className="mt-8 flex gap-8">
-                <div className="flex-1 border border-black p-3 h-32">
-                    <p className="text-[10px] font-bold uppercase text-slate-500 mb-1">Judge's Remarks / Notes:</p>
+            {/* 4. FOOTER */}
+            <div className="mt-16 flex justify-between items-end">
+                <div className="w-1/2">
+                    <p className="text-sm font-medium mb-8">Judging Comments:</p>
                 </div>
-                <div className="w-1/3 flex flex-col justify-end">
-                    <div className="text-center">
-                        <p className="mb-8 font-bold text-sm uppercase tracking-wide">Signature</p>
-                        <div className="border-b-2 border-black w-full"></div>
-                    </div>
+                <div className="w-1/3 text-center">
+                    <p className="text-sm font-medium mb-12">Judge's Name and Signature:</p>
+                    <div className="border-b border-black w-full"></div>
                 </div>
             </div>
 
-            {/* 4. PRINT TIMESTAMP */}
-            <div className="mt-8 text-center border-t pt-2 hidden print:block">
-                <p className="text-[10px] text-slate-400">
-                    Generated on {new Date().toLocaleDateString()} at {new Date().toLocaleTimeString()} • Optimus Event Manager
-                </p>
+            {/* Print Timestamp Footer */}
+            <div className="fixed bottom-4 left-0 w-full text-center hidden print:block">
+               <p className="text-[9px] text-gray-400 uppercase tracking-widest">Generated by Optimus</p>
             </div>
         </div>
       )}

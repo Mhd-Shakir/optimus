@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Search, Trash2, UserPlus, Loader2, Mic, PenTool, Pencil, X, Eye, Star } from "lucide-react"
+import { Search, Trash2, UserPlus, Loader2, Mic, PenTool, Pencil, X, Eye, Star, Users, User } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 
 export default function AdminRegistrationsPage() {
@@ -36,7 +36,8 @@ export default function AdminRegistrationsPage() {
     category: "Alpha"
   })
   
-  const [selectedEvents, setSelectedEvents] = useState<{eventId: string, eventName: string, isStar: boolean, type: string, category: string}[]>([])
+  // State for selected events including groupEvent status
+  const [selectedEvents, setSelectedEvents] = useState<{eventId: string, eventName: string, isStar: boolean, type: string, category: string, groupEvent: boolean}[]>([])
 
   useEffect(() => { fetchData() }, [])
 
@@ -65,6 +66,8 @@ export default function AdminRegistrationsPage() {
         team: student.team, 
         category: student.category
     })
+    
+    // Map existing events with correct group info
     const mappedEvents = student.registeredEvents.map((e:any) => {
         const originalEvent = events.find(ev => ev._id === e.eventId)
         return {
@@ -72,7 +75,8 @@ export default function AdminRegistrationsPage() {
             eventName: e.name || originalEvent?.name,
             isStar: e.isStar,
             type: originalEvent?.type || "Stage",
-            category: originalEvent?.category || ""
+            category: originalEvent?.category || "",
+            groupEvent: originalEvent?.groupEvent || false
         }
     })
     setSelectedEvents(mappedEvents)
@@ -122,18 +126,23 @@ export default function AdminRegistrationsPage() {
     }
   }
 
-  // ✅ UPDATED TOGGLE EVENT WITH 6 LIMIT CHECK
+  // ✅ UPDATED TOGGLE LOGIC: Unlimited General & Max 6 Individual Stage
   const toggleEvent = (event: any) => {
     const exists = selectedEvents.find(e => e.eventId === event._id)
     if (exists) {
         setSelectedEvents(prev => prev.filter(e => e.eventId !== event._id))
     } else {
-        // Check if it is an Individual Stage Event
-        const isIndividualStage = event.type === "Stage" && !event.category.toLowerCase().includes("general");
+        const isGeneral = event.category.toLowerCase().includes("general");
+        const isStage = event.type === "Stage";
+        const isGroup = event.groupEvent === true;
 
-        if (isIndividualStage) {
-             // Count currently selected Individual Stage events
-             const currentCount = selectedEvents.filter(e => e.type === "Stage" && !e.category.toLowerCase().includes("general")).length;
+        // RULE: Limit applies ONLY to (Stage + Individual + Not General)
+        if (isStage && !isGroup && !isGeneral) {
+             const currentCount = selectedEvents.filter(e => 
+                 e.type === "Stage" && 
+                 !e.groupEvent && 
+                 !e.category.toLowerCase().includes("general")
+             ).length;
              
              if (currentCount >= 6) {
                  return toast({ variant: "destructive", title: "Limit Reached", description: "Maximum 6 Individual Stage events allowed!" })
@@ -145,7 +154,8 @@ export default function AdminRegistrationsPage() {
             eventName: event.name, 
             isStar: false, 
             type: event.type,
-            category: event.category
+            category: event.category,
+            groupEvent: event.groupEvent || false
         }])
     }
   }
@@ -154,6 +164,7 @@ export default function AdminRegistrationsPage() {
     const currentStars = selectedEvents.filter(e => e.isStar).length
     const target = selectedEvents.find(e => e.eventId === eventId)
     
+    // No stars for General items typically
     if (target?.category && target.category.toLowerCase().includes("general")) {
         return; 
     }
@@ -249,17 +260,23 @@ export default function AdminRegistrationsPage() {
                                     filteredEvents.map(ev => {
                                         const isSel = selectedEvents.find(s => s.eventId === ev._id)
                                         const isGeneral = ev.category.toLowerCase().includes("general")
-                                        
+                                        const isGroup = ev.groupEvent === true
+
                                         return (
                                             <div key={ev._id} className={`p-3 border rounded-lg transition-all ${isSel ? (activeTab === "Stage" ? "bg-purple-50 border-purple-500" : "bg-teal-50 border-teal-500") : "hover:bg-slate-50"}`}>
                                                 <div className="flex justify-between items-center">
                                                     <div>
-                                                        <span className="text-sm font-medium">{ev.name}</span>
-                                                        {isGeneral && (
-                                                            <span className="ml-2 text-[10px] bg-slate-800 text-white px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">
-                                                                General
-                                                            </span>
-                                                        )}
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-sm font-medium">{ev.name}</span>
+                                                            
+                                                            {/* BADGES: General / Group / Single */}
+                                                            {isGeneral && <Badge variant="secondary" className="text-[10px] h-5 px-1.5 bg-slate-800 text-white hover:bg-slate-700">General</Badge>}
+                                                            {isGroup ? (
+                                                                <Badge variant="outline" className="text-[10px] h-5 px-1.5 border-yellow-300 bg-yellow-50 text-yellow-700 gap-1"><Users className="w-3 h-3" /> Group</Badge>
+                                                            ) : (
+                                                                <Badge variant="outline" className="text-[10px] h-5 px-1.5 text-slate-400 border-slate-200 font-normal"><User className="w-3 h-3 mr-1" /> Single</Badge>
+                                                            )}
+                                                        </div>
                                                     </div>
                                                     <Button type="button" size="sm" variant={isSel ? "destructive" : "secondary"} className="h-7 px-4" onClick={() => toggleEvent(ev)}>{isSel ? "Remove" : "Select"}</Button>
                                                 </div>
@@ -363,6 +380,8 @@ export default function AdminRegistrationsPage() {
                     {viewStudent.registeredEvents.map((ev: any, idx: number) => {
                       const fullEvent = events.find(e => e._id === ev.eventId) || {};
                       const isGeneral = fullEvent.category?.toLowerCase().includes("general");
+                      const isGroup = fullEvent.groupEvent === true
+
                       return (
                         <div key={idx} className="flex items-center justify-between p-3 bg-slate-50 border border-slate-100 rounded-lg">
                             <div className="flex items-center gap-3">
@@ -373,6 +392,7 @@ export default function AdminRegistrationsPage() {
                                 <p className="text-sm font-semibold text-slate-700">
                                     {ev.name || fullEvent.name}
                                     {isGeneral && <span className="ml-2 text-[8px] bg-slate-800 text-white px-1 py-0.5 rounded">GENERAL</span>}
+                                    {isGroup && <span className="ml-2 text-[8px] bg-yellow-100 text-yellow-800 border border-yellow-200 px-1 py-0.5 rounded font-bold uppercase">GROUP</span>}
                                 </p>
                                 <p className="text-[10px] text-slate-400 uppercase font-bold">{fullEvent.type || "Unknown"}</p>
                             </div>
