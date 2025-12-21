@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import connectToDb from "@/lib/db";
 import Student from "@/lib/models/student";
-import Settings from "@/lib/models/Settings"; // Import Settings Model
+import Settings from "@/lib/models/settings"; // Import Settings Model
 
 export async function POST(req: Request) {
   try {

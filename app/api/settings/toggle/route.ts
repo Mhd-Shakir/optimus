@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import connectToDb from "@/lib/db";
-import Settings from "@/lib/models/Settings";
+import Settings from "@/lib/models/settings";
 
 export async function POST(request: Request) {
     await connectToDb();
