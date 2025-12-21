@@ -2,9 +2,15 @@
 
 import { useEffect, useState } from "react"
 import axios from "axios"
-import { Users, Calendar, Trophy, ClipboardList, Star, PenTool } from "lucide-react"
+import { Users, Calendar, Trophy, ClipboardList, Star, PenTool, Lock, Unlock, Power, Settings, Key, UserCog, ShieldCheck } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
+import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { useToast } from "@/hooks/use-toast"
 
 // --- COMPONENTS ---
 
@@ -64,8 +70,24 @@ function ChampionCard({ title, student, icon: Icon, subTitle }: any) {
 export default function AdminDashboard() {
   const [stats, setStats] = useState<any>(null)
   const [loading, setLoading] = useState(true)
+  
+  // Registration Control
+  const [regOpen, setRegOpen] = useState(true)
+  const [toggling, setToggling] = useState(false)
+  
+  // Admin Credentials Modal
+  const [isCredModalOpen, setIsCredModalOpen] = useState(false)
+  const [credData, setCredData] = useState({ currentUsername: "", oldPassword: "", newUsername: "", newPassword: "" })
+  
+  // Team Credentials Modal (NEW)
+  const [isTeamModalOpen, setIsTeamModalOpen] = useState(false)
+  const [teamCredData, setTeamCredData] = useState({ team: "", newUsername: "", newPassword: "" })
+  const [updating, setUpdating] = useState(false)
+
+  const { toast } = useToast()
 
   useEffect(() => {
+    // 1. Fetch Stats
     const fetchDashboardData = async () => {
       try {
         const res = await axios.get('/api/dashboard/stats')
@@ -78,16 +100,132 @@ export default function AdminDashboard() {
     }
     fetchDashboardData()
     const interval = setInterval(fetchDashboardData, 30000)
+
+    // 2. Fetch Registration Status
+    const fetchSettings = async () => {
+        try {
+            const res = await axios.get('/api/settings')
+            setRegOpen(res.data.registrationOpen)
+        } catch (error) {
+            console.error("Failed to load settings", error)
+        }
+    }
+    fetchSettings()
+
     return () => clearInterval(interval)
   }, [])
+
+  // Toggle Registration
+  const toggleRegistration = async () => {
+    setToggling(true)
+    try {
+        const newState = !regOpen
+        await axios.post('/api/settings', { registrationOpen: newState })
+        setRegOpen(newState)
+        toast({ 
+            title: newState ? "Registration OPENED 🟢" : "Registration CLOSED 🔴",
+            description: newState ? "Teams can now register students." : "New registrations are blocked."
+        })
+    } catch (error) {
+        toast({ variant: "destructive", title: "Error", description: "Failed to update settings" })
+    } finally {
+        setToggling(false)
+    }
+  }
+
+  // Handle Admin Credentials Update
+  const handleUpdateCreds = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setUpdating(true)
+    try {
+        const res = await axios.post('/api/admin/change-credentials', credData)
+        toast({ title: "Success ✅", description: res.data.message })
+        setIsCredModalOpen(false)
+        setCredData({ currentUsername: "", oldPassword: "", newUsername: "", newPassword: "" })
+    } catch (error: any) {
+        toast({ variant: "destructive", title: "Failed", description: error.response?.data?.error || "Error updating credentials" })
+    } finally {
+        setUpdating(false)
+    }
+  }
+
+  // Handle Team Credentials Update (NEW)
+  const handleUpdateTeamCreds = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!teamCredData.team) return toast({ variant: "destructive", title: "Select Team", description: "Please select a team first." })
+    
+    setUpdating(true)
+    try {
+        const res = await axios.post('/api/admin/change-team-credentials', teamCredData)
+        toast({ title: "Success ✅", description: res.data.message })
+        setIsTeamModalOpen(false)
+        setTeamCredData({ team: "", newUsername: "", newPassword: "" })
+    } catch (error: any) {
+        toast({ variant: "destructive", title: "Failed", description: error.response?.data?.error || "Error updating team credentials" })
+    } finally {
+        setUpdating(false)
+    }
+  }
 
   if (loading || !stats) return <div className="flex h-screen items-center justify-center text-slate-400">Loading Dashboard...</div>
 
   return (
     <div className="space-y-8 p-6 bg-slate-50/50 min-h-screen">
-      <div>
-        <h1 className="text-3xl font-bold text-slate-900">Dashboard</h1>
-        <p className="text-muted-foreground mt-1">Live overview of the event</p>
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+            <h1 className="text-3xl font-bold text-slate-900">Dashboard</h1>
+            <p className="text-muted-foreground mt-1">Live overview of the event</p>
+        </div>
+
+        {/* --- CONTROL PANEL --- */}
+        <div className="flex flex-wrap gap-3 w-full md:w-auto">
+            
+            {/* 1. Registration Toggle */}
+            <div className="bg-white p-2 pr-4 rounded-xl border shadow-sm flex items-center gap-4 flex-1 md:flex-none min-w-[200px]">
+                <div className={`p-3 rounded-lg ${regOpen ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
+                    {regOpen ? <Unlock className="w-5 h-5" /> : <Lock className="w-5 h-5" />}
+                </div>
+                <div>
+                    <p className="text-xs font-bold text-slate-400 uppercase">Registration</p>
+                    <p className={`font-black text-sm ${regOpen ? "text-green-600" : "text-red-600"}`}>
+                        {regOpen ? "ACTIVE" : "CLOSED"}
+                    </p>
+                </div>
+                <Button 
+                    onClick={toggleRegistration} 
+                    disabled={toggling}
+                    variant={regOpen ? "destructive" : "default"}
+                    size="sm"
+                    className="ml-auto font-bold shadow-sm"
+                >
+                    <Power className="w-4 h-4" />
+                </Button>
+            </div>
+
+            {/* 2. Team Settings Button (NEW) */}
+            <Button 
+                onClick={() => setIsTeamModalOpen(true)}
+                className="h-auto bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 gap-2 shadow-sm rounded-xl px-4"
+            >
+                <Users className="w-5 h-5 text-blue-500" />
+                <div className="text-left hidden sm:block">
+                    <p className="text-xs font-bold text-slate-400 uppercase">Manage</p>
+                    <p className="font-bold text-sm">Teams</p>
+                </div>
+            </Button>
+
+            {/* 3. Admin Settings Button */}
+            <Button 
+                onClick={() => setIsCredModalOpen(true)}
+                className="h-auto bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 gap-2 shadow-sm rounded-xl px-4"
+            >
+                <Settings className="w-5 h-5 text-slate-600" />
+                <div className="text-left hidden sm:block">
+                    <p className="text-xs font-bold text-slate-400 uppercase">Admin</p>
+                    <p className="font-bold text-sm">Settings</p>
+                </div>
+            </Button>
+        </div>
       </div>
 
       {/* 1. TOP STATS */}
@@ -100,6 +238,7 @@ export default function AdminDashboard() {
 
       {/* 2. TEAM SCORES */}
       <div className="grid md:grid-cols-2 gap-6">
+          {/* ... (Team Scores Cards - same as before) ... */}
           <Card className="bg-gradient-to-br from-amber-50 to-white border-amber-200 shadow-sm overflow-hidden relative">
              <div className="absolute right-0 top-0 h-full w-24 bg-gradient-to-l from-amber-100/50 to-transparent"></div>
              <CardHeader><CardTitle className="text-amber-700 flex items-center gap-2 relative z-10"><Trophy className="w-5 h-5"/> Team Auris</CardTitle></CardHeader>
@@ -130,7 +269,8 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* 4. CATEGORY CHAMPIONS (Star & Pen for each) */}
+      {/* 4. CATEGORY CHAMPIONS */}
+      {/* ... (Category Champions Grid - same as before) ... */}
       <div>
         <h2 className="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2">
             <Users className="w-5 h-5 text-slate-600" /> Category Champions
@@ -144,8 +284,6 @@ export default function AdminDashboard() {
                             <CardTitle className="text-sm font-bold text-center uppercase tracking-wider text-slate-600">{cat} Category</CardTitle>
                         </CardHeader>
                         <CardContent className="p-0 flex-1 flex flex-col divide-y">
-                            
-                            {/* STAR (Stage) */}
                             <div className="p-3 flex items-center justify-between hover:bg-yellow-50/30 transition-colors">
                                 <div className="flex items-center gap-3">
                                     <div className="w-8 h-8 rounded-full bg-yellow-100 flex items-center justify-center">
@@ -164,8 +302,6 @@ export default function AdminDashboard() {
                                     </div>
                                 </div>
                             </div>
-
-                            {/* PEN (Non-Stage) */}
                             <div className="p-3 flex items-center justify-between hover:bg-teal-50/30 transition-colors">
                                 <div className="flex items-center gap-3">
                                     <div className="w-8 h-8 rounded-full bg-teal-100 flex items-center justify-center">
@@ -184,13 +320,118 @@ export default function AdminDashboard() {
                                     </div>
                                 </div>
                             </div>
-
                         </CardContent>
                     </Card>
                 )
             })}
         </div>
       </div>
+
+      {/* --- MODAL 1: ADMIN CREDENTIALS --- */}
+      <Dialog open={isCredModalOpen} onOpenChange={setIsCredModalOpen}>
+        <DialogContent className="max-w-md">
+            <DialogHeader>
+                <DialogTitle className="flex items-center gap-2"><ShieldCheck className="w-5 h-5 text-emerald-600"/> Change Admin Credentials</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleUpdateCreds} className="space-y-4 py-2">
+                <div className="space-y-3 p-3 bg-slate-50 rounded border">
+                    <p className="text-xs font-bold text-slate-400 uppercase mb-2">Current Credentials</p>
+                    <div className="space-y-1">
+                        <Label>Current Username</Label>
+                        <Input 
+                            value={credData.currentUsername} 
+                            onChange={(e) => setCredData({...credData, currentUsername: e.target.value})} 
+                            required
+                        />
+                    </div>
+                    <div className="space-y-1">
+                        <Label>Old Password</Label>
+                        <Input 
+                            type="password"
+                            value={credData.oldPassword} 
+                            onChange={(e) => setCredData({...credData, oldPassword: e.target.value})} 
+                            required
+                        />
+                    </div>
+                </div>
+                <div className="space-y-3 p-3 bg-emerald-50 rounded border border-emerald-100">
+                    <p className="text-xs font-bold text-emerald-600 uppercase mb-2">New Credentials</p>
+                    <div className="space-y-1">
+                        <Label>New Username</Label>
+                        <Input 
+                            value={credData.newUsername} 
+                            onChange={(e) => setCredData({...credData, newUsername: e.target.value})} 
+                            required
+                        />
+                    </div>
+                    <div className="space-y-1">
+                        <Label>New Password</Label>
+                        <Input 
+                            value={credData.newPassword} 
+                            onChange={(e) => setCredData({...credData, newPassword: e.target.value})} 
+                            required
+                        />
+                    </div>
+                </div>
+                <DialogFooter>
+                    <Button type="button" variant="ghost" onClick={() => setIsCredModalOpen(false)}>Cancel</Button>
+                    <Button type="submit" className="bg-slate-900" disabled={updating}>Update</Button>
+                </DialogFooter>
+            </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* --- MODAL 2: TEAM CREDENTIALS (NEW) --- */}
+      <Dialog open={isTeamModalOpen} onOpenChange={setIsTeamModalOpen}>
+        <DialogContent className="max-w-md">
+            <DialogHeader>
+                <DialogTitle className="flex items-center gap-2"><UserCog className="w-5 h-5 text-blue-600"/> Manage Team Credentials</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleUpdateTeamCreds} className="space-y-4 py-2">
+                
+                <div className="space-y-2">
+                    <Label>Select Team</Label>
+                    <Select onValueChange={(val) => setTeamCredData({...teamCredData, team: val})}>
+                        <SelectTrigger><SelectValue placeholder="Choose a team" /></SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="Auris">Auris</SelectItem>
+                            <SelectItem value="Libras">Libras</SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
+
+                <div className="space-y-3 p-4 bg-blue-50 rounded border border-blue-100">
+                    <p className="text-xs font-bold text-blue-600 uppercase mb-2">Set New Login Details</p>
+                    <div className="space-y-1">
+                        <Label>New Username</Label>
+                        <Input 
+                            value={teamCredData.newUsername} 
+                            onChange={(e) => setTeamCredData({...teamCredData, newUsername: e.target.value})} 
+                            placeholder="e.g. auris_admin"
+                            required
+                        />
+                    </div>
+                    <div className="space-y-1">
+                        <Label>New Password</Label>
+                        <Input 
+                            value={teamCredData.newPassword} 
+                            onChange={(e) => setTeamCredData({...teamCredData, newPassword: e.target.value})} 
+                            placeholder="e.g. auris123"
+                            required
+                        />
+                    </div>
+                </div>
+
+                <DialogFooter>
+                    <Button type="button" variant="ghost" onClick={() => setIsTeamModalOpen(false)}>Cancel</Button>
+                    <Button type="submit" className="bg-blue-600 hover:bg-blue-700" disabled={updating}>
+                        {updating ? "Updating..." : "Update Team Login"}
+                    </Button>
+                </DialogFooter>
+            </form>
+        </DialogContent>
+      </Dialog>
+
     </div>
   )
 }

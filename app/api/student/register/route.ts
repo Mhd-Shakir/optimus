@@ -1,14 +1,25 @@
 import { NextResponse } from "next/server";
 import connectToDb from "@/lib/db";
 import Student from "@/lib/models/student";
+import Settings from "@/lib/models/Settings"; // Import Settings Model
 
 export async function POST(req: Request) {
   try {
     console.log("Connecting to DB...");
     await connectToDb();
     
+    // --- NEW: CHECK IF REGISTRATION IS OPEN ---
+    const settings = await Settings.findOne();
+    if (settings && settings.registrationOpen === false) {
+      return NextResponse.json(
+        { error: "Registration is currently CLOSED by Admin." }, 
+        { status: 403 }
+      );
+    }
+    // ------------------------------------------
+
     const body = await req.json();
-    console.log("Received Data:", body); // ടെർമിനലിൽ ഡാറ്റ വരുന്നുണ്ടോ എന്ന് നോക്കാം
+    console.log("Received Data:", body); 
 
     const { name, chestNo, team, category, admissionNo, selectedEvents } = body;
 
@@ -29,7 +40,7 @@ export async function POST(req: Request) {
       chestNo,
       team,
       category,
-      admissionNo: admissionNo || "", // admissionNo ഇല്ലെങ്കിൽ empty string കൊടുക്കും
+      admissionNo: admissionNo || "", 
       registeredEvents: selectedEvents || []
     });
 
@@ -37,7 +48,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ message: "Student Registered", student: newStudent }, { status: 201 });
 
   } catch (error: any) {
-    console.error("Registration CRASH:", error); // എറർ വന്നാൽ ഇവിടെ കാണാം
+    console.error("Registration CRASH:", error); 
     return NextResponse.json({ error: error.message || "Registration Failed" }, { status: 500 });
   }
 }

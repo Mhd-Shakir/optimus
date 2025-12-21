@@ -2,29 +2,22 @@ import { NextResponse } from "next/server";
 import connectToDb from "@/lib/db";
 import Event from "@/lib/models/event";
 
-export async function POST(request: Request) {
+export async function POST(req: Request) {
   try {
     await connectToDb();
-    const body = await request.json();
+    const body = await req.json();
 
-    // Check if body is array (Bulk) or object (Single)
-    const eventsData = Array.isArray(body) ? body : [body];
-
-    if (eventsData.length === 0) {
-      return NextResponse.json({ error: "No data provided" }, { status: 400 });
+    // Check if body is an array (JSON List)
+    if (!Array.isArray(body)) {
+      return NextResponse.json({ error: "Invalid format: Expected an array of events" }, { status: 400 });
     }
 
-    // Insert All Events
-    const createdEvents = await Event.insertMany(eventsData);
+    // Insert all events at once
+    await Event.insertMany(body);
 
-    return NextResponse.json({ 
-      message: "Events created successfully", 
-      count: createdEvents.length, 
-      events: createdEvents 
-    }, { status: 201 });
-
-  } catch (error: any) {
-    console.error("Bulk Create Error:", error);
-    return NextResponse.json({ error: error.message || "Failed to create events" }, { status: 500 });
+    return NextResponse.json({ message: "Events added successfully", count: body.length });
+  } catch (error) {
+    console.error("Bulk Upload Error:", error);
+    return NextResponse.json({ error: "Failed to upload events" }, { status: 500 });
   }
 }

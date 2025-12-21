@@ -6,48 +6,66 @@ export async function POST(req: Request) {
   try {
     await connectToDb();
     
-    // പുതിയ ഫോർമാറ്റിലുള്ള ഡാറ്റ സ്വീകരിക്കുന്നു
     const body = await req.json();
-    console.log("Received Result Data:", body); // ടെർമിനലിൽ ലോഗ് ചെയ്തു നോക്കാം
-
-    // Destructure using the NEW structure (inside 'results' object)
     const { eventId, results } = body;
 
-    // Validation Check
-    if (!eventId) {
-        return NextResponse.json({ error: "Event ID is missing" }, { status: 400 });
-    }
+    if (!eventId) return NextResponse.json({ error: "Event ID is missing" }, { status: 400 });
     
-    // Check if 'results' object exists and has 'first' winner
     if (!results || !results.first) {
         return NextResponse.json({ error: "First Place Winner is required" }, { status: 400 });
     }
 
-    // Update Event in Database
     const updatedEvent = await Event.findByIdAndUpdate(
       eventId,
       {
         status: "completed",
         results: {
             first: results.first,
-            firstMark: results.firstMark || "0", // Mark കൂടി സേവ് ചെയ്യുന്നു
+            firstGrade: results.firstGrade || "", 
             second: results.second || null,
-            secondMark: results.secondMark || "0",
+            secondGrade: results.secondGrade || "",
             third: results.third || null,
-            thirdMark: results.thirdMark || "0"
+            thirdGrade: results.thirdGrade || ""
         }
       },
       { new: true }
     );
 
-    if (!updatedEvent) {
-        return NextResponse.json({ error: "Event not found" }, { status: 404 });
-    }
+    if (!updatedEvent) return NextResponse.json({ error: "Event not found" }, { status: 404 });
 
-    return NextResponse.json({ message: "Result & Marks Updated", event: updatedEvent }, { status: 200 });
+    return NextResponse.json({ message: "Result Updated", event: updatedEvent });
 
   } catch (error: any) {
-    console.error("Save Error:", error);
-    return NextResponse.json({ error: error.message || "Failed to save result" }, { status: 500 });
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
+
+// ✅ DELETE FUNCTION (Fix for 405 Error)
+export async function DELETE(req: Request) {
+  try {
+    await connectToDb();
+    const { eventId } = await req.json();
+
+    if (!eventId) return NextResponse.json({ error: "Event ID is missing" }, { status: 400 });
+
+    const updatedEvent = await Event.findByIdAndUpdate(
+      eventId,
+      {
+        status: "upcoming", // Reset status
+        results: {
+            first: null, firstGrade: "",
+            second: null, secondGrade: "",
+            third: null, thirdGrade: ""
+        }
+      },
+      { new: true }
+    );
+
+    if (!updatedEvent) return NextResponse.json({ error: "Event not found" }, { status: 404 });
+
+    return NextResponse.json({ message: "Result Deleted", event: updatedEvent });
+
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

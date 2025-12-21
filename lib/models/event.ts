@@ -7,16 +7,20 @@ const eventSchema = new Schema(
     type: { type: String, required: true }, // Stage / Non-Stage
     status: { type: String, default: "upcoming" },
     
-    // 👇 റിസൾട്ടും മാർക്കും സേവ് ചെയ്യാനുള്ള സ്ഥലം
+    // 👇 Individual or Group Event distinction
+    // (Default is Individual. For Group events, this should be true)
+    groupEvent: { type: Boolean, default: false },
+
+    // 👇 Results now store Grades (A+, A, B, C)
     results: {
       first: { type: String, default: null },
-      firstMark: { type: String, default: "0" }, // New Field for Mark
+      firstGrade: { type: String, default: "" }, 
       
       second: { type: String, default: null },
-      secondMark: { type: String, default: "0" }, // New Field for Mark
+      secondGrade: { type: String, default: "" }, 
       
       third: { type: String, default: null },
-      thirdMark: { type: String, default: "0" } // New Field for Mark
+      thirdGrade: { type: String, default: "" } 
     }
   },
   { timestamps: true }

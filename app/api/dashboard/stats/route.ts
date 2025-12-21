@@ -5,6 +5,17 @@ import Event from "@/lib/models/event";
 
 export const dynamic = "force-dynamic";
 
+// 👇 POINT SYSTEM CONFIGURATION
+const INDIVIDUAL_POINTS: any = { "A+": 10, "A": 7, "B": 5, "C": 3 };
+const GROUP_POINTS: any = { "A+": 25, "A": 20, "B": 13, "C": 7 };
+
+const getPoints = (grade: string, isGroup: boolean) => {
+    if (!grade) return 0;
+    const g = grade.trim().toUpperCase();
+    if (isGroup) return GROUP_POINTS[g] || 0;
+    return INDIVIDUAL_POINTS[g] || 0;
+};
+
 export async function GET() {
   try {
     await connectToDb();
@@ -42,30 +53,40 @@ export async function GET() {
         return studentScores[id];
     };
 
-    // 3. Calculate Scores
+    // 3. Calculate Scores based on Grades
     events.forEach((event: any) => {
-        const { first, second, third, firstMark, secondMark, thirdMark } = event.results;
+        const { first, second, third, firstGrade, secondGrade, thirdGrade } = event.results;
         const isStage = event.type === "Stage";
+        
+        // ✅ CHANGED LOGIC: Only rely on 'groupEvent' flag
+        // "General" category implies Individual points UNLESS explicitly marked as groupEvent
+        const isGroup = event.groupEvent === true; 
+        
         const eventIdStr = event._id.toString();
 
-        const processResult = (studentId: string, markStr: string) => {
+        const processResult = (studentId: string, grade: string) => {
             if (!studentId) return;
-            const points = parseInt(markStr) || 0;
+            
+            // Calculate Points based on Grade & Event Type
+            const points = getPoints(grade, isGroup);
+            
             const student = students.find((std: any) => std._id.toString() === studentId);
 
             if (student) {
+                // Team Scores
                 if (student.team === "Auris") aurisScore += points;
                 if (student.team === "Libras") librasScore += points;
 
+                // Individual Champion Scores
                 const registration = student.registeredEvents?.find((r: any) => r.eventId === eventIdStr);
                 const studentStats = initStudent(studentId);
                 
                 if (isStage) {
-                    // STAGE: Count ALL points for "Star" titles
+                    // Stage Points
                     studentStats.totalPoints += points;
                     studentStats.stagePoints += points;
                 } else {
-                    // NON-STAGE: Count ONLY Star-Marked points for "Pen" titles
+                    // Non-Stage Points (Only if Star marked)
                     if (registration && registration.isStar) {
                         studentStats.totalPoints += points;
                         studentStats.nonStagePoints += points;
@@ -74,29 +95,23 @@ export async function GET() {
             }
         };
 
-        if (first) processResult(first, firstMark);
-        if (second) processResult(second, secondMark);
-        if (third) processResult(third, thirdMark);
+        if (first) processResult(first, firstGrade);
+        if (second) processResult(second, secondGrade);
+        if (third) processResult(third, thirdGrade);
     });
 
     // 4. Find Champions
     const allStudentsWithScores = Object.values(studentScores);
 
-    // Helper to find Star & Pen for a specific list
     const getChampions = (list: any[]) => {
-        // Star = Max Stage Points
         const star = [...list].sort((a: any, b: any) => b.stagePoints - a.stagePoints)[0] || null;
-        // Pen = Max Non-Stage Points
         const pen = [...list].sort((a: any, b: any) => b.nonStagePoints - a.nonStagePoints)[0] || null;
         return { star, pen };
     };
 
-    // Category-wise Champions
     const alpha = getChampions(allStudentsWithScores.filter((s:any) => s.category === "Alpha"));
     const beta = getChampions(allStudentsWithScores.filter((s:any) => s.category === "Beta"));
     const omega = getChampions(allStudentsWithScores.filter((s:any) => s.category === "Omega"));
-
-    // Global Fest Champions
     const globalChampions = getChampions(allStudentsWithScores);
 
     // 5. Category Counts
