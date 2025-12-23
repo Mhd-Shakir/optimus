@@ -4,18 +4,25 @@ const studentSchema = new Schema(
   {
     name: { type: String, required: true },
     chestNo: { type: String, required: true, unique: true },
-    team: { type: String, required: true },
-    category: { type: String, required: true },
-    // admissionNo ഇവിടെ ഒഴിവാക്കി (Unique Error വരാതിരിക്കാൻ)
+    team: { type: String, required: true }, // Auris / Libras
+    category: { type: String, required: true }, // Alpha / Beta / Omega
+    // admissionNo is optional/removed as per your previous code
     admissionNo: { type: String, default: "" }, 
     registeredEvents: [
       {
-        eventId: { type: String },
+        eventId: { type: String, required: true },
         name: { type: String },
-        isStar: { type: Boolean, default: false }, // Note: Boolean (capital B)
-        type: { type: String }
-      }
-    ]
+        type: { type: String }, // Stage / Non-Stage
+        isStar: { type: Boolean, default: false },
+        
+        // ✅ CRITICAL UPDATE: ഈ 'status' ഫീൽഡ് നിർബന്ധമായും ഉണ്ടായിരിക്കണം
+        status: { 
+            type: String, 
+            default: "registered",
+            enum: ["registered", "sent", "reported", "completed"] 
+        }, 
+      },
+    ],
   },
   { timestamps: true }
 );

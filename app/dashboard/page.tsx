@@ -12,14 +12,17 @@ import {
   Loader2, 
   Mic, 
   PenTool, 
-  CheckCircle2,
-  X,
-  Star,
-  Users,
-  Trash2,
-  Pencil,
-  Lock,
-  User
+  CheckCircle2, 
+  X, 
+  Star, 
+  Users, 
+  Trash2, 
+  Pencil, 
+  Lock, 
+  User, 
+  Send, 
+  Search, 
+  ArrowLeft 
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,30 +37,30 @@ export default function TeamDashboard() {
   const router = useRouter();
   const { toast } = useToast();
 
+  const [activeView, setActiveView] = useState("dashboard"); // dashboard | stage
+
   const [events, setEvents] = useState<any[]>([]);
   const [students, setStudents] = useState<any[]>([]); 
   const [loading, setLoading] = useState(true);
   
-  // Registration & Edit States
+  // Registration States
   const [isRegOpen, setIsRegOpen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false); 
   const [editId, setEditId] = useState(""); 
-
   const [submitting, setSubmitting] = useState(false);
   const [activeRegTab, setActiveRegTab] = useState<"Stage" | "Non-Stage">("Stage");
-
   const [activeCategory, setActiveCategory] = useState("All"); 
   const [viewStudent, setViewStudent] = useState<any | null>(null);
   const [isSystemRegOpen, setIsSystemRegOpen] = useState(true); 
 
-  const [formData, setFormData] = useState({
-    name: "", 
-    team: "", 
-    category: "Alpha"
-  });
-  
-  // ✅ UPDATED: Added groupEvent to type definition
-  const [selectedEvents, setSelectedEvents] = useState<{eventId: string, name: string, isStar: boolean, type: string, category: string, groupEvent: boolean}[]>([]);
+  // Stage Control States
+  const [stageEventId, setStageEventId] = useState("");
+  const [stageSearch, setStageSearch] = useState("");
+  const [stageTab, setStageTab] = useState("All");
+  const [updatingStatus, setUpdatingStatus] = useState("");
+
+  const [formData, setFormData] = useState({ name: "", team: "", category: "Alpha" });
+  const [selectedEvents, setSelectedEvents] = useState<{eventId: string, name: string, isStar: boolean, type: string, category: string, groupEvent: boolean, teamLimit?: number}[]>([]);
 
   useEffect(() => {
     if (user?.team) {
@@ -77,253 +80,271 @@ export default function TeamDashboard() {
       setEvents(eventsRes.data);
       const teamStudents = studentsRes.data.filter((s: any) => s.team === user?.team);
       setStudents(teamStudents);
-    } catch (error) {
-      console.error("Data load error:", error);
-    } finally {
-      setLoading(false);
-    }
+    } catch (error) { console.error(error); } finally { setLoading(false); }
   };
 
-  // --- HANDLE EDIT ---
-  const handleEdit = (e: React.MouseEvent, student: any) => {
-    e.stopPropagation();
-    if (!isSystemRegOpen) return toast({ variant: "destructive", title: "Closed", description: "Registration is closed by Admin." });
-
-    setEditId(student._id);
-    setFormData({
-        name: student.name,
-        team: student.team,
-        category: student.category
-    });
-    
-    // ✅ UPDATED: Load groupEvent status correctly
-    const mappedEvents = student.registeredEvents.map((ev: any) => {
-        const original = events.find((e:any) => e._id === ev.eventId);
-        return {
-            eventId: ev.eventId,
-            name: ev.name || original?.name,
-            type: original?.type || "Stage",
-            isStar: ev.isStar,
-            category: original?.category || "",
-            groupEvent: original?.groupEvent || false // Load group status
-        };
-    });
-    
-    setSelectedEvents(mappedEvents);
-    setIsEditMode(true);
-    setIsRegOpen(true);
-  };
-
-  // ✅ UPDATED: Toggle Event with Unlimited General & Limited Individual Stage
-  const toggleEvent = (event: any) => {
-    const exists = selectedEvents.find(e => e.eventId === event._id);
-    if (exists) {
-      setSelectedEvents(prev => prev.filter(e => e.eventId !== event._id));
-    } else {
-      const isGeneral = event.category.toLowerCase().includes("general");
-      const isStage = event.type === "Stage";
-      const isGroup = event.groupEvent === true;
-
-      // 🛑 RULE: Limit applies ONLY to (Stage + Individual + Not General)
-      if (isStage && !isGroup && !isGeneral) {
-          const currentCount = selectedEvents.filter(e => 
-              e.type === "Stage" && 
-              !e.groupEvent && 
-              !e.category.toLowerCase().includes("general")
-          ).length;
-
-          if (currentCount >= 6) {
-              return toast({ variant: "destructive", title: "Limit Reached", description: "Maximum 6 Individual Stage events allowed!" });
-          }
-      }
-
-      setSelectedEvents(prev => [...prev, { 
-          eventId: event._id, 
-          name: event.name, 
-          isStar: false, 
-          type: event.type,
-          category: event.category,
-          groupEvent: event.groupEvent || false // Store group status
-      }]);
-    }
-  };
-
-  const toggleStar = (eventId: string) => {
-    const currentStars = selectedEvents.filter(e => e.isStar).length;
-    const target = selectedEvents.find(e => e.eventId === eventId);
-    
-    // Safety: General/Group events shouldn't be starred usually
-    if (target?.category && target.category.toLowerCase().includes("general")) return;
-
-    if (!target?.isStar && currentStars >= 8) {
-       toast({ variant: "destructive", title: "Limit Reached", description: "Max 8 star items allowed!" });
-       return;
-    }
-    setSelectedEvents(prev => prev.map(e => e.eventId === eventId ? { ...e, isStar: !e.isStar } : e));
-  };
-
-  const closeModal = () => {
-    setIsRegOpen(false);
-    setIsEditMode(false);
-    setEditId("");
-    setFormData({ name: "", team: user?.team || "", category: "Alpha" });
-    setSelectedEvents([]);
-  };
-
-  const handleDelete = async (e: React.MouseEvent, id: string) => {
-    e.stopPropagation();
-    if(!confirm("Are you sure?")) return;
+  // --- STAGE CONTROL LOGIC ---
+  const updateStatus = async (studentId: string, eventId: string, status: string) => {
+    setUpdatingStatus(studentId);
     try {
-      await axios.post('/api/student/delete', { id });
-      toast({ title: "Deleted", description: "Student removed." });
-      fetchData(); 
+        await axios.post('/api/stage/update', { studentId, eventId, status });
+        toast({ title: "Updated", description: `Student marked as ${status}` });
+        fetchData();
     } catch (error) {
-      toast({ variant: "destructive", title: "Error", description: "Failed to delete student." });
-    }
-  };
+        toast({ variant: "destructive", title: "Error", description: "Failed to update status" });
+    } finally { setUpdatingStatus(""); }
+  }
 
-  const handleRegister = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if(!formData.name) return toast({ variant: "destructive", title: "Required", description: "Name is required." });
-    
-    setSubmitting(true);
-    try {
-      if (isEditMode) {
-          await axios.post("/api/student/update", { id: editId, ...formData, selectedEvents });
-          toast({ title: "Updated ✅", description: "Student updated successfully!" });
-      } else {
-          const autoChestNo = Math.floor(1000 + Math.random() * 9000).toString();
-          await axios.post("/api/student/register", { 
-             ...formData, 
-             chestNo: autoChestNo,
-             selectedEvents 
-          });
-          toast({ title: "Success ✅", description: "Student registered!" });
-      }
-      closeModal();
-      fetchData(); 
-    } catch (error: any) {
-      toast({ variant: "destructive", title: "Failed", description: error.response?.data?.error || "Error" });
-    } finally {
-      setSubmitting(false);
-    }
-  };
+  const getStageStudents = () => {
+      if (!stageEventId) return [];
+      return students.filter(s => s.registeredEvents.some((e:any) => e.eventId === stageEventId));
+  }
 
-  // Filter events based on active tab & category
-  const filteredEvents = events.filter(e => {
-      // 1. Check Tab (Stage/Non-Stage)
-      if (e.type !== activeRegTab) return false;
-
-      // 2. Category Match
-      if (e.category === formData.category) return true;
-      if (formData.category === "Alpha" && e.category === "General-A") return true;
-      if ((formData.category === "Beta" || formData.category === "Omega") && e.category === "General-B") return true;
-      
-      return false;
+  // Filter Logic for Stage Events (Search + Category Tabs)
+  const filteredStageEvents = events.filter(ev => {
+      const matchSearch = ev.name.toLowerCase().includes(stageSearch.toLowerCase());
+      const matchTab = stageTab === "All" || ev.category === stageTab;
+      return matchSearch && matchTab;
   });
 
-  const starCount = selectedEvents.filter(e => e.isStar).length;
-  const filteredStudents = activeCategory === "All" ? students : students.filter((s: any) => s.category === activeCategory);
+  // --- REGISTRATION LOGIC ---
+  const handleEdit = (e: any, s: any) => { 
+    e.stopPropagation(); 
+    if(!isSystemRegOpen) return toast({variant:"destructive",title:"Closed", description: "Registration closed by admin."}); 
+    setEditId(s._id); 
+    setFormData({name:s.name,team:s.team,category:s.category}); 
+    const mapped=s.registeredEvents.map((ev:any)=>{
+        const orig=events.find(x=>x._id===ev.eventId);
+        return{eventId:ev.eventId,name:ev.name||orig?.name,type:orig?.type||"Stage",isStar:ev.isStar,category:orig?.category||"",groupEvent:orig?.groupEvent||false,teamLimit:orig?.teamLimit}
+    }); 
+    setSelectedEvents(mapped); 
+    setIsEditMode(true); 
+    setIsRegOpen(true); 
+  };
+  
+  const toggleEvent = (event: any) => {
+    const exists = selectedEvents.find(e => e.eventId === event._id);
+    if (exists) { 
+        setSelectedEvents(prev => prev.filter(e => e.eventId !== event._id)); 
+    } else {
+      const isGeneral = event.category.toLowerCase().includes("general"), isStage = event.type === "Stage", isGroup = event.groupEvent === true;
+      
+      // Rule 1: Team Limit
+      if (event.teamLimit || (isStage && !isGroup)) {
+        const count = students.filter(s => s._id !== editId && s.registeredEvents?.some((re: any) => re.eventId === event._id)).length;
+        if (count >= (event.teamLimit || 3)) return toast({ variant: "destructive", title: "Limit Reached", description: `Team already has ${event.teamLimit || 3} participants.` });
+      }
+      // Rule 2: Individual Stage Limit (Max 6)
+      if (isStage && !isGroup && !isGeneral) {
+          if (selectedEvents.filter(e => e.type === "Stage" && !e.groupEvent && !e.category.toLowerCase().includes("general")).length >= 6) return toast({ variant: "destructive", title: "Limit Reached", description: "Max 6 Individual Stage events." });
+      }
+      setSelectedEvents(prev => [...prev, { eventId: event._id, name: event.name, isStar: false, type: event.type, category: event.category, groupEvent: event.groupEvent || false, teamLimit: event.teamLimit }]);
+    }
+  };
+
+  const toggleStar = (id:string) => { 
+      const curr=selectedEvents.filter(e=>e.isStar).length; 
+      const target=selectedEvents.find(e=>e.eventId===id); 
+      if(target?.category.toLowerCase().includes("general"))return; 
+      if(!target?.isStar && curr>=8) return toast({variant:"destructive",title:"Max 8 Stars"}); 
+      setSelectedEvents(prev=>prev.map(e=>e.eventId===id?{...e,isStar:!e.isStar}:e)); 
+  };
+  
+  const closeModal = () => { setIsRegOpen(false); setIsEditMode(false); setEditId(""); setFormData({ name: "", team: user?.team || "", category: "Alpha" }); setSelectedEvents([]); };
+  
+  const handleDelete = async (e:any, id:string) => { e.stopPropagation(); if(!confirm("Sure?")) return; await axios.post('/api/student/delete', { id }); toast({title:"Deleted"}); fetchData(); };
+  
+  const handleRegister = async (e:any) => { 
+      e.preventDefault(); 
+      if(!formData.name) return; 
+      setSubmitting(true); 
+      try { 
+          await axios.post(isEditMode?"/api/student/update":"/api/student/register", { ...formData, id:editId, chestNo:Math.floor(1000+Math.random()*9000).toString(), selectedEvents }); 
+          toast({title:"Success"}); 
+          closeModal(); 
+          fetchData(); 
+      } catch(err:any){ 
+          toast({variant:"destructive",title:"Error",description:err.response?.data?.error}); 
+      } finally{ 
+          setSubmitting(false); 
+      } 
+  };
+
+  const filteredStudents = activeCategory==="All"?students:students.filter((s:any)=>s.category===activeCategory);
+  const categories = ["All", "Alpha", "Beta", "Omega", "General-A", "General-B"];
+
+  // Filter events for Registration Modal
+  const regModalEvents = events.filter(e => {
+    if(e.type !== activeRegTab) return false;
+    if(e.category === formData.category) return true;
+    if(formData.category === "Alpha" && e.category === "General-A") return true;
+    if((formData.category === "Beta" || formData.category === "Omega") && e.category === "General-B") return true;
+    return false;
+  });
 
   return (
     <div className="flex min-h-screen bg-slate-50 font-sans">
-      
-      {/* SIDEBAR */}
       <aside className="w-64 bg-white border-r border-slate-200 hidden md:flex flex-col fixed h-full z-20">
-        <div className="p-6 border-b border-slate-50">
-          <h1 className="text-2xl font-black tracking-tight text-emerald-600">Optimus</h1>
-          <p className="text-[10px] text-slate-400 uppercase tracking-widest font-bold">Team Portal</p>
-        </div>
+        <div className="p-6 border-b border-slate-50"><h1 className="text-2xl font-black text-emerald-600">Optimus</h1><p className="text-[10px] text-slate-400 font-bold uppercase">Team Portal</p></div>
         <nav className="flex-1 px-4 py-6 space-y-1">
-          <button className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-semibold bg-emerald-600 text-white shadow-md shadow-emerald-200">
-            <LayoutDashboard className="w-5 h-5" /> Dashboard
-          </button>
-          
-          {isSystemRegOpen ? (
-              <button onClick={() => { setIsEditMode(false); setIsRegOpen(true); }} className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-semibold text-slate-500 hover:bg-slate-50">
-                <ClipboardList className="w-5 h-5" /> Registration
-              </button>
-          ) : (
-              <div className="px-4 py-3 flex items-center gap-3 text-slate-300 text-sm font-semibold cursor-not-allowed">
-                  <Lock className="w-5 h-5" /> Registration Closed
-              </div>
-          )}
+          <button onClick={() => setActiveView("dashboard")} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-semibold transition-all ${activeView === "dashboard" ? "bg-emerald-600 text-white shadow-md shadow-emerald-200" : "text-slate-500 hover:bg-slate-50"}`}><LayoutDashboard className="w-5 h-5" /> Dashboard</button>
+          <button onClick={() => setActiveView("stage")} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-semibold transition-all ${activeView === "stage" ? "bg-purple-600 text-white shadow-md shadow-purple-200" : "text-slate-500 hover:bg-slate-50"}`}><Send className="w-5 h-5" /> Stage Control</button>
+          {isSystemRegOpen && <button onClick={() => { setIsEditMode(false); setIsRegOpen(true); }} className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-semibold text-slate-500 hover:bg-slate-50"><ClipboardList className="w-5 h-5" /> Registration</button>}
         </nav>
-        <div className="p-4 border-t border-slate-100">
-          <button onClick={() => { logout(); router.push("/login"); }} className="flex items-center gap-3 px-4 py-3 w-full rounded-lg text-sm font-semibold text-red-500 hover:bg-red-50">
-            <LogOut className="w-5 h-5" /> Logout
-          </button>
-        </div>
+        <div className="p-4 border-t border-slate-100"><button onClick={() => { logout(); router.push("/login"); }} className="flex items-center gap-3 px-4 py-3 text-red-500 font-bold text-sm"><LogOut className="w-5 h-5" /> Logout</button></div>
       </aside>
 
-      {/* MAIN CONTENT */}
       <main className="flex-1 md:ml-64 p-6 md:p-10 flex flex-col min-h-screen">
-        <div className="flex flex-col items-center justify-center text-center space-y-4 mb-10 pt-10">
-          <div className={`w-20 h-20 rounded-3xl flex items-center justify-center text-white text-3xl font-black shadow-xl ${user?.team === 'Auris' ? 'bg-yellow-500 shadow-yellow-100' : 'bg-blue-600 shadow-blue-100'}`}>
-            {user?.team?.charAt(0)}
-          </div>
-          <div>
-            <h2 className="text-4xl font-black text-slate-900 tracking-tighter uppercase">Team {user?.team}</h2>
-            <p className="text-slate-400 font-bold text-xs uppercase tracking-widest mt-1">Total Students: {students.length}</p>
-          </div>
-          
-          {isSystemRegOpen ? (
-            <Button onClick={() => { setIsEditMode(false); setIsRegOpen(true); }} className="bg-emerald-600 hover:bg-emerald-700 text-white px-8 h-12 rounded-xl text-sm font-black shadow-lg shadow-emerald-100">
-                <Plus className="w-4 h-4 mr-2" /> NEW REGISTRATION
-            </Button>
-          ) : (
-            <div className="flex items-center gap-2 bg-red-50 border border-red-200 text-red-600 px-6 py-3 rounded-xl font-bold text-sm shadow-sm">
-                <Lock className="w-4 h-4" /> REGISTRATION IS CLOSED BY ADMIN
-            </div>
-          )}
-        </div>
+        {activeView === "stage" ? (
+            // --- STAGE CONTROL VIEW ---
+            <div className="max-w-4xl mx-auto w-full pt-10">
+                <div className="mb-8 flex justify-between items-end">
+                    <div><h2 className="text-3xl font-black text-slate-900 tracking-tight">Stage Control</h2><p className="text-slate-500 mt-1">Send your team students to the stage.</p></div>
+                    {stageEventId && <Button variant="outline" onClick={() => setStageEventId("")}><ArrowLeft className="w-4 h-4 mr-2" /> Change Event</Button>}
+                </div>
 
-        {/* STUDENTS TABLE */}
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden mb-10">
-          <div className="p-4 border-b border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="flex items-center gap-2"><Users className="w-4 h-4 text-slate-500" /><h3 className="text-sm font-bold text-slate-700 uppercase tracking-wide">Registered Students</h3></div>
-            <div className="flex p-1 bg-slate-200/50 rounded-lg overflow-x-auto">
-              {['All', 'Alpha', 'Beta', 'Omega'].map((cat) => (
-                <button key={cat} onClick={() => setActiveCategory(cat)} className={`px-4 py-1.5 text-xs font-bold rounded-md transition-all whitespace-nowrap ${activeCategory === cat ? "bg-white text-emerald-600 shadow-sm" : "text-slate-500 hover:text-emerald-600"}`}>{cat}</button>
-              ))}
+                {!stageEventId ? (
+                    <div className="space-y-6">
+                        {/* Search & Tabs */}
+                        <div className="bg-white p-4 rounded-xl border shadow-sm space-y-4">
+                            <div className="relative"><Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" /><Input placeholder="Search Event Name..." className="pl-9 h-10" value={stageSearch} onChange={e => setStageSearch(e.target.value)} /></div>
+                            <div className="flex gap-2 overflow-x-auto pb-1 custom-scrollbar">{categories.map(cat => (<button key={cat} onClick={() => setStageTab(cat)} className={`px-4 py-2 rounded-lg text-xs font-bold whitespace-nowrap transition-all ${stageTab === cat ? "bg-purple-600 text-white shadow-md" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}>{cat}</button>))}</div>
+                        </div>
+                        
+                        {/* Event List */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4">
+                            {filteredStageEvents.length === 0 ? <div className="col-span-full text-center py-10 text-slate-400">No events match your search.</div> : filteredStageEvents.map(ev => (
+                                <div key={ev._id} onClick={() => setStageEventId(ev._id)} className="bg-white p-5 rounded-xl border border-slate-200 hover:border-purple-500 hover:shadow-md cursor-pointer transition-all group">
+                                    <h3 className="font-bold text-slate-800 text-lg group-hover:text-purple-700">{ev.name}</h3><Badge variant="secondary" className="text-[10px] mt-2">{ev.category}</Badge>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                ) : (
+                    // Selected Event View
+                    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                        <div className="p-5 bg-slate-50 border-b font-bold flex justify-between items-center">
+                            <span className="text-slate-700">Participants from {user?.team}</span>
+                            <Badge variant="outline" className="bg-white">{getStageStudents().length}</Badge>
+                        </div>
+                        <div className="divide-y divide-slate-100">
+                            {getStageStudents().length === 0 ? (
+                                <div className="p-10 text-center text-slate-400">No students registered for this event from your team.</div>
+                            ) : getStageStudents().map(student => {
+                                const eventData = student.registeredEvents.find((e:any) => e.eventId === stageEventId);
+                                const status = eventData?.status || "registered"; // registered | sent | reported
+
+                                return (
+                                    <div key={student._id} className="p-5 flex items-center justify-between hover:bg-slate-50 transition-colors">
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center font-bold text-slate-600 border border-slate-200">
+                                                {student.chestNo}
+                                            </div>
+                                            <div>
+                                                <p className="font-bold text-lg text-slate-900">{student.name}</p>
+                                                <p className="text-xs text-slate-500 font-medium uppercase">{student.category}</p>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            {status === "registered" && (
+                                                <Button 
+                                                    onClick={() => updateStatus(student._id, stageEventId, "sent")} 
+                                                    disabled={updatingStatus === student._id}
+                                                    className="bg-blue-600 hover:bg-blue-700 text-white shadow-blue-100 shadow-lg transition-all active:scale-95"
+                                                >
+                                                    {updatingStatus === student._id ? <Loader2 className="animate-spin" /> : <><Send className="w-4 h-4 mr-2" /> Send to Stage</>}
+                                                </Button>
+                                            )}
+                                            {status === "sent" && (
+                                                <Badge className="bg-yellow-100 text-yellow-700 border-yellow-200 px-3 py-1.5 text-xs font-bold animate-pulse flex items-center gap-2">
+                                                    <Loader2 className="w-3 h-3 animate-spin" /> SENT & WAITING
+                                                </Badge>
+                                            )}
+                                            {status === "reported" && (
+                                                <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 px-3 py-1.5 text-xs font-bold flex items-center gap-2">
+                                                    <CheckCircle2 className="w-3.5 h-3.5" /> REPORTED ON STAGE
+                                                </Badge>
+                                            )}
+                                        </div>
+                                    </div>
+                                )
+                            })}
+                        </div>
+                    </div>
+                )}
             </div>
-          </div>
-          
-          <Table>
-            <TableHeader>
-              <TableRow className="hover:bg-transparent">
-                <TableHead className="w-[200px] text-xs font-bold uppercase text-slate-400">Name</TableHead>
-                <TableHead className="text-xs font-bold uppercase text-slate-400">Chest No</TableHead>
-                <TableHead className="text-xs font-bold uppercase text-slate-400">Events</TableHead>
-                <TableHead className="text-right text-xs font-bold uppercase text-slate-400">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {loading ? <TableRow><TableCell colSpan={4} className="h-24 text-center"><Loader2 className="animate-spin w-6 h-6 mx-auto text-slate-300"/></TableCell></TableRow> : filteredStudents.length === 0 ? <TableRow><TableCell colSpan={4} className="h-32 text-center text-slate-400 text-sm font-medium">No students found.</TableCell></TableRow> : filteredStudents.map((student: any) => (
-                  <TableRow key={student._id} className="hover:bg-slate-50 cursor-pointer group" onClick={() => setViewStudent(student)}>
-                    <td className="p-4 font-bold text-slate-700">{student.name}</td>
-                    <td className="p-4"><span className="font-mono text-xs text-slate-500 bg-slate-100 px-2 py-1 rounded">{student.chestNo || "N/A"}</span></td>
-                    <td className="p-4">
-                      <div className="flex flex-wrap gap-1">
-                        {student.registeredEvents?.length > 0 ? <span className="text-xs font-bold text-slate-600 bg-slate-100 px-2 py-1 rounded-md">{student.registeredEvents.length} Items</span> : <span className="text-xs text-slate-300">None</span>}
-                        {student.registeredEvents?.some((e: any) => e.isStar) && <Badge className="bg-yellow-100 text-yellow-700 border-yellow-200 text-[10px] px-1.5">{student.registeredEvents.filter((e:any) => e.isStar).length} ★</Badge>}
-                      </div>
-                    </td>
-                    <td className="p-4 text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button size="icon" variant="ghost" className="h-8 w-8 text-slate-300 hover:text-blue-500 hover:bg-blue-50" onClick={(e) => handleEdit(e, student)}>
-                            <Pencil className="w-4 h-4" />
-                        </Button>
-                        <Button size="icon" variant="ghost" className="h-8 w-8 text-slate-300 hover:text-red-500 hover:bg-red-50" onClick={(e) => handleDelete(e, student._id)}>
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </td>
-                  </TableRow>
+        ) : (
+            
+        // --- DASHBOARD VIEW (Existing) ---
+        <>
+            <div className="flex flex-col items-center justify-center text-center space-y-4 mb-10 pt-10">
+            <div className={`w-20 h-20 rounded-3xl flex items-center justify-center text-white text-3xl font-black shadow-xl ${user?.team === 'Auris' ? 'bg-yellow-500 shadow-yellow-100' : 'bg-blue-600 shadow-blue-100'}`}>
+                {user?.team?.charAt(0)}
+            </div>
+            <div>
+                <h2 className="text-4xl font-black text-slate-900 tracking-tighter uppercase">Team {user?.team}</h2>
+                <p className="text-slate-400 font-bold text-xs uppercase tracking-widest mt-1">Total Students: {students.length}</p>
+            </div>
+            
+            {isSystemRegOpen ? (
+                <Button onClick={() => { setIsEditMode(false); setIsRegOpen(true); }} className="bg-emerald-600 hover:bg-emerald-700 text-white px-8 h-12 rounded-xl text-sm font-black shadow-lg shadow-emerald-100">
+                    <Plus className="w-4 h-4 mr-2" /> NEW REGISTRATION
+                </Button>
+            ) : (
+                <div className="flex items-center gap-2 bg-red-50 border border-red-200 text-red-600 px-6 py-3 rounded-xl font-bold text-sm shadow-sm">
+                    <Lock className="w-4 h-4" /> REGISTRATION IS CLOSED BY ADMIN
+                </div>
+            )}
+            </div>
+
+            {/* STUDENTS TABLE */}
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden mb-10">
+            <div className="p-4 border-b border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex items-center gap-2"><Users className="w-4 h-4 text-slate-500" /><h3 className="text-sm font-bold text-slate-700 uppercase tracking-wide">Registered Students</h3></div>
+                <div className="flex p-1 bg-slate-200/50 rounded-lg overflow-x-auto">
+                {['All', 'Alpha', 'Beta', 'Omega'].map((cat) => (
+                    <button key={cat} onClick={() => setActiveCategory(cat)} className={`px-4 py-1.5 text-xs font-bold rounded-md transition-all whitespace-nowrap ${activeCategory === cat ? "bg-white text-emerald-600 shadow-sm" : "text-slate-500 hover:text-emerald-600"}`}>{cat}</button>
                 ))}
-            </TableBody>
-          </Table>
-        </div>
+                </div>
+            </div>
+            
+            <Table>
+                <TableHeader>
+                <TableRow className="hover:bg-transparent">
+                    <TableHead className="w-[200px] text-xs font-bold uppercase text-slate-400">Name</TableHead>
+                    <TableHead className="text-xs font-bold uppercase text-slate-400">Chest No</TableHead>
+                    <TableHead className="text-xs font-bold uppercase text-slate-400">Events</TableHead>
+                    <TableHead className="text-right text-xs font-bold uppercase text-slate-400">Actions</TableHead>
+                </TableRow>
+                </TableHeader>
+                <TableBody>
+                {loading ? <TableRow><TableCell colSpan={4} className="h-24 text-center"><Loader2 className="animate-spin w-6 h-6 mx-auto text-slate-300"/></TableCell></TableRow> : filteredStudents.length === 0 ? <TableRow><TableCell colSpan={4} className="h-32 text-center text-slate-400 text-sm font-medium">No students found.</TableCell></TableRow> : filteredStudents.map((student: any) => (
+                    <TableRow key={student._id} className="hover:bg-slate-50 cursor-pointer group" onClick={() => setViewStudent(student)}>
+                        <td className="p-4 font-bold text-slate-700">{student.name}</td>
+                        <td className="p-4"><span className="font-mono text-xs text-slate-500 bg-slate-100 px-2 py-1 rounded">{student.chestNo || "N/A"}</span></td>
+                        <td className="p-4">
+                        <div className="flex flex-wrap gap-1">
+                            {student.registeredEvents?.length > 0 ? <span className="text-xs font-bold text-slate-600 bg-slate-100 px-2 py-1 rounded-md">{student.registeredEvents.length} Items</span> : <span className="text-xs text-slate-300">None</span>}
+                            {student.registeredEvents?.some((e: any) => e.isStar) && <Badge className="bg-yellow-100 text-yellow-700 border-yellow-200 text-[10px] px-1.5">{student.registeredEvents.filter((e:any) => e.isStar).length} ★</Badge>}
+                        </div>
+                        </td>
+                        <td className="p-4 text-right">
+                        <div className="flex justify-end gap-2">
+                            <Button size="icon" variant="ghost" className="h-8 w-8 text-slate-300 hover:text-blue-500 hover:bg-blue-50" onClick={(e) => handleEdit(e, student)}>
+                                <Pencil className="w-4 h-4" />
+                            </Button>
+                            <Button size="icon" variant="ghost" className="h-8 w-8 text-slate-300 hover:text-red-500 hover:bg-red-50" onClick={(e) => handleDelete(e, student._id)}>
+                            <Trash2 className="w-4 h-4" />
+                            </Button>
+                        </div>
+                        </td>
+                    </TableRow>
+                    ))}
+                </TableBody>
+            </Table>
+            </div>
+        </>
+        )}
 
         {/* REGISTRATION & EDIT MODAL */}
         <Dialog open={isRegOpen} onOpenChange={closeModal}>
@@ -376,7 +397,7 @@ export default function TeamDashboard() {
                       {activeRegTab === "Non-Stage" && (<div className="flex items-center gap-1 bg-yellow-100 px-2 py-0.5 rounded text-[10px] font-black text-yellow-700 border border-yellow-200"><Star className="w-3 h-3 fill-current" />{starCount}/8 Stars Used</div>)}
                   </div>
                   <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1 custom-scrollbar">
-                    {filteredEvents.length > 0 ? filteredEvents.map(ev => {
+                    {regModalEvents.map(ev => {
                       const isSel = selectedEvents.find(s => s.eventId === ev._id);
                       const isGeneral = ev.category.toLowerCase().includes("general");
                       const isGroup = ev.groupEvent === true;
@@ -386,18 +407,18 @@ export default function TeamDashboard() {
                           <div className="flex items-center">
                               <span className="text-xs font-medium text-slate-700 truncate mr-2">{ev.name}</span>
                               
-                              {/* ✅ BADGES: General / Group / Single */}
+                              {/* ✅ BADGES */}
                               {isGeneral && <span className="text-[8px] bg-slate-800 text-white px-1 py-0.5 rounded font-bold uppercase mr-1">Gen</span>}
                               {isGroup ? (
                                 <span className="text-[8px] bg-yellow-100 text-yellow-800 border border-yellow-200 px-1 py-0.5 rounded font-bold uppercase mr-1">Group</span>
                               ) : (
-                                // Show "Single" badge if not group (and usually not general, but showing everywhere for clarity as requested)
                                 <span className="text-[8px] bg-white text-slate-400 border border-slate-200 px-1 py-0.5 rounded font-bold uppercase flex items-center gap-0.5 mr-1"><User className="w-2 h-2" /> Single</span>
                               )}
-
+                              {(ev.teamLimit || (!isGroup && ev.type === 'Stage')) && (
+                                <span className="text-[8px] bg-red-50 text-red-600 px-1.5 py-0.5 rounded border border-red-100 font-bold">Limit: {ev.teamLimit || 3}</span>
+                              )}
                           </div>
                           <div className="flex gap-1">
-                              {/* Star Button only for Non-Stage & Non-General */}
                               {isSel && activeRegTab === "Non-Stage" && !isGeneral && (
                                   <Button type="button" onClick={(e) => { e.stopPropagation(); toggleStar(ev._id); }} size="icon" variant="ghost" className={`h-7 w-7 rounded-full ${isSel.isStar ? 'text-yellow-500 bg-yellow-50 shadow-sm border border-yellow-200' : 'text-slate-300 hover:text-yellow-400'}`}><Star className={`w-3.5 h-3.5 ${isSel.isStar ? 'fill-current' : ''}`} /></Button>
                               )}
@@ -405,7 +426,8 @@ export default function TeamDashboard() {
                           </div>
                         </div>
                       )
-                    }) : <div className="text-center py-4 text-slate-400 text-xs">No events available.</div>}
+                    })}
+                    {regModalEvents.length === 0 && <div className="text-center py-4 text-slate-400 text-xs">No events found.</div>}
                   </div>
                 </div>
 
@@ -441,7 +463,11 @@ export default function TeamDashboard() {
                                 <span>{e.name}</span>
                                 {isGrp && <span className="ml-2 text-[9px] bg-yellow-100 text-yellow-800 px-1 rounded uppercase font-bold">Group</span>}
                               </div>
-                              {e.isStar && <span className="text-[10px] bg-yellow-100 text-yellow-800 px-1 rounded">Star</span>}
+                              <div className="flex items-center gap-2">
+                                {e.status === 'sent' && <Badge variant="outline" className="text-[10px] text-yellow-600 border-yellow-300 bg-yellow-50">Sent</Badge>}
+                                {e.status === 'reported' && <Badge variant="outline" className="text-[10px] text-emerald-600 border-emerald-300 bg-emerald-50">Reported</Badge>}
+                                {e.isStar && <span className="text-[10px] bg-yellow-100 text-yellow-800 px-1 rounded">Star</span>}
+                              </div>
                           </div>
                         )
                     })}

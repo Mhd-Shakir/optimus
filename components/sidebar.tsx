@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
-import { LayoutDashboard, Users, Calendar, ClipboardList, Trophy, FileText, Menu, X } from "lucide-react"
+import { LayoutDashboard, Users, Calendar, LogOut, ClipboardList, Trophy, FileText, Menu, X, Mic2 } from "lucide-react"
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 
@@ -13,6 +13,7 @@ const navItems = [
   { href: "/admin/events", label: "Events", icon: Calendar },
   { href: "/admin/registrations", label: "Registrations", icon: ClipboardList },
   { href: "/admin/results", label: "Results", icon: Trophy },
+  { href: "/admin/stage", label: "Stage", icon: Mic2 }, // ✅ Added Stage Link
   { href: "/admin/judge-sheet", label: "Judge Sheet", icon: FileText },
 ]
 
@@ -76,8 +77,8 @@ export function Sidebar() {
               href="/"
               className="flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
             >
-              <Trophy className="h-5 w-5" />
-              View Scoreboard
+              <LogOut className="h-5 w-5" />
+              Logout
             </Link>
           </div>
         </div>

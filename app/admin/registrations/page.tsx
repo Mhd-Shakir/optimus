@@ -36,8 +36,7 @@ export default function AdminRegistrationsPage() {
     category: "Alpha"
   })
   
-  // State for selected events including groupEvent status
-  const [selectedEvents, setSelectedEvents] = useState<{eventId: string, eventName: string, isStar: boolean, type: string, category: string, groupEvent: boolean}[]>([])
+  const [selectedEvents, setSelectedEvents] = useState<{eventId: string, eventName: string, isStar: boolean, type: string, category: string, groupEvent: boolean, teamLimit?: number}[]>([])
 
   useEffect(() => { fetchData() }, [])
 
@@ -57,7 +56,6 @@ export default function AdminRegistrationsPage() {
     }
   }
 
-  // --- HANDLE EDIT ---
   const handleEditClick = (student: any) => {
     setEditId(student._id)
     setFormData({
@@ -67,7 +65,6 @@ export default function AdminRegistrationsPage() {
         category: student.category
     })
     
-    // Map existing events with correct group info
     const mappedEvents = student.registeredEvents.map((e:any) => {
         const originalEvent = events.find(ev => ev._id === e.eventId)
         return {
@@ -76,7 +73,8 @@ export default function AdminRegistrationsPage() {
             isStar: e.isStar,
             type: originalEvent?.type || "Stage",
             category: originalEvent?.category || "",
-            groupEvent: originalEvent?.groupEvent || false
+            groupEvent: originalEvent?.groupEvent || false,
+            teamLimit: originalEvent?.teamLimit
         }
     })
     setSelectedEvents(mappedEvents)
@@ -84,7 +82,6 @@ export default function AdminRegistrationsPage() {
     setIsRegOpen(true)
   }
 
-  // --- SUBMIT ---
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault() 
     if(!formData.name || !formData.chestNo) return toast({ variant: "destructive", title: "Wait!", description: "Name and Chest No are required." })
@@ -126,7 +123,7 @@ export default function AdminRegistrationsPage() {
     }
   }
 
-  // ✅ UPDATED TOGGLE LOGIC: Unlimited General & Max 6 Individual Stage
+  // ✅ UPDATED TOGGLE LOGIC: 3 Participants Limit + 6 Events Limit
   const toggleEvent = (event: any) => {
     const exists = selectedEvents.find(e => e.eventId === event._id)
     if (exists) {
@@ -136,7 +133,28 @@ export default function AdminRegistrationsPage() {
         const isStage = event.type === "Stage";
         const isGroup = event.groupEvent === true;
 
-        // RULE: Limit applies ONLY to (Stage + Individual + Not General)
+        // 1️⃣ RULE: Max 3 participants per Team
+        // Checks if 'teamLimit' exists in JSON OR if it's a standard Stage Individual item
+        if (event.teamLimit || (isStage && !isGroup)) {
+            // Count how many existing students in this team are registered for this event
+            const teamRegistrations = students.filter(s => 
+                s.team === formData.team && // Check Team (Auris/Libras)
+                s._id !== editId && // Exclude current student if editing
+                s.registeredEvents?.some((re: any) => re.eventId === event._id)
+            ).length;
+
+            const limit = event.teamLimit || 3; // Use specific limit or default 3 for stage
+
+            if (teamRegistrations >= limit) {
+                return toast({ 
+                    variant: "destructive", 
+                    title: "Team Limit Reached", 
+                    description: `Team ${formData.team} already has ${limit} participants for ${event.name}.` 
+                });
+            }
+        }
+
+        // 2️⃣ RULE: Limit applies ONLY to (Stage + Individual + Not General) - Max 6 Events
         if (isStage && !isGroup && !isGeneral) {
              const currentCount = selectedEvents.filter(e => 
                  e.type === "Stage" && 
@@ -155,7 +173,8 @@ export default function AdminRegistrationsPage() {
             isStar: false, 
             type: event.type,
             category: event.category,
-            groupEvent: event.groupEvent || false
+            groupEvent: event.groupEvent || false,
+            teamLimit: event.teamLimit
         }])
     }
   }
@@ -164,10 +183,7 @@ export default function AdminRegistrationsPage() {
     const currentStars = selectedEvents.filter(e => e.isStar).length
     const target = selectedEvents.find(e => e.eventId === eventId)
     
-    // No stars for General items typically
-    if (target?.category && target.category.toLowerCase().includes("general")) {
-        return; 
-    }
+    if (target?.category && target.category.toLowerCase().includes("general")) return; 
 
     if (!target?.isStar && currentStars >= 8) {
        toast({ variant: "destructive", title: "Limit Reached", description: "Max 8 star items allowed!" })
@@ -192,19 +208,15 @@ export default function AdminRegistrationsPage() {
 
   return (
     <div className="p-6 space-y-6 bg-slate-50 min-h-screen">
-      
-      {/* HEADER */}
       <div className="flex flex-col md:flex-row justify-between items-center gap-4">
         <div>
             <h1 className="text-3xl font-bold text-slate-900">Registrations</h1>
             <p className="text-slate-500">Total Students: {students.length}</p>
         </div>
-        
         <Button onClick={() => { setIsEditMode(false); setIsRegOpen(true); }} className="bg-slate-900 text-white hover:bg-slate-800">
             <UserPlus className="w-4 h-4 mr-2" /> New Registration
         </Button>
 
-        {/* REGISTRATION / EDIT MODAL */}
         <Dialog open={isRegOpen} onOpenChange={closeModal}>
             <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader><DialogTitle>{isEditMode ? "Edit Student Details" : "Register New Student"}</DialogTitle></DialogHeader>
@@ -268,13 +280,15 @@ export default function AdminRegistrationsPage() {
                                                     <div>
                                                         <div className="flex items-center gap-2">
                                                             <span className="text-sm font-medium">{ev.name}</span>
-                                                            
-                                                            {/* BADGES: General / Group / Single */}
                                                             {isGeneral && <Badge variant="secondary" className="text-[10px] h-5 px-1.5 bg-slate-800 text-white hover:bg-slate-700">General</Badge>}
                                                             {isGroup ? (
                                                                 <Badge variant="outline" className="text-[10px] h-5 px-1.5 border-yellow-300 bg-yellow-50 text-yellow-700 gap-1"><Users className="w-3 h-3" /> Group</Badge>
                                                             ) : (
                                                                 <Badge variant="outline" className="text-[10px] h-5 px-1.5 text-slate-400 border-slate-200 font-normal"><User className="w-3 h-3 mr-1" /> Single</Badge>
+                                                            )}
+                                                            {/* Show Limit Badge if exists */}
+                                                            {(ev.teamLimit || (!isGroup && ev.type === 'Stage')) && (
+                                                              <span className="text-[9px] bg-red-50 text-red-600 px-1.5 py-0.5 rounded border border-red-100 font-bold">Limit: {ev.teamLimit || 3}</span>
                                                             )}
                                                         </div>
                                                     </div>
@@ -302,8 +316,6 @@ export default function AdminRegistrationsPage() {
             </DialogContent>
         </Dialog>
       </div>
-
-      {/* STATS & FILTER */}
       <div className="grid md:grid-cols-4 gap-4">
         <Card><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-slate-500">Auris Team</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold text-yellow-600">{students.filter(s => s.team === "Auris").length}</div></CardContent></Card>
         <Card><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-slate-500">Libras Team</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold text-blue-600">{students.filter(s => s.team === "Libras").length}</div></CardContent></Card>
@@ -318,8 +330,6 @@ export default function AdminRegistrationsPage() {
              </Select>
         </div>
       </div>
-
-      {/* TABLE */}
       <Card>
         <Table>
             <TableHeader>
@@ -358,8 +368,6 @@ export default function AdminRegistrationsPage() {
             </TableBody>
         </Table>
       </Card>
-
-      {/* VIEW MODAL */}
       {viewStudent && (
           <Dialog open={!!viewStudent} onOpenChange={(open) => !open && setViewStudent(null)}>
             <DialogContent className="max-w-md w-full p-0 border-none rounded-xl overflow-hidden bg-white" aria-describedby={undefined}>

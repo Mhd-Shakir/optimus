@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Search, Trophy, Medal, Loader2, Edit, Save, Trash2 } from "lucide-react"
+import { Search, Trophy, Medal, Loader2, Edit, Save, Trash2, Users, User } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 
 export default function AdminResultsPage() {
@@ -42,7 +42,6 @@ export default function AdminResultsPage() {
         axios.get('/api/student/list')
       ])
       
-      // ✅ SORTING: Latest updated events on TOP
       const sortedEvents = eventsRes.data.sort((a: any, b: any) => 
         new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
       );
@@ -69,7 +68,6 @@ export default function AdminResultsPage() {
     setIsEditOpen(true)
   }
 
-  // ✅ DELETE HANDLER
   const handleDelete = async (eventId: string) => {
     if (!confirm("Are you sure you want to delete this result?")) return;
 
@@ -107,6 +105,23 @@ export default function AdminResultsPage() {
       return s ? `${s.name} (${s.team})` : "Unknown"
   }
 
+  // ✅ HELPER: Get Points for Grade (Individual: 10,7,5,3 | Group: 25,20,13,7)
+  const getPoints = (grade: string, isGroup: boolean) => {
+    if (!grade) return 0;
+    if (isGroup) {
+      if (grade === "A+") return 25;
+      if (grade === "A") return 20;
+      if (grade === "B") return 13;
+      if (grade === "C") return 7;
+    } else {
+      if (grade === "A+") return 10;
+      if (grade === "A") return 7;
+      if (grade === "B") return 5;
+      if (grade === "C") return 3;
+    }
+    return 0;
+  }
+
   const filteredEvents = events.filter(ev => {
     const matchSearch = ev.name.toLowerCase().includes(searchTerm.toLowerCase())
     if (!matchSearch) return false;
@@ -119,8 +134,6 @@ export default function AdminResultsPage() {
 
   return (
     <div className="p-6 space-y-6 bg-slate-50 min-h-screen">
-      
-      {/* HEADER */}
       <div className="flex flex-col md:flex-row justify-between items-center gap-4">
         <div>
             <h1 className="text-3xl font-bold text-slate-900">Results Management</h1>
@@ -128,7 +141,6 @@ export default function AdminResultsPage() {
         </div>
       </div>
 
-      {/* TABS & SEARCH */}
       <div className="space-y-4">
          <div className="bg-white p-4 rounded-xl border shadow-sm">
             <div className="relative">
@@ -154,27 +166,33 @@ export default function AdminResultsPage() {
          </div>
       </div>
 
-      {/* EVENTS TABLE */}
       <Card>
         <Table>
             <TableHeader>
                 <TableRow>
-                    <TableHead className="w-[50px]">SI</TableHead> {/* ✅ SI Column Added */}
+                    <TableHead className="w-[50px]">SI</TableHead>
                     <TableHead>Event Name</TableHead>
                     <TableHead>Category</TableHead>
+                    <TableHead>Type</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Winners</TableHead>
                     <TableHead className="text-right">Action</TableHead>
                 </TableRow>
             </TableHeader>
             <TableBody>
-                {loading ? <TableRow><TableCell colSpan={6} className="text-center py-8"><Loader2 className="animate-spin mx-auto" /></TableCell></TableRow> : filteredEvents.length === 0 ? <TableRow><TableCell colSpan={6} className="text-center py-8 text-slate-500">No events found in {activeTab}.</TableCell></TableRow> : filteredEvents.map((ev, index) => (
+                {loading ? <TableRow><TableCell colSpan={7} className="text-center py-8"><Loader2 className="animate-spin mx-auto" /></TableCell></TableRow> : filteredEvents.length === 0 ? <TableRow><TableCell colSpan={7} className="text-center py-8 text-slate-500">No events found in {activeTab}.</TableCell></TableRow> : filteredEvents.map((ev, index) => (
                     <TableRow key={ev._id}>
-                        <TableCell className="font-medium text-slate-500">{index + 1}</TableCell> {/* ✅ SI Number */}
+                        <TableCell className="font-medium text-slate-500">{index + 1}</TableCell>
                         <TableCell className="font-bold text-slate-700">
                             {ev.name}
                         </TableCell>
                         <TableCell><Badge variant="secondary">{ev.category}</Badge></TableCell>
+                        <TableCell>
+                            {ev.groupEvent ? 
+                                <Badge variant="outline" className="border-yellow-200 bg-yellow-50 text-yellow-700"><Users className="w-3 h-3 mr-1" /> Group</Badge> : 
+                                <Badge variant="outline" className="border-slate-200 text-slate-500"><User className="w-3 h-3 mr-1" /> Single</Badge>
+                            }
+                        </TableCell>
                         <TableCell>
                             <Badge className={ev.status === "completed" ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-200" : "bg-yellow-100 text-yellow-700 hover:bg-yellow-200"}>
                                 {ev.status === "completed" ? "Published" : "Pending"}
@@ -183,9 +201,9 @@ export default function AdminResultsPage() {
                         <TableCell className="text-xs text-slate-500">
                             {ev.status === "completed" ? (
                                 <div className="space-y-1">
-                                    <div className="flex items-center gap-1"><Trophy className="w-3 h-3 text-yellow-500" /> 1st: {getStudentName(ev.results.first)} <span className="font-bold">({ev.results.firstGrade})</span></div>
-                                    {ev.results.second && <div className="flex items-center gap-1"><Medal className="w-3 h-3 text-slate-400" /> 2nd: {getStudentName(ev.results.second)} <span className="font-bold">({ev.results.secondGrade})</span></div>}
-                                    {ev.results.third && <div className="flex items-center gap-1"><Medal className="w-3 h-3 text-amber-600" /> 3rd: {getStudentName(ev.results.third)} <span className="font-bold">({ev.results.thirdGrade})</span></div>}
+                                    <div className="flex items-center gap-1"><Trophy className="w-3 h-3 text-yellow-500" /> 1st: {getStudentName(ev.results.first)} <span className="font-bold text-emerald-600">({ev.results.firstGrade})</span></div>
+                                    {ev.results.second && <div className="flex items-center gap-1"><Medal className="w-3 h-3 text-slate-400" /> 2nd: {getStudentName(ev.results.second)} <span className="font-bold text-slate-600">({ev.results.secondGrade})</span></div>}
+                                    {ev.results.third && <div className="flex items-center gap-1"><Medal className="w-3 h-3 text-amber-600" /> 3rd: {getStudentName(ev.results.third)} <span className="font-bold text-amber-700">({ev.results.thirdGrade})</span></div>}
                                 </div>
                             ) : "-"}
                         </TableCell>
@@ -207,17 +225,26 @@ export default function AdminResultsPage() {
         </Table>
       </Card>
 
-      {/* EDIT RESULT MODAL */}
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
         <DialogContent className="max-w-lg">
             <DialogHeader>
                 <DialogTitle>Publish Result: {editingEvent?.name}</DialogTitle>
+                {editingEvent && (
+                    <Badge variant="outline" className={editingEvent.groupEvent ? "bg-yellow-50 text-yellow-700 w-fit" : "bg-slate-50 text-slate-700 w-fit"}>
+                        {editingEvent.groupEvent ? "Group Item (Higher Points)" : "Individual Item (Normal Points)"}
+                    </Badge>
+                )}
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4 py-2">
                 
                 {/* FIRST PLACE */}
                 <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-xl space-y-2">
-                    <label className="text-xs font-bold text-yellow-800 uppercase flex items-center gap-2"><Trophy className="w-4 h-4" /> First Place (Required)</label>
+                    <div className="flex justify-between">
+                        <label className="text-xs font-bold text-yellow-800 uppercase flex items-center gap-2"><Trophy className="w-4 h-4" /> First Place</label>
+                        <span className="text-[10px] font-bold bg-white px-2 py-0.5 rounded border border-yellow-200 text-yellow-700">
+                            Points: {getPoints(resultData.firstGrade, editingEvent?.groupEvent)}
+                        </span>
+                    </div>
                     <div className="flex gap-2">
                         <Select value={resultData.first} onValueChange={val => setResultData({...resultData, first: val})}>
                             <SelectTrigger className="flex-1 bg-white border-yellow-200"><SelectValue placeholder="Select Winner" /></SelectTrigger>
@@ -236,7 +263,12 @@ export default function AdminResultsPage() {
 
                 {/* SECOND PLACE */}
                 <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
-                    <label className="text-xs font-bold text-slate-600 uppercase flex items-center gap-2"><Medal className="w-4 h-4" /> Second Place</label>
+                    <div className="flex justify-between">
+                        <label className="text-xs font-bold text-slate-600 uppercase flex items-center gap-2"><Medal className="w-4 h-4" /> Second Place</label>
+                        <span className="text-[10px] font-bold bg-white px-2 py-0.5 rounded border border-slate-200 text-slate-500">
+                             Points: {getPoints(resultData.secondGrade, editingEvent?.groupEvent)}
+                        </span>
+                    </div>
                     <div className="flex gap-2">
                         <Select value={resultData.second || "_none"} onValueChange={val => setResultData({...resultData, second: val === "_none" ? "" : val})}>
                             <SelectTrigger className="flex-1 bg-white"><SelectValue placeholder="Select Second" /></SelectTrigger>
@@ -256,7 +288,12 @@ export default function AdminResultsPage() {
 
                 {/* THIRD PLACE */}
                 <div className="p-4 bg-orange-50 border border-orange-200 rounded-xl space-y-2">
-                    <label className="text-xs font-bold text-orange-800 uppercase flex items-center gap-2"><Medal className="w-4 h-4" /> Third Place</label>
+                    <div className="flex justify-between">
+                        <label className="text-xs font-bold text-orange-800 uppercase flex items-center gap-2"><Medal className="w-4 h-4" /> Third Place</label>
+                        <span className="text-[10px] font-bold bg-white px-2 py-0.5 rounded border border-orange-200 text-orange-700">
+                             Points: {getPoints(resultData.thirdGrade, editingEvent?.groupEvent)}
+                        </span>
+                    </div>
                     <div className="flex gap-2">
                         <Select value={resultData.third || "_none"} onValueChange={val => setResultData({...resultData, third: val === "_none" ? "" : val})}>
                             <SelectTrigger className="flex-1 bg-white border-orange-200"><SelectValue placeholder="Select Third" /></SelectTrigger>
