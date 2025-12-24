@@ -87,12 +87,59 @@ export default function AdminRegistrations() {
     }
   };
 
+  // ✅ SYNCED LOGIC: Matches Team Dashboard Rules exactly
   const toggleEvent = (event: any) => {
     const exists = selectedEvents.find(e => e.eventId === event._id);
+    
     if (exists) {
+        // Remove Event
         setSelectedEvents(prev => prev.filter(e => e.eventId !== event._id));
     } else {
-        // Logic to add event (Admin can override limits if needed, but keeping basic logic)
+        // Add Event - LOGIC CHECKS
+        const isGeneral = event.category.toLowerCase().includes("general");
+        const isStage = event.type === "Stage";
+        const isGroup = event.groupEvent === true;
+
+        // 1️⃣ TEAM LIMIT CHECK (e.g., Max 3 students per team for Story Telling)
+        // If event has a limit OR it is a Single Stage item (defaults to 3 usually if not specified, or we can rely on teamLimit field)
+        if (event.teamLimit || (isStage && !isGroup)) {
+            const limit = event.teamLimit || 3;
+            
+            // Count how many students in the CURRENT TEAM have this event
+            const count = students.filter(s => 
+                s.team === formData.team && // Must match current student's team
+                s._id !== editId && // Exclude self if editing
+                s.registeredEvents?.some((re: any) => re.eventId === event._id)
+            ).length;
+
+            if (count >= limit) {
+                return toast({ 
+                    variant: "destructive", 
+                    title: "Team Limit Reached", 
+                    description: `Team ${formData.team} already has ${limit} participants for ${event.name}.` 
+                });
+            }
+        }
+
+        // 2️⃣ INDIVIDUAL STUDENT LIMIT (Max 6 Stage Events)
+        // Excludes Group events and General events from the count
+        if (isStage && !isGroup && !isGeneral) {
+            const currentStageCount = selectedEvents.filter(e => 
+                e.type === "Stage" && 
+                !e.groupEvent && 
+                !e.category.toLowerCase().includes("general")
+            ).length;
+
+            if (currentStageCount >= 6) {
+                return toast({ 
+                    variant: "destructive", 
+                    title: "Student Limit Reached", 
+                    description: "Max 6 Individual Stage events allowed per student." 
+                });
+            }
+        }
+
+        // If all checks pass, Add Event
         setSelectedEvents(prev => [...prev, { 
             eventId: event._id, 
             name: event.name, 
@@ -105,11 +152,14 @@ export default function AdminRegistrations() {
     }
   };
 
-  // ✅ UPDATED TOGGLE STAR LOGIC (Admin Side)
+  // ✅ SYNCED STAR LOGIC
   const toggleStar = (id: string) => {
       const target = selectedEvents.find(e => e.eventId === id);
       if (!target) return;
       
+      // General Category items cannot have stars
+      if(target.category.toLowerCase().includes("general")) return;
+
       // 🚫 EXCEPTION: Omega Speech Translation - NO STAR
       const isSpeechTrans = target.name.trim().toLowerCase() === "speech translation" && target.category === "Omega";
       if (isSpeechTrans) {
@@ -297,6 +347,7 @@ export default function AdminRegistrations() {
                               // ✅ CHECK: Case-Insensitive Speech Translation
                               const isSpeechTrans = ev.name.trim().toLowerCase() === "speech translation" && ev.category === "Omega";
                               const isGeneral = ev.category.toLowerCase().includes("general");
+                              const isGroup = ev.groupEvent === true;
 
                               return (
                                   <div key={ev._id} className={`flex justify-between items-center p-2 border rounded-md transition-all ${isSel ? 'bg-white border-purple-300 shadow-sm' : 'border-slate-100 hover:bg-slate-50'}`}>
@@ -304,6 +355,9 @@ export default function AdminRegistrations() {
                                           <span className="text-xs font-medium text-slate-700 truncate max-w-[150px]">{ev.name}</span>
                                           {isGeneral && <Badge className="text-[8px] h-4 px-1 bg-slate-800">Gen</Badge>}
                                           {ev.groupEvent ? <Badge className="text-[8px] h-4 px-1 bg-yellow-100 text-yellow-800 hover:bg-yellow-100 border-yellow-200">Group</Badge> : <Badge variant="outline" className="text-[8px] h-4 px-1 text-slate-400"><User className="w-2 h-2 mr-0.5"/> Single</Badge>}
+                                          {(ev.teamLimit || (!isGroup && ev.type === 'Stage')) && (
+                                              <span className="text-[8px] bg-red-50 text-red-600 px-1.5 py-0.5 rounded border border-red-100 font-bold">Limit: {ev.teamLimit || 3}</span>
+                                          )}
                                       </div>
                                       
                                       <div className="flex gap-1">
