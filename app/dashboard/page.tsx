@@ -6,7 +6,7 @@ import { useState, useEffect } from "react";
 import axios from "axios";
 import { 
   LayoutDashboard, ClipboardList, LogOut, Plus, Loader2, Mic, PenTool, 
-  CheckCircle2, X, Star, Users, Trash2, Pencil, Lock, User, Send, Search, ArrowLeft
+  CheckCircle2, X, Star, Users, Trash2, Pencil, Lock, User, Send, Search, ArrowLeft, Trophy
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,6 +15,10 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+
+// 👇 POINT SYSTEM CONFIGURATION
+const INDIVIDUAL_POINTS: any = { "A+": 10, "A": 7, "B": 5, "C": 3 };
+const GROUP_POINTS: any = { "A+": 25, "A": 20, "B": 13, "C": 7 };
 
 export default function TeamDashboard() {
   const { user, logout } = useAuth();
@@ -65,6 +69,41 @@ export default function TeamDashboard() {
       const teamStudents = studentsRes.data.filter((s: any) => s.team === user?.team);
       setStudents(teamStudents);
     } catch (error) { console.error(error); } finally { setLoading(false); }
+  };
+
+  // --- SCORE CALCULATION HELPERS ---
+  const getEventResult = (studentId: string, eventId: string) => {
+      const event = events.find(e => e._id === eventId);
+      if (!event || !event.results) return { rank: null, grade: null, points: 0 };
+
+      const { first, second, third, firstGrade, secondGrade, thirdGrade } = event.results;
+      let grade = "";
+      let rank = "";
+
+      if (first === studentId) { rank = "1st"; grade = firstGrade; }
+      else if (second === studentId) { rank = "2nd"; grade = secondGrade; }
+      else if (third === studentId) { rank = "3rd"; grade = thirdGrade; }
+
+      if (!grade) return { rank: null, grade: null, points: 0 };
+
+      // Point Calculation Logic
+      // Speech Translation is a Group Event but gets INDIVIDUAL points
+      const isSpeechTrans = event.name.trim().toLowerCase() === "speech translation";
+      const isGroup = event.groupEvent === true && !isSpeechTrans;
+      
+      const pointMap = isGroup ? GROUP_POINTS : INDIVIDUAL_POINTS;
+      const points = pointMap[grade] || 0;
+
+      return { rank, grade, points };
+  };
+
+  const calculateTotalPoints = (student: any) => {
+      let total = 0;
+      student.registeredEvents.forEach((reg: any) => {
+          const { points } = getEventResult(student._id, reg.eventId);
+          total += points;
+      });
+      return total;
   };
 
   // --- STAGE CONTROL LOGIC ---
@@ -450,35 +489,62 @@ export default function TeamDashboard() {
           </DialogContent>
         </Dialog>
         
-        {/* VIEW DETAILS MODAL */}
+        {/* ✅ STUDENT SCORE CARD MODAL */}
         {viewStudent && (
           <Dialog open={!!viewStudent} onOpenChange={(open) => !open && setViewStudent(null)}>
             <DialogContent className="max-w-md w-full p-0 border-none rounded-xl overflow-hidden bg-white" aria-describedby={undefined}>
-                <div className="bg-slate-800 px-5 py-4 flex justify-between items-start text-white">
-                  <div>
-                    <DialogTitle className="text-lg font-bold">{viewStudent.name}</DialogTitle>
-                    <p className="text-slate-300 text-xs">{viewStudent.team} | {viewStudent.category}</p>
+                <div className="bg-slate-800 px-5 py-6 flex justify-between items-start text-white relative overflow-hidden">
+                  <div className="relative z-10">
+                    <DialogTitle className="text-2xl font-black tracking-tight">{viewStudent.name}</DialogTitle>
+                    <p className="text-slate-300 text-xs font-bold mt-1 uppercase tracking-wide opacity-80">{viewStudent.team} | {viewStudent.category} | {viewStudent.chestNo}</p>
                   </div>
-                  <button onClick={() => setViewStudent(null)}><X className="w-5 h-5 text-slate-400 hover:text-white" /></button>
+                  <div className="text-right relative z-10">
+                      <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Total Score</div>
+                      <div className="text-4xl font-black text-yellow-400 leading-none">{calculateTotalPoints(viewStudent)}</div>
+                  </div>
+                  <div className="absolute top-0 right-0 p-4 opacity-10"><Trophy className="w-32 h-32 text-white" /></div>
+                  <button onClick={() => setViewStudent(null)} className="absolute top-2 right-2 p-2 text-white/50 hover:text-white z-20"><X className="w-5 h-5" /></button>
                 </div>
-                <div className="p-4 max-h-60 overflow-y-auto">
-                    {viewStudent.registeredEvents?.map((e:any, idx:number) => {
-                        const original = events.find(ev => ev._id === e.eventId);
-                        const isGrp = original?.groupEvent === true;
-                        return (
-                          <div key={idx} className="border-b py-2 text-sm text-slate-700 flex justify-between items-center">
-                              <div>
-                                <span>{e.name}</span>
-                                {isGrp && <span className="ml-2 text-[9px] bg-yellow-100 text-yellow-800 px-1 rounded uppercase font-bold">Group</span>}
-                              </div>
-                              <div className="flex items-center gap-2">
-                                {e.status === 'sent' && <Badge variant="outline" className="text-[10px] text-yellow-600 border-yellow-300 bg-yellow-50">Sent</Badge>}
-                                {e.status === 'reported' && <Badge variant="outline" className="text-[10px] text-emerald-600 border-emerald-300 bg-emerald-50">Reported</Badge>}
-                                {e.isStar && <span className="text-[10px] bg-yellow-100 text-yellow-800 px-1 rounded">Star</span>}
-                              </div>
-                          </div>
-                        )
-                    })}
+
+                <div className="p-0 max-h-[60vh] overflow-y-auto bg-slate-50">
+                    {viewStudent.registeredEvents?.length === 0 ? (
+                        <div className="p-8 text-center text-slate-400 text-sm">No events registered.</div>
+                    ) : (
+                        <div className="divide-y divide-slate-100">
+                            {viewStudent.registeredEvents?.map((e:any, idx:number) => {
+                                const { rank, grade, points } = getEventResult(viewStudent._id, e.eventId);
+                                const original = events.find(ev => ev._id === e.eventId);
+                                const isGrp = original?.groupEvent === true;
+
+                                return (
+                                  <div key={idx} className="px-5 py-3 bg-white flex justify-between items-center hover:bg-slate-50 transition-colors">
+                                      <div className="flex-1 pr-4">
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-sm font-bold text-slate-800">{e.name}</span>
+                                            {isGrp && <span className="text-[9px] bg-yellow-100 text-yellow-800 px-1 py-0.5 rounded uppercase font-bold border border-yellow-200">Group</span>}
+                                        </div>
+                                        <div className="flex items-center gap-2 mt-1">
+                                            {e.status === 'sent' && <Badge variant="outline" className="text-[9px] h-4 px-1 text-yellow-600 border-yellow-300 bg-yellow-50">Sent to Stage</Badge>}
+                                            {e.status === 'reported' && <Badge variant="outline" className="text-[9px] h-4 px-1 text-emerald-600 border-emerald-300 bg-emerald-50">Completed</Badge>}
+                                            {e.isStar && <span className="text-[9px] bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded font-bold flex items-center gap-0.5"><Star className="w-2 h-2 fill-current"/> Star</span>}
+                                        </div>
+                                      </div>
+                                      
+                                      <div className="text-right min-w-[60px]">
+                                          {grade ? (
+                                              <div>
+                                                  <div className="text-lg font-black text-slate-900">{grade}</div>
+                                                  <div className="text-[10px] font-bold text-emerald-600">+{points} pts</div>
+                                              </div>
+                                          ) : (
+                                              <span className="text-[10px] font-bold text-slate-300 uppercase tracking-wider">Pending</span>
+                                          )}
+                                      </div>
+                                  </div>
+                                )
+                            })}
+                        </div>
+                    )}
                 </div>
             </DialogContent>
           </Dialog>
