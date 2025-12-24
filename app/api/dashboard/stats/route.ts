@@ -55,12 +55,18 @@ export async function GET() {
 
     // 3. Calculate Scores based on Grades
     events.forEach((event: any) => {
+        // 🛡️ SAFETY CHECK: Skip loop if results are missing to prevent 500 Crash
+        if (!event.results) return;
+
         const { first, second, third, firstGrade, secondGrade, thirdGrade } = event.results;
         const isStage = event.type === "Stage";
         
-        // ✅ CHANGED LOGIC: Only rely on 'groupEvent' flag
-        // "General" category implies Individual points UNLESS explicitly marked as groupEvent
-        const isGroup = event.groupEvent === true; 
+        // 🛡️ NAME CHECK: Handle if 'name' is missing or casing differs
+        const eventName = event.name || event.eventName || ""; 
+        const isTargetEvent = eventName.toLowerCase().trim() === "speech translation";
+
+        // ✅ LOGIC FIX: If event is "Speech Translation", force isGroup to FALSE
+        const isGroup = event.groupEvent === true && !isTargetEvent; 
         
         const eventIdStr = event._id.toString();
 
@@ -70,7 +76,8 @@ export async function GET() {
             // Calculate Points based on Grade & Event Type
             const points = getPoints(grade, isGroup);
             
-            const student = students.find((std: any) => std._id.toString() === studentId);
+            // Ensure studentId is string for comparison
+            const student = students.find((std: any) => std._id.toString() === studentId.toString());
 
             if (student) {
                 // Team Scores
@@ -79,7 +86,7 @@ export async function GET() {
 
                 // Individual Champion Scores
                 const registration = student.registeredEvents?.find((r: any) => r.eventId === eventIdStr);
-                const studentStats = initStudent(studentId);
+                const studentStats = initStudent(studentId.toString());
                 
                 if (isStage) {
                     // Stage Points
@@ -141,6 +148,6 @@ export async function GET() {
 
   } catch (error) {
     console.error("Stats Error:", error);
-    return NextResponse.json({ error: "Failed" }, { status: 500 });
+    return NextResponse.json({ error: "Failed to fetch dashboard stats" }, { status: 500 });
   }
 }

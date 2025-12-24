@@ -105,10 +105,14 @@ export default function AdminResultsPage() {
       return s ? `${s.name} (${s.team})` : "Unknown"
   }
 
-  // ✅ HELPER: Get Points for Grade (Individual: 10,7,5,3 | Group: 25,20,13,7)
-  const getPoints = (grade: string, isGroup: boolean) => {
-    if (!grade) return 0;
-    if (isGroup) {
+  // Points Logic Helper
+  const getPoints = (grade: string, event: any) => {
+    if (!grade || !event) return 0;
+    
+    // Exception: Speech Translation (Omega) gets Individual Points
+    const isSpeechTrans = event.name.trim().toLowerCase() === "speech translation" && event.category === "Omega";
+    
+    if (event.groupEvent && !isSpeechTrans) {
       if (grade === "A+") return 25;
       if (grade === "A") return 20;
       if (grade === "B") return 13;
@@ -129,6 +133,11 @@ export default function AdminResultsPage() {
     if (activeTab === "All") return true;
     return ev.category === activeTab; 
   })
+
+  // ✅ FILTER: Only show students registered for the selected event
+  const registeredStudents = students.filter(student => 
+    student.registeredEvents?.some((r: any) => r.eventId === editingEvent?._id)
+  );
 
   const tabs = ["All", "Alpha", "Beta", "Omega", "General-A", "General-B"];
 
@@ -230,9 +239,12 @@ export default function AdminResultsPage() {
             <DialogHeader>
                 <DialogTitle>Publish Result: {editingEvent?.name}</DialogTitle>
                 {editingEvent && (
-                    <Badge variant="outline" className={editingEvent.groupEvent ? "bg-yellow-50 text-yellow-700 w-fit" : "bg-slate-50 text-slate-700 w-fit"}>
-                        {editingEvent.groupEvent ? "Group Item (Higher Points)" : "Individual Item (Normal Points)"}
-                    </Badge>
+                    <div className="flex gap-2">
+                        <Badge variant="outline" className={editingEvent.groupEvent ? "bg-yellow-50 text-yellow-700" : "bg-slate-50 text-slate-700"}>
+                            {editingEvent.groupEvent ? "Group Item" : "Individual Item"}
+                        </Badge>
+                        <Badge className="bg-blue-50 text-blue-700 border-blue-200">{registeredStudents.length} Participants</Badge>
+                    </div>
                 )}
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4 py-2">
@@ -242,14 +254,14 @@ export default function AdminResultsPage() {
                     <div className="flex justify-between">
                         <label className="text-xs font-bold text-yellow-800 uppercase flex items-center gap-2"><Trophy className="w-4 h-4" /> First Place</label>
                         <span className="text-[10px] font-bold bg-white px-2 py-0.5 rounded border border-yellow-200 text-yellow-700">
-                            Points: {getPoints(resultData.firstGrade, editingEvent?.groupEvent)}
+                            Points: {getPoints(resultData.firstGrade, editingEvent)}
                         </span>
                     </div>
                     <div className="flex gap-2">
                         <Select value={resultData.first} onValueChange={val => setResultData({...resultData, first: val})}>
                             <SelectTrigger className="flex-1 bg-white border-yellow-200"><SelectValue placeholder="Select Winner" /></SelectTrigger>
                             <SelectContent className="max-h-60">
-                                {students.map(s => <SelectItem key={s._id} value={s._id}>{s.name} ({s.team})</SelectItem>)}
+                                {registeredStudents.map(s => <SelectItem key={s._id} value={s._id}>{s.name} ({s.team})</SelectItem>)}
                             </SelectContent>
                         </Select>
                         <Select value={resultData.firstGrade} onValueChange={val => setResultData({...resultData, firstGrade: val})}>
@@ -266,7 +278,7 @@ export default function AdminResultsPage() {
                     <div className="flex justify-between">
                         <label className="text-xs font-bold text-slate-600 uppercase flex items-center gap-2"><Medal className="w-4 h-4" /> Second Place</label>
                         <span className="text-[10px] font-bold bg-white px-2 py-0.5 rounded border border-slate-200 text-slate-500">
-                             Points: {getPoints(resultData.secondGrade, editingEvent?.groupEvent)}
+                             Points: {getPoints(resultData.secondGrade, editingEvent)}
                         </span>
                     </div>
                     <div className="flex gap-2">
@@ -274,7 +286,7 @@ export default function AdminResultsPage() {
                             <SelectTrigger className="flex-1 bg-white"><SelectValue placeholder="Select Second" /></SelectTrigger>
                             <SelectContent className="max-h-60">
                                 <SelectItem value="_none">None</SelectItem> 
-                                {students.map(s => <SelectItem key={s._id} value={s._id}>{s.name} ({s.team})</SelectItem>)}
+                                {registeredStudents.map(s => <SelectItem key={s._id} value={s._id}>{s.name} ({s.team})</SelectItem>)}
                             </SelectContent>
                         </Select>
                         <Select value={resultData.secondGrade} onValueChange={val => setResultData({...resultData, secondGrade: val})}>
@@ -291,7 +303,7 @@ export default function AdminResultsPage() {
                     <div className="flex justify-between">
                         <label className="text-xs font-bold text-orange-800 uppercase flex items-center gap-2"><Medal className="w-4 h-4" /> Third Place</label>
                         <span className="text-[10px] font-bold bg-white px-2 py-0.5 rounded border border-orange-200 text-orange-700">
-                             Points: {getPoints(resultData.thirdGrade, editingEvent?.groupEvent)}
+                             Points: {getPoints(resultData.thirdGrade, editingEvent)}
                         </span>
                     </div>
                     <div className="flex gap-2">
@@ -299,7 +311,7 @@ export default function AdminResultsPage() {
                             <SelectTrigger className="flex-1 bg-white border-orange-200"><SelectValue placeholder="Select Third" /></SelectTrigger>
                             <SelectContent className="max-h-60">
                                 <SelectItem value="_none">None</SelectItem>
-                                {students.map(s => <SelectItem key={s._id} value={s._id}>{s.name} ({s.team})</SelectItem>)}
+                                {registeredStudents.map(s => <SelectItem key={s._id} value={s._id}>{s.name} ({s.team})</SelectItem>)}
                             </SelectContent>
                         </Select>
                         <Select value={resultData.thirdGrade} onValueChange={val => setResultData({...resultData, thirdGrade: val})}>

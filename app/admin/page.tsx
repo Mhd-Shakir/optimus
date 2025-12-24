@@ -238,7 +238,6 @@ export default function AdminDashboard() {
 
       {/* 2. TEAM SCORES */}
       <div className="grid md:grid-cols-2 gap-6">
-          {/* ... (Team Scores Cards - same as before) ... */}
           <Card className="bg-gradient-to-br from-amber-50 to-white border-amber-200 shadow-sm overflow-hidden relative">
              <div className="absolute right-0 top-0 h-full w-24 bg-gradient-to-l from-amber-100/50 to-transparent"></div>
              <CardHeader><CardTitle className="text-amber-700 flex items-center gap-2 relative z-10"><Trophy className="w-5 h-5"/> Team Auris</CardTitle></CardHeader>
@@ -270,7 +269,6 @@ export default function AdminDashboard() {
       </div>
 
       {/* 4. CATEGORY CHAMPIONS */}
-      {/* ... (Category Champions Grid - same as before) ... */}
       <div>
         <h2 className="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2">
             <Users className="w-5 h-5 text-slate-600" /> Category Champions

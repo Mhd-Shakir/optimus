@@ -5,24 +5,8 @@ import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import axios from "axios";
 import { 
-  LayoutDashboard, 
-  ClipboardList, 
-  LogOut, 
-  Plus, 
-  Loader2, 
-  Mic, 
-  PenTool, 
-  CheckCircle2, 
-  X, 
-  Star, 
-  Users, 
-  Trash2, 
-  Pencil, 
-  Lock, 
-  User, 
-  Send, 
-  Search, 
-  ArrowLeft 
+  LayoutDashboard, ClipboardList, LogOut, Plus, Loader2, Mic, PenTool, 
+  CheckCircle2, X, Star, Users, Trash2, Pencil, Lock, User, Send, Search, ArrowLeft
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,7 +21,7 @@ export default function TeamDashboard() {
   const router = useRouter();
   const { toast } = useToast();
 
-  const [activeView, setActiveView] = useState("dashboard"); // dashboard | stage
+  const [activeView, setActiveView] = useState("dashboard");
 
   const [events, setEvents] = useState<any[]>([]);
   const [students, setStudents] = useState<any[]>([]); 
@@ -142,11 +126,27 @@ export default function TeamDashboard() {
     }
   };
 
+  // ✅ UPDATED TOGGLE STAR LOGIC (Case Insensitive)
   const toggleStar = (id:string) => { 
-      const curr=selectedEvents.filter(e=>e.isStar).length; 
       const target=selectedEvents.find(e=>e.eventId===id); 
-      if(target?.category.toLowerCase().includes("general"))return; 
-      if(!target?.isStar && curr>=8) return toast({variant:"destructive",title:"Max 8 Stars"}); 
+      if(!target) return;
+      if(target.category.toLowerCase().includes("general")) return; 
+
+      // 🚫 EXCEPTION: Speech Translation (Omega) - No Star Allowed
+      const isSpeechTrans = target.name.toLowerCase() === "speech translation" && target.category === "Omega";
+      if (isSpeechTrans) {
+          return toast({variant:"destructive",title:"No Star Needed", description: "Speech Translation counts automatically."});
+      }
+
+      // Limit Rule: Alpha = 6, Others = 8 for Non-Stage items
+      const limit = formData.category === "Alpha" ? 6 : 8;
+      
+      // Count only Non-Stage stars because that's where the limit applies
+      const currentStars = selectedEvents.filter(e => e.isStar && e.type === "Non-Stage").length;
+
+      if(!target.isStar && currentStars >= limit) {
+          return toast({variant:"destructive",title:"Limit Reached", description: `Max ${limit} stars allowed for ${formData.category} category.`}); 
+      }
       setSelectedEvents(prev=>prev.map(e=>e.eventId===id?{...e,isStar:!e.isStar}:e)); 
   };
   
@@ -181,6 +181,10 @@ export default function TeamDashboard() {
     if((formData.category === "Beta" || formData.category === "Omega") && e.category === "General-B") return true;
     return false;
   });
+
+  // ✅ DEFINE STAR COUNT HERE
+  const starCount = selectedEvents.filter(e => e.isStar && e.type === "Non-Stage").length;
+  const starLimit = formData.category === "Alpha" ? 6 : 8;
 
   return (
     <div className="flex min-h-screen bg-slate-50 font-sans">
@@ -394,11 +398,14 @@ export default function TeamDashboard() {
                               (Selected: {selectedEvents.filter(e => e.type === activeRegTab).length})
                           </span>
                       </p>
-                      {activeRegTab === "Non-Stage" && (<div className="flex items-center gap-1 bg-yellow-100 px-2 py-0.5 rounded text-[10px] font-black text-yellow-700 border border-yellow-200"><Star className="w-3 h-3 fill-current" />{starCount}/8 Stars Used</div>)}
+                      {activeRegTab === "Non-Stage" && (<div className="flex items-center gap-1 bg-yellow-100 px-2 py-0.5 rounded text-[10px] font-black text-yellow-700 border border-yellow-200"><Star className="w-3 h-3 fill-current" />{starCount}/{starLimit} Stars Used</div>)}
                   </div>
                   <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1 custom-scrollbar">
                     {regModalEvents.map(ev => {
                       const isSel = selectedEvents.find(s => s.eventId === ev._id);
+                      
+                      // ✅ FIX: Case-Insensitive Check for Speech Translation
+                      const isSpeechTrans = ev.name.toLowerCase() === "speech translation" && ev.category === "Omega";
                       const isGeneral = ev.category.toLowerCase().includes("general");
                       const isGroup = ev.groupEvent === true;
 
@@ -419,7 +426,8 @@ export default function TeamDashboard() {
                               )}
                           </div>
                           <div className="flex gap-1">
-                              {isSel && activeRegTab === "Non-Stage" && !isGeneral && (
+                              {/* ✅ HIDE STAR BUTTON IF SPEECH TRANSLATION */}
+                              {isSel && activeRegTab === "Non-Stage" && !isGeneral && !isSpeechTrans && (
                                   <Button type="button" onClick={(e) => { e.stopPropagation(); toggleStar(ev._id); }} size="icon" variant="ghost" className={`h-7 w-7 rounded-full ${isSel.isStar ? 'text-yellow-500 bg-yellow-50 shadow-sm border border-yellow-200' : 'text-slate-300 hover:text-yellow-400'}`}><Star className={`w-3.5 h-3.5 ${isSel.isStar ? 'fill-current' : ''}`} /></Button>
                               )}
                               <Button type="button" onClick={() => toggleEvent(ev)} size="sm" variant={isSel ? "default" : "outline"} className={`h-7 px-3 rounded-md text-[10px] font-bold ${isSel ? 'bg-purple-600 text-white border-none' : 'text-slate-500 border-slate-200'}`}>{isSel ? <CheckCircle2 className="w-3.5 h-3.5" /> : "Add"}</Button>
