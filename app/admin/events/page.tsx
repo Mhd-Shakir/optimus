@@ -414,9 +414,9 @@ export default function EventsPage() {
         </div>
       )}
 
-      {/* VIEW DIALOG */}
+      {/* VIEW DIALOG - FIXED SCROLLING */}
       <Dialog open={isViewOpen} onOpenChange={setIsViewOpen}>
-        <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col">
+        <DialogContent className="max-w-2xl">
             <DialogHeader>
                 <DialogTitle className="text-xl flex items-center gap-2">
                     {selectedEvent?.name} <Badge variant="secondary">{selectedEvent?.category}</Badge>
@@ -426,7 +426,8 @@ export default function EventsPage() {
                     Total Registrations: {selectedEvent ? (participantsMap[selectedEvent._id]?.length || 0) : 0}
                 </p>
             </DialogHeader>
-            <ScrollArea className="flex-1 pr-4 mt-2">
+            {/* ✅ ADDED FIXED HEIGHT TO SCROLLAREA TO PREVENT LAYOUT BREAKING */}
+            <ScrollArea className="h-[60vh] pr-4 mt-2 border rounded-md p-2">
                 <div className="space-y-2">
                     {selectedEvent && (!participantsMap[selectedEvent._id] || participantsMap[selectedEvent._id].length === 0) ? (
                         <div className="text-center py-12 text-slate-500 border border-dashed rounded-lg bg-slate-50">

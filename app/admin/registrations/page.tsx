@@ -13,21 +13,24 @@ import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
-// ✅ HELPER: Normalize strings for fuzzy matching
-const normalizeString = (str: string) => str.toLowerCase().replace(/[^a-z0-9]/g, "");
+// ✅ HELPER: Normalize strings
+const normalizeString = (str: string) => {
+  if (!str) return "";
+  return str.toLowerCase().replace(/[^a-z0-9]/g, "");
+};
 
-// 👇 RESTRICTED EVENTS (Normalized Names)
+// 👇 RESTRICTED EVENTS (Updated with 'swarfdebate')
 const RESTRICTED_LIMIT_EVENTS = [
   "qiraath", 
   "bookaliphs", 
   "alfiyarecitation", 
   "hadeesrecitation", 
-  "paperpresentationenglish", // ✅ Fixed (Matches "Paper Presentation English")
+  "paperpresentationenglish", 
   "idealdialogue", 
   "hifzulmuthoon", 
   "hiqaya", 
   "maashira", 
-  "qiraathulibara", // ✅ Fixed (Matches "Qira'athul Ibara")
+  "qiraathulibara", 
   "thadrees", 
   "poemlecturingmal", 
   "poemlecturingeng", 
@@ -35,7 +38,9 @@ const RESTRICTED_LIMIT_EVENTS = [
   "poemlectureringmalayalam",
   "vlogmaking", 
   "hifz", 
-  "azan"
+  "azan",
+  "swarafdebate", // Correct spelling
+  "swarfdebate"   // ✅ Typo spelling from screenshot
 ];
 
 export default function AdminRegistrations() {
@@ -123,11 +128,16 @@ export default function AdminRegistrations() {
         // Add Event - LOGIC CHECKS
         const isGeneral = event.category.toLowerCase().includes("general");
         const isStage = event.type === "Stage";
-        const isGroup = event.groupEvent === true;
+        
+        const eventName = normalizeString(event.name);
+        // ✅ Updated Group Logic for Swarf Debate
+        const isGroup = event.groupEvent === true || 
+                        eventName === "histoart" || 
+                        eventName === "dictionarymaking" || 
+                        eventName === "swarafdebate" || 
+                        eventName === "swarfdebate"; // ✅ Added
 
-        // ✅ SMART CHECK: Uses normalized string matching
-        const eventNameNormalized = normalizeString(event.name);
-        const isRestricted = RESTRICTED_LIMIT_EVENTS.includes(eventNameNormalized);
+        const isRestricted = RESTRICTED_LIMIT_EVENTS.includes(eventName);
 
         // 1️⃣ TEAM LIMIT CHECK (Applies to Stage Events OR Restricted Non-Stage Events)
         if (event.teamLimit || (isStage && !isGroup) || isRestricted) {
@@ -153,11 +163,11 @@ export default function AdminRegistrations() {
         // 2️⃣ INDIVIDUAL STUDENT LIMIT (Max 6 Stage Events)
         // Excludes Group events and General events from the count
         if (isStage && !isGroup && !isGeneral) {
-            const currentStageCount = selectedEvents.filter(e => 
-                e.type === "Stage" && 
-                !e.groupEvent && 
-                !e.category.toLowerCase().includes("general")
-            ).length;
+            const currentStageCount = selectedEvents.filter(e => {
+                const nName = normalizeString(e.name);
+                const eIsGrp = e.groupEvent === true || nName === "histoart" || nName === "dictionarymaking" || nName === "swarafdebate" || nName === "swarfdebate";
+                return e.type === "Stage" && !eIsGrp && !e.category.toLowerCase().includes("general")
+            }).length;
 
             if (currentStageCount >= 6) {
                 return toast({ 
@@ -175,7 +185,7 @@ export default function AdminRegistrations() {
             isStar: false, 
             type: event.type, 
             category: event.category, 
-            groupEvent: event.groupEvent || false,
+            groupEvent: isGroup,
             teamLimit: event.teamLimit
         }]);
     }
@@ -189,10 +199,11 @@ export default function AdminRegistrations() {
       // General Category items cannot have stars
       if(target.category.toLowerCase().includes("general")) return;
 
-      // 🚫 EXCEPTION: Omega Speech Translation - NO STAR
-      const isSpeechTrans = normalizeString(target.name) === "speechtranslation" && target.category === "Omega";
-      if (isSpeechTrans) {
-          return toast({ variant: "destructive", title: "Action Not Allowed", description: "Speech Translation does not need a star." });
+      const name = normalizeString(target.name);
+      
+      // 🚫 Block Stars for Swarf Debate
+      if (name === "speechtranslation" || name === "dictionarymaking" || name === "swarafdebate" || name === "swarfdebate") {
+          return toast({ variant: "destructive", title: "Action Not Allowed", description: "This event does not need a star." });
       }
 
       // Limit Rule
@@ -376,10 +387,15 @@ export default function AdminRegistrations() {
                               // ✅ CHECK: Case-Insensitive Speech Translation
                               const isSpeechTrans = normalizeString(ev.name) === "speechtranslation" && ev.category === "Omega";
                               const isGeneral = ev.category.toLowerCase().includes("general");
-                              const isGroup = ev.groupEvent === true;
+                              // ✅ Updated Group Logic for Swaraf Debate
+                              const isGroup = ev.groupEvent === true || 
+                                              normalizeString(ev.name) === "histoart" || 
+                                              normalizeString(ev.name) === "dictionarymaking" || 
+                                              normalizeString(ev.name) === "swarafdebate" || 
+                                              normalizeString(ev.name) === "swarfdebate"; 
 
                               return (
-                                  <div key={ev._id} className={`flex justify-between items-center p-2 border rounded-md transition-all ${isSel ? 'bg-white border-purple-300 shadow-sm' : 'border-slate-100 hover:bg-slate-50'}`}>
+                                  <div key={ev._id} className={`flex justify-between items-center p-2 border rounded-md transition-all ${isSel ? 'bg-white border-purple-200 shadow-sm' : 'border-slate-100 hover:bg-slate-50'}`}>
                                       <div className="flex items-center gap-2 overflow-hidden">
                                           <span className="text-xs font-medium text-slate-700 truncate max-w-[150px]">{ev.name}</span>
                                           {isGeneral && <Badge className="text-[8px] h-4 px-1 bg-slate-800">Gen</Badge>}

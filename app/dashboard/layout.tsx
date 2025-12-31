@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { useAuth } from "@/app/context/AuthContext";
+import { useAuth } from "../context/AuthContext"; // Path കൃത്യമാണെന്ന് ഉറപ്പാക്കുക
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 
@@ -10,29 +10,23 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const router = useRouter();
 
   useEffect(() => {
-    // ചെക്കിംഗ് കഴിഞ്ഞ് യൂസർ ഇല്ലെങ്കിൽ ലോഗിനിലേക്ക് വിടുക
+    // ചെക്കിംഗ് കഴിഞ്ഞു, പക്ഷെ യൂസർ ലോഗിൻ ചെയ്തിട്ടില്ലെങ്കിൽ ലോഗിൻ പേജിലേക്ക് വിടുക
     if (!isLoading && !user) {
       router.push("/login");
     }
   }, [user, isLoading, router]);
 
-  // ലോഡിംഗ് സ്ക്രീൻ
+  // ചെക്ക് ചെയ്യുന്ന സമയം ലോഡിംഗ് കാണിക്കുക
   if (isLoading) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-slate-50">
-        <div className="flex flex-col items-center gap-2">
-          <Loader2 className="h-8 w-8 animate-spin text-emerald-600" />
-          <p className="text-sm font-bold text-slate-500">Checking Access...</p>
-        </div>
+        <Loader2 className="h-10 w-10 animate-spin text-emerald-600" />
       </div>
     );
   }
 
-  // ലോഗിൻ അല്ലെങ്കിൽ ഒന്നും കാണിക്കരുത്
-  if (!user) {
-    return null;
-  }
+  // യൂസർ ഇല്ലെങ്കിൽ പേജ് കാണിക്കരുത്
+  if (!user) return null;
 
-  // ലോഗിൻ ആണെങ്കിൽ മാത്രം കണ്ടന്റ് കാണിക്കുക
   return <>{children}</>;
 }

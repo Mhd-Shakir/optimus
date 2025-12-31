@@ -12,6 +12,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Search, Trophy, Medal, Loader2, Edit, Save, Trash2, Users, User } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 
+// ✅ HELPER: Normalize strings for robust matching
+const normalizeString = (str: string) => {
+  if (!str) return "";
+  return str.toLowerCase().replace(/[^a-z0-9]/g, "");
+};
+
 export default function AdminResultsPage() {
   const { toast } = useToast()
 
@@ -105,19 +111,38 @@ export default function AdminResultsPage() {
       return s ? `${s.name} (${s.team})` : "Unknown"
   }
 
-  // Points Logic Helper
+  // ✅ UPDATED POINTS LOGIC
   const getPoints = (grade: string, event: any) => {
     if (!grade || !event) return 0;
     
-    // Exception: Speech Translation (Omega) gets Individual Points
-    const isSpeechTrans = event.name.trim().toLowerCase() === "speech translation" && event.category === "Omega";
+    const eventName = normalizeString(event.name);
+
+    // 1. Identify Group Events (Includes Histoart, Dictionary Making, Swaraf Debate)
+    const isGroupEvent = event.groupEvent === true || 
+                         eventName === "histoart" || 
+                         eventName === "dictionarymaking" || 
+                         eventName === "swarafdebate" || 
+                         eventName === "swarfdebate";
+
+    // 2. Identify Exceptions: Group Events that get Individual Points (10, 7, 5, 3)
+    const individualPointExceptions = [
+        "speechtranslation", 
+        "dictionarymaking", 
+        "swarafdebate", 
+        "swarfdebate"
+    ];
+
+    // 3. Determine if High Points (25, 20...) should be used
+    const useGroupPoints = isGroupEvent && !individualPointExceptions.includes(eventName);
     
-    if (event.groupEvent && !isSpeechTrans) {
+    if (useGroupPoints) {
+      // Group Points
       if (grade === "A+") return 25;
       if (grade === "A") return 20;
       if (grade === "B") return 13;
       if (grade === "C") return 7;
     } else {
+      // Individual Points (also for Speech Trans, Dictionary Making, Swaraf Debate)
       if (grade === "A+") return 10;
       if (grade === "A") return 7;
       if (grade === "B") return 5;
@@ -189,7 +214,11 @@ export default function AdminResultsPage() {
                 </TableRow>
             </TableHeader>
             <TableBody>
-                {loading ? <TableRow><TableCell colSpan={7} className="text-center py-8"><Loader2 className="animate-spin mx-auto" /></TableCell></TableRow> : filteredEvents.length === 0 ? <TableRow><TableCell colSpan={7} className="text-center py-8 text-slate-500">No events found in {activeTab}.</TableCell></TableRow> : filteredEvents.map((ev, index) => (
+                {loading ? <TableRow><TableCell colSpan={7} className="text-center py-8"><Loader2 className="animate-spin mx-auto" /></TableCell></TableRow> : filteredEvents.length === 0 ? <TableRow><TableCell colSpan={7} className="text-center py-8 text-slate-500">No events found in {activeTab}.</TableCell></TableRow> : filteredEvents.map((ev, index) => {
+                    const eventName = normalizeString(ev.name);
+                    const isGroup = ev.groupEvent || eventName === "histoart" || eventName === "dictionarymaking" || eventName === "swarafdebate" || eventName === "swarfdebate";
+                    
+                    return (
                     <TableRow key={ev._id}>
                         <TableCell className="font-medium text-slate-500">{index + 1}</TableCell>
                         <TableCell className="font-bold text-slate-700">
@@ -197,7 +226,7 @@ export default function AdminResultsPage() {
                         </TableCell>
                         <TableCell><Badge variant="secondary">{ev.category}</Badge></TableCell>
                         <TableCell>
-                            {ev.groupEvent ? 
+                            {isGroup ? 
                                 <Badge variant="outline" className="border-yellow-200 bg-yellow-50 text-yellow-700"><Users className="w-3 h-3 mr-1" /> Group</Badge> : 
                                 <Badge variant="outline" className="border-slate-200 text-slate-500"><User className="w-3 h-3 mr-1" /> Single</Badge>
                             }
@@ -229,7 +258,7 @@ export default function AdminResultsPage() {
                            </div>
                         </TableCell>
                     </TableRow>
-                ))}
+                )})}
             </TableBody>
         </Table>
       </Card>
@@ -240,9 +269,15 @@ export default function AdminResultsPage() {
                 <DialogTitle>Publish Result: {editingEvent?.name}</DialogTitle>
                 {editingEvent && (
                     <div className="flex gap-2">
-                        <Badge variant="outline" className={editingEvent.groupEvent ? "bg-yellow-50 text-yellow-700" : "bg-slate-50 text-slate-700"}>
-                            {editingEvent.groupEvent ? "Group Item" : "Individual Item"}
-                        </Badge>
+                        {(() => {
+                            const nName = normalizeString(editingEvent.name);
+                            const isGrp = editingEvent.groupEvent || nName === "histoart" || nName === "dictionarymaking" || nName === "swarafdebate" || nName === "swarfdebate";
+                            return (
+                                <Badge variant="outline" className={isGrp ? "bg-yellow-50 text-yellow-700" : "bg-slate-50 text-slate-700"}>
+                                    {isGrp ? "Group Item" : "Individual Item"}
+                                </Badge>
+                            )
+                        })()}
                         <Badge className="bg-blue-50 text-blue-700 border-blue-200">{registeredStudents.length} Participants</Badge>
                     </div>
                 )}

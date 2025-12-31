@@ -20,25 +20,24 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 const INDIVIDUAL_POINTS: any = { "A+": 10, "A": 7, "B": 5, "C": 3 };
 const GROUP_POINTS: any = { "A+": 25, "A": 20, "B": 13, "C": 7 };
 
-// ✅ HELPER: Normalize strings (Removes spaces, symbols, brackets for perfect matching)
-// Example: "Paper Presentation (English)" -> "paperpresentationenglish"
+// ✅ HELPER: Normalize strings
 const normalizeString = (str: string) => {
   if (!str) return "";
   return str.toLowerCase().replace(/[^a-z0-9]/g, "");
 };
 
-// 👇 RESTRICTED EVENTS (Normalized Names)
+// 👇 RESTRICTED EVENTS (Updated with 'swarfdebate')
 const RESTRICTED_LIMIT_EVENTS = [
   "qiraath", 
   "bookaliphs", 
   "alfiyarecitation", 
   "hadeesrecitation", 
-  "paperpresentationenglish", // ✅ Fixed (Matches "Paper Presentation English")
+  "paperpresentationenglish", 
   "idealdialogue", 
   "hifzulmuthoon", 
   "hiqaya", 
   "maashira", 
-  "qiraathulibara", // ✅ Fixed (Matches "Qira'athul Ibara" / "Qira’athul Ibara")
+  "qiraathulibara", 
   "thadrees", 
   "poemlecturingmal", 
   "poemlecturingeng", 
@@ -46,7 +45,9 @@ const RESTRICTED_LIMIT_EVENTS = [
   "poemlectureringmalayalam",
   "vlogmaking", 
   "hifz", 
-  "azan"
+  "azan",
+  "swarafdebate", // Correct spelling
+  "swarfdebate"   // ✅ Typo spelling from screenshot
 ];
 
 export default function TeamDashboard() {
@@ -100,7 +101,7 @@ export default function TeamDashboard() {
     } catch (error) { console.error(error); } finally { setLoading(false); }
   };
 
-  // --- SCORE CALCULATION HELPERS ---
+  // --- SCORE CALCULATION LOGIC ---
   const getEventResult = (studentId: string, eventId: string) => {
       const event = events.find(e => e._id === eventId);
       if (!event || !event.results) return { rank: null, grade: null, points: 0 };
@@ -115,11 +116,22 @@ export default function TeamDashboard() {
 
       if (!grade) return { rank: null, grade: null, points: 0 };
 
-      // Point Calculation Logic
-      const isSpeechTrans = normalizeString(event.name) === "speechtranslation";
-      const isGroup = event.groupEvent === true && !isSpeechTrans;
+      const eventName = normalizeString(event.name);
+
+      // 1. Identify Group Events (Includes Swarf Debate)
+      const isActuallyGroup = event.groupEvent === true || 
+                              eventName === "histoart" || 
+                              eventName === "dictionarymaking" || 
+                              eventName === "swarafdebate" || 
+                              eventName === "swarfdebate"; // ✅ Added
+
+      // 2. Identify Exceptions: Group Events that get Individual Points
+      const groupWithIndividualPoints = ["speechtranslation", "dictionarymaking", "swarafdebate", "swarfdebate"]; // ✅ Added
+
+      // 3. Determine Point System
+      const useGroupPoints = isActuallyGroup && !groupWithIndividualPoints.includes(eventName);
       
-      const pointMap = isGroup ? GROUP_POINTS : INDIVIDUAL_POINTS;
+      const pointMap = useGroupPoints ? GROUP_POINTS : INDIVIDUAL_POINTS;
       const points = pointMap[grade] || 0;
 
       return { rank, grade, points };
@@ -151,7 +163,6 @@ export default function TeamDashboard() {
       return students.filter(s => s.registeredEvents.some((e:any) => e.eventId === stageEventId));
   }
 
-  // Filter Logic for Stage Events (Search + Category Tabs)
   const filteredStageEvents = events.filter(ev => {
       const matchSearch = ev.name.toLowerCase().includes(stageSearch.toLowerCase());
       const matchTab = stageTab === "All" || ev.category === stageTab;
@@ -180,20 +191,24 @@ export default function TeamDashboard() {
     } else {
       const isGeneral = event.category.toLowerCase().includes("general");
       const isStage = event.type === "Stage";
-      const isGroup = event.groupEvent === true;
       
-      // ✅ SMART CHECK: Uses normalized string matching
-      const eventNameNormalized = normalizeString(event.name);
-      const isRestricted = RESTRICTED_LIMIT_EVENTS.includes(eventNameNormalized);
+      const eventName = normalizeString(event.name);
+      
+      // ✅ Updated Group Logic for Swarf Debate
+      const isGroup = event.groupEvent === true || 
+                      eventName === "histoart" || 
+                      eventName === "dictionarymaking" || 
+                      eventName === "swarafdebate" || 
+                      eventName === "swarfdebate"; 
+      
+      const isRestricted = RESTRICTED_LIMIT_EVENTS.includes(eventName);
 
-      // Rule 1: Team Limit (Applies to Stage Events OR Restricted Non-Stage Events)
+      // Rule 1: Team Limit
       if (event.teamLimit || (isStage && !isGroup) || isRestricted) {
         const limit = event.teamLimit || 3;
-        
-        // ✅ LOGIC: Count students in same TEAM AND same CATEGORY
         const count = students.filter(s => 
             s.team === formData.team && 
-            s.category === formData.category && // <-- Counts only within the category
+            s.category === formData.category && 
             s._id !== editId && 
             s.registeredEvents?.some((re: any) => re.eventId === event._id)
         ).length;
@@ -203,11 +218,15 @@ export default function TeamDashboard() {
         }
       }
 
-      // Rule 2: Individual Stage Limit (Max 6) - Excludes Group/General/Non-Stage
+      // Rule 2: Individual Stage Limit (Max 6)
       if (isStage && !isGroup && !isGeneral) {
-          if (selectedEvents.filter(e => e.type === "Stage" && !e.groupEvent && !e.category.toLowerCase().includes("general")).length >= 6) return toast({ variant: "destructive", title: "Limit Reached", description: "Max 6 Individual Stage events." });
+          if (selectedEvents.filter(e => {
+             const nName = normalizeString(e.name);
+             const eIsGrp = e.groupEvent === true || nName === "histoart" || nName === "dictionarymaking" || nName === "swarafdebate" || nName === "swarfdebate";
+             return e.type === "Stage" && !eIsGrp && !e.category.toLowerCase().includes("general")
+          }).length >= 6) return toast({ variant: "destructive", title: "Limit Reached", description: "Max 6 Individual Stage events." });
       }
-      setSelectedEvents(prev => [...prev, { eventId: event._id, name: event.name, isStar: false, type: event.type, category: event.category, groupEvent: event.groupEvent || false, teamLimit: event.teamLimit }]);
+      setSelectedEvents(prev => [...prev, { eventId: event._id, name: event.name, isStar: false, type: event.type, category: event.category, groupEvent: isGroup, teamLimit: event.teamLimit }]);
     }
   };
 
@@ -216,8 +235,12 @@ export default function TeamDashboard() {
       if(!target) return;
       if(target.category.toLowerCase().includes("general")) return; 
 
-      const isSpeechTrans = normalizeString(target.name) === "speechtranslation" && target.category === "Omega";
-      if (isSpeechTrans) return toast({variant:"destructive",title:"No Star Needed", description: "Speech Translation counts automatically."});
+      const name = normalizeString(target.name);
+      
+      // 🚫 Block Stars for Swarf Debate
+      if (name === "speechtranslation" || name === "dictionarymaking" || name === "swarafdebate" || name === "swarfdebate") {
+          return toast({variant:"destructive",title:"No Star Needed", description: "This event does not require a star."});
+      }
 
       const limit = formData.category === "Alpha" ? 6 : 8;
       const currentStars = selectedEvents.filter(e => e.isStar && e.type === "Non-Stage").length;
@@ -400,10 +423,14 @@ export default function TeamDashboard() {
                   <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1 custom-scrollbar">
                     {regModalEvents.map(ev => {
                       const isSel = selectedEvents.find(s => s.eventId === ev._id);
-                      // ✅ CHECK: Case-Insensitive Speech Translation
                       const isSpeechTrans = normalizeString(ev.name) === "speechtranslation" && ev.category === "Omega";
                       const isGeneral = ev.category.toLowerCase().includes("general");
-                      const isGroup = ev.groupEvent === true;
+                      // ✅ Updated Group Logic
+                      const isGroup = ev.groupEvent === true || 
+                                      normalizeString(ev.name) === "histoart" || 
+                                      normalizeString(ev.name) === "dictionarymaking" || 
+                                      normalizeString(ev.name) === "swarafdebate" || 
+                                      normalizeString(ev.name) === "swarfdebate"; 
 
                       return (
                         <div key={ev._id} className={`flex justify-between items-center p-2 border rounded-md transition-all ${isSel ? 'bg-white border-purple-200 shadow-sm' : 'border-slate-100 hover:bg-slate-50'}`}>
@@ -415,13 +442,7 @@ export default function TeamDashboard() {
                     {regModalEvents.length === 0 && <div className="text-center py-4 text-slate-400 text-xs">No events found.</div>}
                   </div>
                 </div>
-
-                <div className="flex justify-between items-center gap-3 pt-2">
-                  <Button type="button" variant="ghost" onClick={closeModal} className="text-slate-400 hover:text-slate-600 h-10 text-xs font-bold">Cancel</Button>
-                  <Button type="submit" disabled={submitting} className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-10 shadow-lg shadow-emerald-100 rounded-lg text-sm">
-                    {submitting ? <Loader2 className="animate-spin w-4 h-4 mr-2" /> : (isEditMode ? "Update Student" : "Complete Registration")}
-                  </Button>
-                </div>
+                <div className="flex justify-between items-center gap-3 pt-2"><Button type="button" variant="ghost" onClick={closeModal} className="text-slate-400 hover:text-slate-600 h-10 text-xs font-bold">Cancel</Button><Button type="submit" disabled={submitting} className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-10 shadow-lg shadow-emerald-100 rounded-lg text-sm">{submitting ? <Loader2 className="animate-spin w-4 h-4 mr-2" /> : (isEditMode ? "Update Student" : "Complete Registration")}</Button></div>
               </div>
             </form>
           </DialogContent>
