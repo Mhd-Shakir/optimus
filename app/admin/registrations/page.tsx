@@ -13,6 +13,31 @@ import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
+// ✅ HELPER: Normalize strings for fuzzy matching
+const normalizeString = (str: string) => str.toLowerCase().replace(/[^a-z0-9]/g, "");
+
+// 👇 RESTRICTED EVENTS (Normalized Names)
+const RESTRICTED_LIMIT_EVENTS = [
+  "qiraath", 
+  "bookaliphs", 
+  "alfiyarecitation", 
+  "hadeesrecitation", 
+  "paperpresentationenglish", // ✅ Fixed (Matches "Paper Presentation English")
+  "idealdialogue", 
+  "hifzulmuthoon", 
+  "hiqaya", 
+  "maashira", 
+  "qiraathulibara", // ✅ Fixed (Matches "Qira'athul Ibara")
+  "thadrees", 
+  "poemlecturingmal", 
+  "poemlecturingeng", 
+  "poemlectureringenglish", 
+  "poemlectureringmalayalam",
+  "vlogmaking", 
+  "hifz", 
+  "azan"
+];
+
 export default function AdminRegistrations() {
   const { toast } = useToast();
 
@@ -100,15 +125,19 @@ export default function AdminRegistrations() {
         const isStage = event.type === "Stage";
         const isGroup = event.groupEvent === true;
 
-        // 1️⃣ TEAM LIMIT CHECK (e.g., Max 3 students per team for Story Telling)
-        // If event has a limit OR it is a Single Stage item (defaults to 3 usually if not specified, or we can rely on teamLimit field)
-        if (event.teamLimit || (isStage && !isGroup)) {
+        // ✅ SMART CHECK: Uses normalized string matching
+        const eventNameNormalized = normalizeString(event.name);
+        const isRestricted = RESTRICTED_LIMIT_EVENTS.includes(eventNameNormalized);
+
+        // 1️⃣ TEAM LIMIT CHECK (Applies to Stage Events OR Restricted Non-Stage Events)
+        if (event.teamLimit || (isStage && !isGroup) || isRestricted) {
             const limit = event.teamLimit || 3;
             
-            // Count how many students in the CURRENT TEAM have this event
+            // ✅ LOGIC: Count students in same TEAM AND same CATEGORY
             const count = students.filter(s => 
-                s.team === formData.team && // Must match current student's team
-                s._id !== editId && // Exclude self if editing
+                s.team === formData.team && 
+                s.category === formData.category && // <-- Counts only within the category
+                s._id !== editId && 
                 s.registeredEvents?.some((re: any) => re.eventId === event._id)
             ).length;
 
@@ -116,7 +145,7 @@ export default function AdminRegistrations() {
                 return toast({ 
                     variant: "destructive", 
                     title: "Team Limit Reached", 
-                    description: `Team ${formData.team} already has ${limit} participants for ${event.name}.` 
+                    description: `${formData.category} category already has ${limit} participants for ${event.name}.` 
                 });
             }
         }
@@ -145,7 +174,7 @@ export default function AdminRegistrations() {
             name: event.name, 
             isStar: false, 
             type: event.type, 
-            category: event.category,
+            category: event.category, 
             groupEvent: event.groupEvent || false,
             teamLimit: event.teamLimit
         }]);
@@ -161,7 +190,7 @@ export default function AdminRegistrations() {
       if(target.category.toLowerCase().includes("general")) return;
 
       // 🚫 EXCEPTION: Omega Speech Translation - NO STAR
-      const isSpeechTrans = target.name.trim().toLowerCase() === "speech translation" && target.category === "Omega";
+      const isSpeechTrans = normalizeString(target.name) === "speechtranslation" && target.category === "Omega";
       if (isSpeechTrans) {
           return toast({ variant: "destructive", title: "Action Not Allowed", description: "Speech Translation does not need a star." });
       }
@@ -345,7 +374,7 @@ export default function AdminRegistrations() {
                           {regModalEvents.map(ev => {
                               const isSel = selectedEvents.find(s => s.eventId === ev._id);
                               // ✅ CHECK: Case-Insensitive Speech Translation
-                              const isSpeechTrans = ev.name.trim().toLowerCase() === "speech translation" && ev.category === "Omega";
+                              const isSpeechTrans = normalizeString(ev.name) === "speechtranslation" && ev.category === "Omega";
                               const isGeneral = ev.category.toLowerCase().includes("general");
                               const isGroup = ev.groupEvent === true;
 

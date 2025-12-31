@@ -20,6 +20,35 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 const INDIVIDUAL_POINTS: any = { "A+": 10, "A": 7, "B": 5, "C": 3 };
 const GROUP_POINTS: any = { "A+": 25, "A": 20, "B": 13, "C": 7 };
 
+// ✅ HELPER: Normalize strings (Removes spaces, symbols, brackets for perfect matching)
+// Example: "Paper Presentation (English)" -> "paperpresentationenglish"
+const normalizeString = (str: string) => {
+  if (!str) return "";
+  return str.toLowerCase().replace(/[^a-z0-9]/g, "");
+};
+
+// 👇 RESTRICTED EVENTS (Normalized Names)
+const RESTRICTED_LIMIT_EVENTS = [
+  "qiraath", 
+  "bookaliphs", 
+  "alfiyarecitation", 
+  "hadeesrecitation", 
+  "paperpresentationenglish", // ✅ Fixed (Matches "Paper Presentation English")
+  "idealdialogue", 
+  "hifzulmuthoon", 
+  "hiqaya", 
+  "maashira", 
+  "qiraathulibara", // ✅ Fixed (Matches "Qira'athul Ibara" / "Qira’athul Ibara")
+  "thadrees", 
+  "poemlecturingmal", 
+  "poemlecturingeng", 
+  "poemlectureringenglish", 
+  "poemlectureringmalayalam",
+  "vlogmaking", 
+  "hifz", 
+  "azan"
+];
+
 export default function TeamDashboard() {
   const { user, logout } = useAuth();
   const router = useRouter();
@@ -87,8 +116,7 @@ export default function TeamDashboard() {
       if (!grade) return { rank: null, grade: null, points: 0 };
 
       // Point Calculation Logic
-      // Speech Translation is a Group Event but gets INDIVIDUAL points
-      const isSpeechTrans = event.name.trim().toLowerCase() === "speech translation";
+      const isSpeechTrans = normalizeString(event.name) === "speechtranslation";
       const isGroup = event.groupEvent === true && !isSpeechTrans;
       
       const pointMap = isGroup ? GROUP_POINTS : INDIVIDUAL_POINTS;
@@ -150,14 +178,32 @@ export default function TeamDashboard() {
     if (exists) { 
         setSelectedEvents(prev => prev.filter(e => e.eventId !== event._id)); 
     } else {
-      const isGeneral = event.category.toLowerCase().includes("general"), isStage = event.type === "Stage", isGroup = event.groupEvent === true;
+      const isGeneral = event.category.toLowerCase().includes("general");
+      const isStage = event.type === "Stage";
+      const isGroup = event.groupEvent === true;
       
-      // Rule 1: Team Limit
-      if (event.teamLimit || (isStage && !isGroup)) {
-        const count = students.filter(s => s._id !== editId && s.registeredEvents?.some((re: any) => re.eventId === event._id)).length;
-        if (count >= (event.teamLimit || 3)) return toast({ variant: "destructive", title: "Limit Reached", description: `Team already has ${event.teamLimit || 3} participants.` });
+      // ✅ SMART CHECK: Uses normalized string matching
+      const eventNameNormalized = normalizeString(event.name);
+      const isRestricted = RESTRICTED_LIMIT_EVENTS.includes(eventNameNormalized);
+
+      // Rule 1: Team Limit (Applies to Stage Events OR Restricted Non-Stage Events)
+      if (event.teamLimit || (isStage && !isGroup) || isRestricted) {
+        const limit = event.teamLimit || 3;
+        
+        // ✅ LOGIC: Count students in same TEAM AND same CATEGORY
+        const count = students.filter(s => 
+            s.team === formData.team && 
+            s.category === formData.category && // <-- Counts only within the category
+            s._id !== editId && 
+            s.registeredEvents?.some((re: any) => re.eventId === event._id)
+        ).length;
+        
+        if (count >= limit) {
+            return toast({ variant: "destructive", title: "Limit Reached", description: `${formData.category} category already has ${limit} participants for ${event.name}.` });
+        }
       }
-      // Rule 2: Individual Stage Limit (Max 6)
+
+      // Rule 2: Individual Stage Limit (Max 6) - Excludes Group/General/Non-Stage
       if (isStage && !isGroup && !isGeneral) {
           if (selectedEvents.filter(e => e.type === "Stage" && !e.groupEvent && !e.category.toLowerCase().includes("general")).length >= 6) return toast({ variant: "destructive", title: "Limit Reached", description: "Max 6 Individual Stage events." });
       }
@@ -165,22 +211,15 @@ export default function TeamDashboard() {
     }
   };
 
-  // ✅ UPDATED TOGGLE STAR LOGIC (Case Insensitive)
   const toggleStar = (id:string) => { 
       const target=selectedEvents.find(e=>e.eventId===id); 
       if(!target) return;
       if(target.category.toLowerCase().includes("general")) return; 
 
-      // 🚫 EXCEPTION: Speech Translation (Omega) - No Star Allowed
-      const isSpeechTrans = target.name.toLowerCase() === "speech translation" && target.category === "Omega";
-      if (isSpeechTrans) {
-          return toast({variant:"destructive",title:"No Star Needed", description: "Speech Translation counts automatically."});
-      }
+      const isSpeechTrans = normalizeString(target.name) === "speechtranslation" && target.category === "Omega";
+      if (isSpeechTrans) return toast({variant:"destructive",title:"No Star Needed", description: "Speech Translation counts automatically."});
 
-      // Limit Rule: Alpha = 6, Others = 8 for Non-Stage items
       const limit = formData.category === "Alpha" ? 6 : 8;
-      
-      // Count only Non-Stage stars because that's where the limit applies
       const currentStars = selectedEvents.filter(e => e.isStar && e.type === "Non-Stage").length;
 
       if(!target.isStar && currentStars >= limit) {
@@ -212,7 +251,6 @@ export default function TeamDashboard() {
   const filteredStudents = activeCategory==="All"?students:students.filter((s:any)=>s.category===activeCategory);
   const categories = ["All", "Alpha", "Beta", "Omega", "General-A", "General-B"];
 
-  // Filter events for Registration Modal
   const regModalEvents = events.filter(e => {
     if(e.type !== activeRegTab) return false;
     if(e.category === formData.category) return true;
@@ -221,7 +259,6 @@ export default function TeamDashboard() {
     return false;
   });
 
-  // ✅ DEFINE STAR COUNT HERE
   const starCount = selectedEvents.filter(e => e.isStar && e.type === "Non-Stage").length;
   const starLimit = formData.category === "Alpha" ? 6 : 8;
 
@@ -239,7 +276,6 @@ export default function TeamDashboard() {
 
       <main className="flex-1 md:ml-64 p-6 md:p-10 flex flex-col min-h-screen">
         {activeView === "stage" ? (
-            // --- STAGE CONTROL VIEW ---
             <div className="max-w-4xl mx-auto w-full pt-10">
                 <div className="mb-8 flex justify-between items-end">
                     <div><h2 className="text-3xl font-black text-slate-900 tracking-tight">Stage Control</h2><p className="text-slate-500 mt-1">Send your team students to the stage.</p></div>
@@ -248,13 +284,11 @@ export default function TeamDashboard() {
 
                 {!stageEventId ? (
                     <div className="space-y-6">
-                        {/* Search & Tabs */}
                         <div className="bg-white p-4 rounded-xl border shadow-sm space-y-4">
                             <div className="relative"><Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" /><Input placeholder="Search Event Name..." className="pl-9 h-10" value={stageSearch} onChange={e => setStageSearch(e.target.value)} /></div>
                             <div className="flex gap-2 overflow-x-auto pb-1 custom-scrollbar">{categories.map(cat => (<button key={cat} onClick={() => setStageTab(cat)} className={`px-4 py-2 rounded-lg text-xs font-bold whitespace-nowrap transition-all ${stageTab === cat ? "bg-purple-600 text-white shadow-md" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}>{cat}</button>))}</div>
                         </div>
                         
-                        {/* Event List */}
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4">
                             {filteredStageEvents.length === 0 ? <div className="col-span-full text-center py-10 text-slate-400">No events match your search.</div> : filteredStageEvents.map(ev => (
                                 <div key={ev._id} onClick={() => setStageEventId(ev._id)} className="bg-white p-5 rounded-xl border border-slate-200 hover:border-purple-500 hover:shadow-md cursor-pointer transition-all group">
@@ -264,7 +298,6 @@ export default function TeamDashboard() {
                         </div>
                     </div>
                 ) : (
-                    // Selected Event View
                     <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
                         <div className="p-5 bg-slate-50 border-b font-bold flex justify-between items-center">
                             <span className="text-slate-700">Participants from {user?.team}</span>
@@ -272,42 +305,25 @@ export default function TeamDashboard() {
                         </div>
                         <div className="divide-y divide-slate-100">
                             {getStageStudents().length === 0 ? (
-                                <div className="p-10 text-center text-slate-400">No students registered for this event from your team.</div>
+                                <div className="p-10 text-center text-slate-400">No students registered.</div>
                             ) : getStageStudents().map(student => {
                                 const eventData = student.registeredEvents.find((e:any) => e.eventId === stageEventId);
-                                const status = eventData?.status || "registered"; // registered | sent | reported
+                                const status = eventData?.status || "registered";
 
                                 return (
                                     <div key={student._id} className="p-5 flex items-center justify-between hover:bg-slate-50 transition-colors">
                                         <div className="flex items-center gap-4">
-                                            <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center font-bold text-slate-600 border border-slate-200">
-                                                {student.chestNo}
-                                            </div>
-                                            <div>
-                                                <p className="font-bold text-lg text-slate-900">{student.name}</p>
-                                                <p className="text-xs text-slate-500 font-medium uppercase">{student.category}</p>
-                                            </div>
+                                            <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center font-bold text-slate-600 border border-slate-200">{student.chestNo}</div>
+                                            <div><p className="font-bold text-lg text-slate-900">{student.name}</p><p className="text-xs text-slate-500 font-medium uppercase">{student.category}</p></div>
                                         </div>
                                         <div>
                                             {status === "registered" && (
-                                                <Button 
-                                                    onClick={() => updateStatus(student._id, stageEventId, "sent")} 
-                                                    disabled={updatingStatus === student._id}
-                                                    className="bg-blue-600 hover:bg-blue-700 text-white shadow-blue-100 shadow-lg transition-all active:scale-95"
-                                                >
+                                                <Button onClick={() => updateStatus(student._id, stageEventId, "sent")} disabled={updatingStatus === student._id} className="bg-blue-600 hover:bg-blue-700 text-white shadow-blue-100 shadow-lg">
                                                     {updatingStatus === student._id ? <Loader2 className="animate-spin" /> : <><Send className="w-4 h-4 mr-2" /> Send to Stage</>}
                                                 </Button>
                                             )}
-                                            {status === "sent" && (
-                                                <Badge className="bg-yellow-100 text-yellow-700 border-yellow-200 px-3 py-1.5 text-xs font-bold animate-pulse flex items-center gap-2">
-                                                    <Loader2 className="w-3 h-3 animate-spin" /> SENT & WAITING
-                                                </Badge>
-                                            )}
-                                            {status === "reported" && (
-                                                <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 px-3 py-1.5 text-xs font-bold flex items-center gap-2">
-                                                    <CheckCircle2 className="w-3.5 h-3.5" /> REPORTED ON STAGE
-                                                </Badge>
-                                            )}
+                                            {status === "sent" && <Badge className="bg-yellow-100 text-yellow-700 border-yellow-200 px-3 py-1.5 text-xs font-bold animate-pulse flex items-center gap-2"><Loader2 className="w-3 h-3 animate-spin" /> SENT & WAITING</Badge>}
+                                            {status === "reported" && <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 px-3 py-1.5 text-xs font-bold flex items-center gap-2"><CheckCircle2 className="w-3.5 h-3.5" /> REPORTED ON STAGE</Badge>}
                                         </div>
                                     </div>
                                 )
@@ -317,49 +333,25 @@ export default function TeamDashboard() {
                 )}
             </div>
         ) : (
-            
-        // --- DASHBOARD VIEW (Existing) ---
         <>
             <div className="flex flex-col items-center justify-center text-center space-y-4 mb-10 pt-10">
-            <div className={`w-20 h-20 rounded-3xl flex items-center justify-center text-white text-3xl font-black shadow-xl ${user?.team === 'Auris' ? 'bg-yellow-500 shadow-yellow-100' : 'bg-blue-600 shadow-blue-100'}`}>
-                {user?.team?.charAt(0)}
-            </div>
-            <div>
-                <h2 className="text-4xl font-black text-slate-900 tracking-tighter uppercase">Team {user?.team}</h2>
-                <p className="text-slate-400 font-bold text-xs uppercase tracking-widest mt-1">Total Students: {students.length}</p>
-            </div>
-            
+            <div className={`w-20 h-20 rounded-3xl flex items-center justify-center text-white text-3xl font-black shadow-xl ${user?.team === 'Auris' ? 'bg-yellow-500 shadow-yellow-100' : 'bg-blue-600 shadow-blue-100'}`}>{user?.team?.charAt(0)}</div>
+            <div><h2 className="text-4xl font-black text-slate-900 tracking-tighter uppercase">Team {user?.team}</h2><p className="text-slate-400 font-bold text-xs uppercase tracking-widest mt-1">Total Students: {students.length}</p></div>
             {isSystemRegOpen ? (
-                <Button onClick={() => { setIsEditMode(false); setIsRegOpen(true); }} className="bg-emerald-600 hover:bg-emerald-700 text-white px-8 h-12 rounded-xl text-sm font-black shadow-lg shadow-emerald-100">
-                    <Plus className="w-4 h-4 mr-2" /> NEW REGISTRATION
-                </Button>
+                <Button onClick={() => { setIsEditMode(false); setIsRegOpen(true); }} className="bg-emerald-600 hover:bg-emerald-700 text-white px-8 h-12 rounded-xl text-sm font-black shadow-lg shadow-emerald-100"><Plus className="w-4 h-4 mr-2" /> NEW REGISTRATION</Button>
             ) : (
-                <div className="flex items-center gap-2 bg-red-50 border border-red-200 text-red-600 px-6 py-3 rounded-xl font-bold text-sm shadow-sm">
-                    <Lock className="w-4 h-4" /> REGISTRATION IS CLOSED BY ADMIN
-                </div>
+                <div className="flex items-center gap-2 bg-red-50 border border-red-200 text-red-600 px-6 py-3 rounded-xl font-bold text-sm shadow-sm"><Lock className="w-4 h-4" /> REGISTRATION IS CLOSED BY ADMIN</div>
             )}
             </div>
 
-            {/* STUDENTS TABLE */}
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden mb-10">
             <div className="p-4 border-b border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="flex items-center gap-2"><Users className="w-4 h-4 text-slate-500" /><h3 className="text-sm font-bold text-slate-700 uppercase tracking-wide">Registered Students</h3></div>
-                <div className="flex p-1 bg-slate-200/50 rounded-lg overflow-x-auto">
-                {['All', 'Alpha', 'Beta', 'Omega'].map((cat) => (
-                    <button key={cat} onClick={() => setActiveCategory(cat)} className={`px-4 py-1.5 text-xs font-bold rounded-md transition-all whitespace-nowrap ${activeCategory === cat ? "bg-white text-emerald-600 shadow-sm" : "text-slate-500 hover:text-emerald-600"}`}>{cat}</button>
-                ))}
-                </div>
+                <div className="flex p-1 bg-slate-200/50 rounded-lg overflow-x-auto">{['All', 'Alpha', 'Beta', 'Omega'].map((cat) => (<button key={cat} onClick={() => setActiveCategory(cat)} className={`px-4 py-1.5 text-xs font-bold rounded-md transition-all whitespace-nowrap ${activeCategory === cat ? "bg-white text-emerald-600 shadow-sm" : "text-slate-500 hover:text-emerald-600"}`}>{cat}</button>))}</div>
             </div>
             
             <Table>
-                <TableHeader>
-                <TableRow className="hover:bg-transparent">
-                    <TableHead className="w-[200px] text-xs font-bold uppercase text-slate-400">Name</TableHead>
-                    <TableHead className="text-xs font-bold uppercase text-slate-400">Chest No</TableHead>
-                    <TableHead className="text-xs font-bold uppercase text-slate-400">Events</TableHead>
-                    <TableHead className="text-right text-xs font-bold uppercase text-slate-400">Actions</TableHead>
-                </TableRow>
-                </TableHeader>
+                <TableHeader><TableRow className="hover:bg-transparent"><TableHead className="w-[200px] text-xs font-bold uppercase text-slate-400">Name</TableHead><TableHead className="text-xs font-bold uppercase text-slate-400">Chest No</TableHead><TableHead className="text-xs font-bold uppercase text-slate-400">Events</TableHead><TableHead className="text-right text-xs font-bold uppercase text-slate-400">Actions</TableHead></TableRow></TableHeader>
                 <TableBody>
                 {loading ? <TableRow><TableCell colSpan={4} className="h-24 text-center"><Loader2 className="animate-spin w-6 h-6 mx-auto text-slate-300"/></TableCell></TableRow> : filteredStudents.length === 0 ? <TableRow><TableCell colSpan={4} className="h-32 text-center text-slate-400 text-sm font-medium">No students found.</TableCell></TableRow> : filteredStudents.map((student: any) => (
                     <TableRow key={student._id} className="hover:bg-slate-50 cursor-pointer group" onClick={() => setViewStudent(student)}>
@@ -373,12 +365,8 @@ export default function TeamDashboard() {
                         </td>
                         <td className="p-4 text-right">
                         <div className="flex justify-end gap-2">
-                            <Button size="icon" variant="ghost" className="h-8 w-8 text-slate-300 hover:text-blue-500 hover:bg-blue-50" onClick={(e) => handleEdit(e, student)}>
-                                <Pencil className="w-4 h-4" />
-                            </Button>
-                            <Button size="icon" variant="ghost" className="h-8 w-8 text-slate-300 hover:text-red-500 hover:bg-red-50" onClick={(e) => handleDelete(e, student._id)}>
-                            <Trash2 className="w-4 h-4" />
-                            </Button>
+                            <Button size="icon" variant="ghost" className="h-8 w-8 text-slate-300 hover:text-blue-500 hover:bg-blue-50" onClick={(e) => handleEdit(e, student)}><Pencil className="w-4 h-4" /></Button>
+                            <Button size="icon" variant="ghost" className="h-8 w-8 text-slate-300 hover:text-red-500 hover:bg-red-50" onClick={(e) => handleDelete(e, student._id)}><Trash2 className="w-4 h-4" /></Button>
                         </div>
                         </td>
                     </TableRow>
@@ -393,84 +381,34 @@ export default function TeamDashboard() {
         <Dialog open={isRegOpen} onOpenChange={closeModal}>
           <DialogContent className="max-w-xl w-full p-0 border-none shadow-2xl rounded-xl overflow-hidden bg-white" aria-describedby={undefined}>
             <div className="bg-emerald-600 px-5 py-3 flex justify-between items-center text-white shrink-0">
-              <div>
-                <DialogTitle className="text-lg font-bold text-white">{isEditMode ? "Edit Student" : "Student Registration"}</DialogTitle>
-                <p className="text-[10px] opacity-90">Assign events and stars.</p>
-              </div>
+              <div><DialogTitle className="text-lg font-bold text-white">{isEditMode ? "Edit Student" : "Student Registration"}</DialogTitle><p className="text-[10px] opacity-90">Assign events and stars.</p></div>
               <button onClick={closeModal} className="text-white/80 hover:text-white"><X className="w-5 h-5" /></button>
             </div>
-
             <form onSubmit={handleRegister}>
               <div className="p-5 space-y-4">
                 <div className="grid grid-cols-3 gap-3 border border-slate-100 bg-slate-50/50 p-3 rounded-lg">
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-black uppercase text-slate-400">Name</label>
-                    <Input value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} placeholder="Student Name" className="h-9 text-sm border-emerald-500 focus:ring-emerald-500 bg-white" />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-black uppercase text-slate-400">Team</label>
-                    <div className="h-9 px-3 flex items-center bg-slate-200 text-slate-600 text-sm font-bold rounded-md border border-slate-300 cursor-not-allowed">{user?.team || "Loading..."}</div>
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-black uppercase text-slate-400">Category</label>
-                    <Select value={formData.category} onValueChange={val => setFormData({...formData, category: val})}>
-                      <SelectTrigger className="h-9 text-sm bg-white"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Alpha">Alpha</SelectItem>
-                        <SelectItem value="Beta">Beta</SelectItem>
-                        <SelectItem value="Omega">Omega</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+                  <div className="space-y-1"><label className="text-[10px] font-black uppercase text-slate-400">Name</label><Input value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} placeholder="Student Name" className="h-9 text-sm border-emerald-500 focus:ring-emerald-500 bg-white" /></div>
+                  <div className="space-y-1"><label className="text-[10px] font-black uppercase text-slate-400">Team</label><div className="h-9 px-3 flex items-center bg-slate-200 text-slate-600 text-sm font-bold rounded-md border border-slate-300 cursor-not-allowed">{user?.team || "Loading..."}</div></div>
+                  <div className="space-y-1"><label className="text-[10px] font-black uppercase text-slate-400">Category</label><Select value={formData.category} onValueChange={val => setFormData({...formData, category: val})}><SelectTrigger className="h-9 text-sm bg-white"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Alpha">Alpha</SelectItem><SelectItem value="Beta">Beta</SelectItem><SelectItem value="Omega">Omega</SelectItem></SelectContent></Select></div>
                 </div>
-
                 <div className="flex border rounded-lg overflow-hidden h-9">
                   <button type="button" onClick={() => setActiveRegTab("Stage")} className={`flex-1 flex items-center justify-center gap-2 text-xs font-bold transition-all ${activeRegTab === "Stage" ? "bg-purple-600 text-white" : "bg-white text-slate-500 hover:bg-slate-50 border-r"}`}><Mic className="w-3 h-3" /> Stage</button>
                   <button type="button" onClick={() => setActiveRegTab("Non-Stage")} className={`flex-1 flex items-center justify-center gap-2 text-xs font-bold transition-all ${activeRegTab === "Non-Stage" ? "bg-white border-l shadow-inner" : "bg-white text-slate-500 hover:bg-slate-50"}`}><PenTool className="w-3 h-3" /> Non-Stage</button>
                 </div>
-
                 <div className="border border-purple-600 rounded-lg p-3 relative bg-purple-50/10">
-                  <div className="flex justify-between items-center mb-2">
-                      <p className="text-purple-700 font-bold text-[10px] uppercase">
-                          {activeRegTab} Items
-                          <span className="ml-2 text-slate-400 font-normal">
-                              (Selected: {selectedEvents.filter(e => e.type === activeRegTab).length})
-                          </span>
-                      </p>
-                      {activeRegTab === "Non-Stage" && (<div className="flex items-center gap-1 bg-yellow-100 px-2 py-0.5 rounded text-[10px] font-black text-yellow-700 border border-yellow-200"><Star className="w-3 h-3 fill-current" />{starCount}/{starLimit} Stars Used</div>)}
-                  </div>
+                  <div className="flex justify-between items-center mb-2"><p className="text-purple-700 font-bold text-[10px] uppercase">{activeRegTab} Items<span className="ml-2 text-slate-400 font-normal">(Selected: {selectedEvents.filter(e => e.type === activeRegTab).length})</span></p>{activeRegTab === "Non-Stage" && (<div className="flex items-center gap-1 bg-yellow-100 px-2 py-0.5 rounded text-[10px] font-black text-yellow-700 border border-yellow-200"><Star className="w-3 h-3 fill-current" />{starCount}/{starLimit} Stars Used</div>)}</div>
                   <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1 custom-scrollbar">
                     {regModalEvents.map(ev => {
                       const isSel = selectedEvents.find(s => s.eventId === ev._id);
-                      
-                      // ✅ FIX: Case-Insensitive Check for Speech Translation
-                      const isSpeechTrans = ev.name.toLowerCase() === "speech translation" && ev.category === "Omega";
+                      // ✅ CHECK: Case-Insensitive Speech Translation
+                      const isSpeechTrans = normalizeString(ev.name) === "speechtranslation" && ev.category === "Omega";
                       const isGeneral = ev.category.toLowerCase().includes("general");
                       const isGroup = ev.groupEvent === true;
 
                       return (
                         <div key={ev._id} className={`flex justify-between items-center p-2 border rounded-md transition-all ${isSel ? 'bg-white border-purple-200 shadow-sm' : 'border-slate-100 hover:bg-slate-50'}`}>
-                          <div className="flex items-center">
-                              <span className="text-xs font-medium text-slate-700 truncate mr-2">{ev.name}</span>
-                              
-                              {/* ✅ BADGES */}
-                              {isGeneral && <span className="text-[8px] bg-slate-800 text-white px-1 py-0.5 rounded font-bold uppercase mr-1">Gen</span>}
-                              {isGroup ? (
-                                <span className="text-[8px] bg-yellow-100 text-yellow-800 border border-yellow-200 px-1 py-0.5 rounded font-bold uppercase mr-1">Group</span>
-                              ) : (
-                                <span className="text-[8px] bg-white text-slate-400 border border-slate-200 px-1 py-0.5 rounded font-bold uppercase flex items-center gap-0.5 mr-1"><User className="w-2 h-2" /> Single</span>
-                              )}
-                              {(ev.teamLimit || (!isGroup && ev.type === 'Stage')) && (
-                                <span className="text-[8px] bg-red-50 text-red-600 px-1.5 py-0.5 rounded border border-red-100 font-bold">Limit: {ev.teamLimit || 3}</span>
-                              )}
-                          </div>
-                          <div className="flex gap-1">
-                              {/* ✅ HIDE STAR BUTTON IF SPEECH TRANSLATION */}
-                              {isSel && activeRegTab === "Non-Stage" && !isGeneral && !isSpeechTrans && (
-                                  <Button type="button" onClick={(e) => { e.stopPropagation(); toggleStar(ev._id); }} size="icon" variant="ghost" className={`h-7 w-7 rounded-full ${isSel.isStar ? 'text-yellow-500 bg-yellow-50 shadow-sm border border-yellow-200' : 'text-slate-300 hover:text-yellow-400'}`}><Star className={`w-3.5 h-3.5 ${isSel.isStar ? 'fill-current' : ''}`} /></Button>
-                              )}
-                              <Button type="button" onClick={() => toggleEvent(ev)} size="sm" variant={isSel ? "default" : "outline"} className={`h-7 px-3 rounded-md text-[10px] font-bold ${isSel ? 'bg-purple-600 text-white border-none' : 'text-slate-500 border-slate-200'}`}>{isSel ? <CheckCircle2 className="w-3.5 h-3.5" /> : "Add"}</Button>
-                          </div>
+                          <div className="flex items-center"><span className="text-xs font-medium text-slate-700 truncate mr-2">{ev.name}</span>{isGeneral && <span className="text-[8px] bg-slate-800 text-white px-1 py-0.5 rounded font-bold uppercase mr-1">Gen</span>}{isGroup ? (<span className="text-[8px] bg-yellow-100 text-yellow-800 border border-yellow-200 px-1 py-0.5 rounded font-bold uppercase mr-1">Group</span>) : (<span className="text-[8px] bg-white text-slate-400 border border-slate-200 px-1 py-0.5 rounded font-bold uppercase flex items-center gap-0.5 mr-1"><User className="w-2 h-2" /> Single</span>)}{(ev.teamLimit || (!isGroup && ev.type === 'Stage')) && (<span className="text-[8px] bg-red-50 text-red-600 px-1.5 py-0.5 rounded border border-red-100 font-bold">Limit: {ev.teamLimit || 3}</span>)}</div>
+                          <div className="flex gap-1">{isSel && activeRegTab === "Non-Stage" && !isGeneral && !isSpeechTrans && (<Button type="button" onClick={(e) => { e.stopPropagation(); toggleStar(ev._id); }} size="icon" variant="ghost" className={`h-7 w-7 rounded-full ${isSel.isStar ? 'text-yellow-500 bg-yellow-50 shadow-sm border border-yellow-200' : 'text-slate-300 hover:text-yellow-400'}`}><Star className={`w-3.5 h-3.5 ${isSel.isStar ? 'fill-current' : ''}`} /></Button>)}<Button type="button" onClick={() => toggleEvent(ev)} size="sm" variant={isSel ? "default" : "outline"} className={`h-7 px-3 rounded-md text-[10px] font-bold ${isSel ? 'bg-purple-600 text-white border-none' : 'text-slate-500 border-slate-200'}`}>{isSel ? <CheckCircle2 className="w-3.5 h-3.5" /> : "Add"}</Button></div>
                         </div>
                       )
                     })}
