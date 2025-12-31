@@ -1,14 +1,16 @@
 "use client"
 
-import { useState, useEffect, useMemo, useRef } from "react"
+import { useState, useEffect, useMemo } from "react"
 import axios from "axios"
+import jsPDF from "jspdf"
+import autoTable from "jspdf-autotable"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogFooter } from "@/components/ui/dialog"
 import { Card, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Search, Loader2, Users, Eye, Calendar, RefreshCcw, Trash2, AlertTriangle, Code, Upload } from "lucide-react"
+import { Search, Loader2, Users, Eye, Calendar, RefreshCcw, Trash2, AlertTriangle, Code, Download } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
@@ -49,7 +51,6 @@ export default function EventsPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
   
-  // 🔥 BULK INPUT STATE
   const [isBulkDialogOpen, setIsBulkDialogOpen] = useState(false)
   const [bulkJsonData, setBulkJsonData] = useState("")
 
@@ -66,7 +67,6 @@ export default function EventsPage() {
     name: "", category: "Alpha", type: "Stage", groupEvent: false
   })
 
-  // 1. Fetch Data
   useEffect(() => {
     fetchData()
   }, [])
@@ -84,7 +84,6 @@ export default function EventsPage() {
       setStudents(studentsRes.data)
     } catch (error) {
       toast({ variant: "destructive", title: "Error", description: "Failed to load data" })
-      console.error("Failed to load data")
     } finally {
       setLoading(false)
       setRefreshing(false)
@@ -104,7 +103,49 @@ export default function EventsPage() {
     return map
   }, [events, students])
 
-  // 2. Add Event (Single)
+  // 🔥 NEW: CATEGORY WISE STUDENT REPORT PDF
+  const downloadStudentReportPDF = () => {
+    const doc = new jsPDF();
+    
+    // Filter students based on currently selected category
+    const reportStudents = filterCategory === "All" 
+        ? students 
+        : students.filter(s => s.category === filterCategory);
+
+    // Sort by Chest No
+    reportStudents.sort((a, b) => a.chestNo.localeCompare(b.chestNo));
+
+    doc.setFontSize(18);
+    doc.text(`Student Events Report - ${filterCategory}`, 14, 20);
+    doc.setFontSize(10);
+    doc.setTextColor(100);
+    doc.text(`Generated on: ${new Date().toLocaleDateString()} | Total Students: ${reportStudents.length}`, 14, 26);
+
+    const tableBody = reportStudents.map((s) => [
+        s.chestNo,
+        s.name,
+        s.team,
+        s.category,
+        s.registeredEvents.map(e => e.name).join(", ") // List all events
+    ]);
+
+    autoTable(doc, {
+        startY: 35,
+        head: [["Chest No", "Name", "Team", "Category", "Registered Events"]],
+        body: tableBody,
+        theme: "grid",
+        headStyles: { fillColor: [15, 23, 42] }, // Slate-900
+        styles: { fontSize: 9, cellPadding: 2 },
+        columnStyles: {
+            4: { cellWidth: 80 } // Make events column wider
+        }
+    });
+
+    doc.save(`Student_Report_${filterCategory}.pdf`);
+    toast({ title: "Downloaded", description: `Report for ${filterCategory} generated.` });
+  }
+
+  // Add Event
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
@@ -118,35 +159,30 @@ export default function EventsPage() {
     }
   }
 
-  // 🔥 BULK DATA SUBMIT (TEXT INPUT)
+  // Bulk Submit
   const handleBulkSubmit = async () => {
     try {
         if (!bulkJsonData.trim()) return
-
         const parsedData = JSON.parse(bulkJsonData)
-        
-        if (!Array.isArray(parsedData)) {
-            throw new Error("Invalid Format: Data must be an array [...]")
-        }
+        if (!Array.isArray(parsedData)) throw new Error("Invalid Format")
 
         setRefreshing(true)
         await axios.post('/api/events/bulk', parsedData)
         
-        toast({ title: "Bulk Import Success", description: `Added ${parsedData.length} events!` })
+        toast({ title: "Success", description: `Added ${parsedData.length} events!` })
         setBulkJsonData("")
         setIsBulkDialogOpen(false)
         fetchData(true)
     } catch (error: any) {
-        toast({ variant: "destructive", title: "Invalid JSON", description: error.message || "Check your JSON format." })
+        toast({ variant: "destructive", title: "Invalid JSON", description: error.message })
         setRefreshing(false)
     }
   }
 
-  // DELETE SINGLE
+  // Delete Handlers
   const handleDelete = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation()
     if (!confirm("Are you sure?")) return
-
     try {
         await axios.delete(`/api/events?id=${id}`)
         toast({ title: "Deleted", description: "Event deleted successfully" })
@@ -156,7 +192,6 @@ export default function EventsPage() {
     }
   }
 
-  // DELETE ALL
   const handleDeleteAll = async () => {
     try {
         await axios.delete('/api/events/reset') 
@@ -194,8 +229,6 @@ export default function EventsPage() {
         </div>
         
         <div className="flex items-center gap-2 flex-wrap">
-            
-            {/* 🔥 BULK JSON TEXT INPUT DIALOG (Fixed Layout) */}
             <Dialog open={isBulkDialogOpen} onOpenChange={setIsBulkDialogOpen}>
                 <DialogTrigger asChild>
                     <Button variant="outline" className="border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100">
@@ -205,56 +238,24 @@ export default function EventsPage() {
                 <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
                         <DialogTitle>Import Events (JSON)</DialogTitle>
-                        <DialogDescription>
-                            Paste your JSON array below. Use this to add multiple events at once.
-                        </DialogDescription>
+                        <DialogDescription>Paste your JSON array below.</DialogDescription>
                     </DialogHeader>
-                    
                     <div className="space-y-4 py-2">
-                        {/* Example Block - Styled Dark */}
-                        <div className="rounded-md bg-slate-950 p-4 border border-slate-800">
-                            <p className="text-[10px] text-slate-400 font-bold uppercase mb-2 tracking-wider">Required Format:</p>
-                            <div className="overflow-x-auto">
-                                <pre className="text-xs text-green-400 font-mono whitespace-pre">
-{`[
-  { 
-    "name": "Qwali", 
-    "category": "General-B", 
-    "type": "Stage", 
-    "groupEvent": true 
-  },
-  { 
-    "name": "Essay", 
-    "category": "Beta", 
-    "type": "Non-Stage", 
-    "groupEvent": false 
-  }
-]`}
-                                </pre>
-                            </div>
-                        </div>
-
                         <div className="space-y-2">
-                            <label className="text-sm font-medium">JSON Data</label>
                             <textarea 
-                                className="w-full h-48 p-3 font-mono text-xs border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50 resize-y"
-                                placeholder="Paste your JSON array here..."
+                                className="w-full h-48 p-3 font-mono text-xs border rounded-md focus:outline-none bg-slate-50 resize-y"
+                                placeholder='[{"name": "Essay", "category": "Beta", "type": "Non-Stage"}]'
                                 value={bulkJsonData}
                                 onChange={(e) => setBulkJsonData(e.target.value)}
                             ></textarea>
-                            <p className="text-[10px] text-slate-500">Ensure the JSON is valid and contains an array of objects.</p>
                         </div>
                     </div>
-
                     <DialogFooter>
-                        <Button onClick={handleBulkSubmit} className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700">
-                            Import Data
-                        </Button>
+                        <Button onClick={handleBulkSubmit} className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700">Import Data</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
 
-            {/* DELETE ALL BUTTON */}
             <AlertDialog>
                 <AlertDialogTrigger asChild>
                     <Button variant="destructive" className="bg-red-50 text-red-600 hover:bg-red-100 border border-red-200">
@@ -263,16 +264,12 @@ export default function EventsPage() {
                 </AlertDialogTrigger>
                 <AlertDialogContent>
                     <AlertDialogHeader>
-                        <AlertDialogTitle className="text-red-600 flex items-center gap-2">
-                            <AlertTriangle className="w-5 h-5" /> Warning: Delete All Events?
-                        </AlertDialogTitle>
-                        <AlertDialogDescription>
-                            This will permanently delete <b>ALL EVENTS</b>. This action cannot be undone.
-                        </AlertDialogDescription>
+                        <AlertDialogTitle className="text-red-600">Delete All Events?</AlertDialogTitle>
+                        <AlertDialogDescription>This will permanently delete <b>ALL EVENTS</b>. Cannot be undone.</AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleDeleteAll} className="bg-red-600 hover:bg-red-700">Yes, Delete Everything</AlertDialogAction>
+                        <AlertDialogAction onClick={handleDeleteAll} className="bg-red-600 hover:bg-red-700">Yes, Delete</AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
@@ -290,17 +287,12 @@ export default function EventsPage() {
                 <form onSubmit={handleSubmit} className="space-y-4 pt-4">
                 <div className="space-y-2">
                     <label className="text-sm font-medium">Event Name</label>
-                    <Input 
-                        placeholder="e.g. Mappilapattu" 
-                        value={formData.name} 
-                        onChange={e => setFormData({...formData, name: e.target.value})} 
-                        required 
-                    />
+                    <Input placeholder="e.g. Mappilapattu" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} required />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                         <label className="text-sm font-medium">Type</label>
-                        <Select value={formData.type} onValueChange={v => setFormData({...formData, type: v})}>
+                        <Select value={formData.type} onValueChange={v => setFormData({...formData, type: v as any})}>
                             <SelectTrigger><SelectValue /></SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="Stage">Stage</SelectItem>
@@ -318,20 +310,10 @@ export default function EventsPage() {
                         </Select>
                     </div>
                 </div>
-
                 <div className="flex items-center gap-2 border p-3 rounded-md bg-slate-50">
-                    <input 
-                        type="checkbox" 
-                        id="isGroup"
-                        className="w-4 h-4 text-slate-900 border-slate-300 rounded focus:ring-slate-900 cursor-pointer"
-                        checked={formData.groupEvent}
-                        onChange={e => setFormData({...formData, groupEvent: e.target.checked})}
-                    />
-                    <label htmlFor="isGroup" className="text-sm font-medium cursor-pointer select-none">
-                        Is Group Event? <span className="text-slate-500 font-normal ml-1">(Higher Points: 25, 20...)</span>
-                    </label>
+                    <input type="checkbox" id="isGroup" className="w-4 h-4" checked={formData.groupEvent} onChange={e => setFormData({...formData, groupEvent: e.target.checked})} />
+                    <label htmlFor="isGroup" className="text-sm font-medium">Is Group Event?</label>
                 </div>
-
                 <Button type="submit" className="w-full">Save Event</Button>
                 </form>
             </DialogContent>
@@ -339,17 +321,12 @@ export default function EventsPage() {
         </div>
       </div>
 
-      {/* TABS & FILTERS */}
+      {/* TABS */}
       <div className="flex flex-col gap-4 bg-slate-50/50 p-1 rounded-xl">
         <div className="flex p-1 bg-white rounded-lg border w-fit shadow-sm self-start">
-            <button onClick={() => setActiveTypeTab("Stage")} className={`px-6 py-2 rounded-md text-sm font-semibold transition-all ${activeTypeTab === "Stage" ? "bg-purple-100 text-purple-700 shadow-sm" : "text-slate-500 hover:bg-slate-50"}`}>
-                🎤 Stage Events
-            </button>
-            <button onClick={() => setActiveTypeTab("Non-Stage")} className={`px-6 py-2 rounded-md text-sm font-semibold transition-all ${activeTypeTab === "Non-Stage" ? "bg-teal-100 text-teal-700 shadow-sm" : "text-slate-500 hover:bg-slate-50"}`}>
-                ✍️ Non-Stage Items
-            </button>
+            <button onClick={() => setActiveTypeTab("Stage")} className={`px-6 py-2 rounded-md text-sm font-semibold transition-all ${activeTypeTab === "Stage" ? "bg-purple-100 text-purple-700 shadow-sm" : "text-slate-500 hover:bg-slate-50"}`}>🎤 Stage Events</button>
+            <button onClick={() => setActiveTypeTab("Non-Stage")} className={`px-6 py-2 rounded-md text-sm font-semibold transition-all ${activeTypeTab === "Non-Stage" ? "bg-teal-100 text-teal-700 shadow-sm" : "text-slate-500 hover:bg-slate-50"}`}>✍️ Non-Stage Items</button>
         </div>
-
         <div className="flex flex-col sm:flex-row gap-4 justify-between items-center">
             <div className="flex gap-2 overflow-x-auto pb-2 w-full sm:w-auto no-scrollbar">
                 <Button variant={filterCategory === "All" ? "default" : "outline"} onClick={() => setFilterCategory("All")} size="sm" className="rounded-full">All</Button>
@@ -357,9 +334,17 @@ export default function EventsPage() {
                     <Button key={c} variant={filterCategory === c ? "default" : "outline"} onClick={() => setFilterCategory(c)} size="sm" className="rounded-full">{c}</Button>
                 ))}
             </div>
-            <div className="relative w-full sm:max-w-xs">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <Input placeholder="Search events..." className="pl-9 bg-white" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
+            
+            {/* 🔥 SEARCH & PDF BUTTON AREA */}
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+                <div className="relative w-full sm:max-w-xs">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <Input placeholder="Search events..." className="pl-9 bg-white" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
+                </div>
+                {/* PDF BUTTON FOR ADMIN */}
+                <Button onClick={downloadStudentReportPDF} variant="outline" size="icon" className="bg-white border-slate-300 hover:bg-slate-100" title="Download Student List PDF">
+                    <Download className="w-4 h-4 text-slate-700" />
+                </Button>
             </div>
         </div>
       </div>
@@ -368,9 +353,7 @@ export default function EventsPage() {
       {loading ? (
         <div className="py-20 text-center"><Loader2 className="animate-spin h-10 w-10 mx-auto text-slate-400" /></div>
       ) : filteredEvents.length === 0 ? (
-        <div className="text-center py-16 text-slate-500 bg-white rounded-xl border border-dashed">
-            <p>No {activeTypeTab} events found in {filterCategory}.</p>
-        </div>
+        <div className="text-center py-16 text-slate-500 bg-white rounded-xl border border-dashed"><p>No events found.</p></div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {filteredEvents.map((event) => {
@@ -379,33 +362,18 @@ export default function EventsPage() {
                     <Card key={event._id} className="hover:shadow-md transition-all cursor-pointer group border-slate-200 relative overflow-hidden" onClick={() => handleEventClick(event)}>
                         <CardHeader className="pb-3">
                             <div className="flex justify-between items-start gap-2">
-                                <CardTitle className="text-base font-bold group-hover:text-blue-600 transition-colors line-clamp-1 pr-6" title={event.name}>
-                                    {event.name}
-                                </CardTitle>
-                                
-                                {/* SINGLE DELETE BUTTON */}
+                                <CardTitle className="text-base font-bold group-hover:text-blue-600 transition-colors line-clamp-1 pr-6" title={event.name}>{event.name}</CardTitle>
                                 <div className="absolute top-2 right-2 flex flex-col items-end gap-1">
-                                    <Button 
-                                        variant="ghost" 
-                                        size="icon" 
-                                        className="h-6 w-6 text-slate-300 hover:text-red-600 hover:bg-red-50 rounded-full"
-                                        onClick={(e) => handleDelete(e, event._id)}
-                                    >
-                                        <Trash2 className="w-3.5 h-3.5" />
-                                    </Button>
+                                    <Button variant="ghost" size="icon" className="h-6 w-6 text-slate-300 hover:text-red-600 hover:bg-red-50 rounded-full" onClick={(e) => handleDelete(e, event._id)}><Trash2 className="w-3.5 h-3.5" /></Button>
                                 </div>
                             </div>
-                            
                             <div className="flex items-center gap-1 mt-1">
                                 <Badge variant="outline" className="text-[10px] shrink-0">{event.category}</Badge>
                                 {event.groupEvent && <Badge variant="secondary" className="text-[9px] bg-yellow-100 text-yellow-800 hover:bg-yellow-200">Group</Badge>}
                             </div>
                         </CardHeader>
                         <CardFooter className="pt-3 text-xs text-slate-500 border-t bg-slate-50/50 rounded-b-xl flex justify-between items-center">
-                            <div className="flex items-center gap-1.5 font-medium">
-                                <Users className="w-3.5 h-3.5" /> 
-                                {participants.length} Participants
-                            </div>
+                            <div className="flex items-center gap-1.5 font-medium"><Users className="w-3.5 h-3.5" /> {participants.length} Participants</div>
                             <span className="text-blue-600 font-medium text-[10px] opacity-0 group-hover:opacity-100 transition-opacity uppercase tracking-wider">View</span>
                         </CardFooter>
                     </Card>
@@ -414,45 +382,31 @@ export default function EventsPage() {
         </div>
       )}
 
-      {/* VIEW DIALOG - FIXED SCROLLING */}
+      {/* VIEW DIALOG (REMOVED OLD PDF BUTTON) */}
       <Dialog open={isViewOpen} onOpenChange={setIsViewOpen}>
         <DialogContent className="max-w-2xl">
-            <DialogHeader>
-                <DialogTitle className="text-xl flex items-center gap-2">
-                    {selectedEvent?.name} <Badge variant="secondary">{selectedEvent?.category}</Badge>
-                    {selectedEvent?.groupEvent && <Badge className="bg-yellow-100 text-yellow-800">Group</Badge>}
-                </DialogTitle>
-                <p className="text-sm text-slate-500">
-                    Total Registrations: {selectedEvent ? (participantsMap[selectedEvent._id]?.length || 0) : 0}
-                </p>
+            <DialogHeader className="flex flex-row items-center justify-between space-y-0 pb-2 border-b mb-2">
+                <div>
+                    <DialogTitle className="text-xl flex items-center gap-2">
+                        {selectedEvent?.name} <Badge variant="secondary">{selectedEvent?.category}</Badge>
+                    </DialogTitle>
+                    <p className="text-sm text-slate-500 mt-1">
+                        Total Registrations: {selectedEvent ? (participantsMap[selectedEvent._id]?.length || 0) : 0}
+                    </p>
+                </div>
             </DialogHeader>
-            {/* ✅ ADDED FIXED HEIGHT TO SCROLLAREA TO PREVENT LAYOUT BREAKING */}
-            <ScrollArea className="h-[60vh] pr-4 mt-2 border rounded-md p-2">
+            <ScrollArea className="h-[60vh] pr-4">
                 <div className="space-y-2">
                     {selectedEvent && (!participantsMap[selectedEvent._id] || participantsMap[selectedEvent._id].length === 0) ? (
-                        <div className="text-center py-12 text-slate-500 border border-dashed rounded-lg bg-slate-50">
-                            No students registered for this event yet.
-                        </div>
+                        <div className="text-center py-12 text-slate-500 border border-dashed rounded-lg bg-slate-50">No students registered yet.</div>
                     ) : (
                         selectedEvent && participantsMap[selectedEvent._id]?.map((student) => (
-                            <div 
-                                key={student._id} 
-                                onClick={() => handleStudentClick(student)}
-                                className="flex items-center justify-between p-3 rounded-lg border bg-white hover:bg-slate-50 hover:border-blue-200 cursor-pointer transition-all group"
-                            >
+                            <div key={student._id} onClick={() => handleStudentClick(student)} className="flex items-center justify-between p-3 rounded-lg border bg-white hover:bg-slate-50 cursor-pointer transition-all">
                                 <div className="flex items-center gap-3">
-                                    <div className={`w-9 h-9 rounded-full flex items-center justify-center font-bold text-xs shadow-sm
-                                        ${student.team === 'Auris' ? 'bg-yellow-100 text-yellow-700' : 'bg-blue-100 text-blue-700'}`}>
-                                        {student.chestNo}
-                                    </div>
-                                    <div>
-                                        <p className="font-semibold text-sm text-slate-900 group-hover:text-blue-700">{student.name}</p>
-                                        <p className="text-xs text-slate-500">{student.team} • {student.category}</p>
-                                    </div>
+                                    <div className={`w-9 h-9 rounded-full flex items-center justify-center font-bold text-xs shadow-sm ${student.team === 'Auris' ? 'bg-yellow-100 text-yellow-700' : 'bg-blue-100 text-blue-700'}`}>{student.chestNo}</div>
+                                    <div><p className="font-semibold text-sm text-slate-900">{student.name}</p><p className="text-xs text-slate-500">{student.team} • {student.category}</p></div>
                                 </div>
-                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-slate-400 group-hover:text-blue-600">
-                                    <Eye className="w-4 h-4" />
-                                </Button>
+                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-slate-400"><Eye className="w-4 h-4" /></Button>
                             </div>
                         ))
                     )}
@@ -464,37 +418,20 @@ export default function EventsPage() {
       {/* STUDENT DETAILS DIALOG */}
       <Dialog open={isStudentViewOpen} onOpenChange={setIsStudentViewOpen}>
         <DialogContent className="max-w-md">
-            <DialogHeader>
-                <DialogTitle className="flex items-center gap-2 text-base text-slate-500">
-                   Student Details
-                </DialogTitle>
-            </DialogHeader>
+            <DialogHeader><DialogTitle>Student Details</DialogTitle></DialogHeader>
             {selectedStudent && (
                 <div className="space-y-6">
                     <div className="flex flex-col items-center p-6 bg-slate-50 rounded-xl border border-slate-100">
-                        <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center text-xl font-bold border shadow-sm mb-3">
-                            {selectedStudent.chestNo}
-                        </div>
+                        <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center text-xl font-bold border shadow-sm mb-3">{selectedStudent.chestNo}</div>
                         <h2 className="text-xl font-bold text-slate-900">{selectedStudent.name}</h2>
-                        <div className="flex gap-2 mt-2">
-                            <Badge variant="secondary" className="bg-white hover:bg-white border">{selectedStudent.team}</Badge>
-                            <Badge variant="secondary" className="bg-white hover:bg-white border">{selectedStudent.category}</Badge>
-                        </div>
+                        <div className="flex gap-2 mt-2"><Badge variant="secondary">{selectedStudent.team}</Badge><Badge variant="secondary">{selectedStudent.category}</Badge></div>
                     </div>
-
                     <div>
-                        <h4 className="font-semibold text-sm mb-3 flex items-center gap-2 text-slate-900">
-                            <Calendar className="w-4 h-4 text-blue-500" /> 
-                            Registered Events <span className="text-slate-400 font-normal">({selectedStudent.registeredEvents?.length || 0})</span>
-                        </h4>
-                        <ScrollArea className="h-[200px] -mr-4 pr-4">
-                            <div className="space-y-2">
-                                {selectedStudent.registeredEvents?.map((ev, i) => (
-                                    <div key={i} className="p-3 border rounded-lg text-sm flex justify-between items-center bg-white hover:border-slate-300 transition-colors">
-                                        <span className="font-medium text-slate-700">{ev.name || "Unknown Event"}</span>
-                                    </div>
-                                ))}
-                            </div>
+                        <h4 className="font-semibold text-sm mb-3">Registered Events ({selectedStudent.registeredEvents?.length || 0})</h4>
+                        <ScrollArea className="h-[200px] border rounded-md p-2">
+                            {selectedStudent.registeredEvents?.map((ev, i) => (
+                                <div key={i} className="p-2 border-b last:border-0 text-sm font-medium text-slate-700">{ev.name}</div>
+                            ))}
                         </ScrollArea>
                     </div>
                 </div>

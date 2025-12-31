@@ -39,8 +39,8 @@ const RESTRICTED_LIMIT_EVENTS = [
   "vlogmaking", 
   "hifz", 
   "azan",
-  "swarafdebate", // Correct spelling
-  "swarfdebate"   // ✅ Typo spelling from screenshot
+  "swarafdebate", 
+  "swarfdebate"
 ];
 
 export default function AdminRegistrations() {
@@ -62,6 +62,9 @@ export default function AdminRegistrations() {
   const [formData, setFormData] = useState({ name: "", team: "Auris", category: "Alpha" });
   const [selectedEvents, setSelectedEvents] = useState<any[]>([]);
   const [activeRegTab, setActiveRegTab] = useState<"Stage" | "Non-Stage">("Stage");
+  
+  // 🔥 NEW: Search State for Registration Modal
+  const [regSearchQuery, setRegSearchQuery] = useState("");
 
   useEffect(() => {
     fetchData();
@@ -128,22 +131,22 @@ export default function AdminRegistrations() {
         // Add Event - LOGIC CHECKS
         const isGeneral = event.category.toLowerCase().includes("general");
         const isStage = event.type === "Stage";
-        
-        const eventName = normalizeString(event.name);
-        // ✅ Updated Group Logic for Swarf Debate
-        const isGroup = event.groupEvent === true || 
-                        eventName === "histoart" || 
-                        eventName === "dictionarymaking" || 
-                        eventName === "swarafdebate" || 
-                        eventName === "swarfdebate"; // ✅ Added
+        const isGroup = event.groupEvent === true;
 
-        const isRestricted = RESTRICTED_LIMIT_EVENTS.includes(eventName);
+        const eventNameNormalized = normalizeString(event.name);
+        // ✅ Updated Group Logic for Swarf Debate
+        const isSpecialGroup = event.groupEvent === true || 
+                        eventNameNormalized === "histoart" || 
+                        eventNameNormalized === "dictionarymaking" || 
+                        eventNameNormalized === "swarafdebate" || 
+                        eventNameNormalized === "swarfdebate"; 
+
+        const isRestricted = RESTRICTED_LIMIT_EVENTS.includes(eventNameNormalized);
 
         // 1️⃣ TEAM LIMIT CHECK (Applies to Stage Events OR Restricted Non-Stage Events)
-        if (event.teamLimit || (isStage && !isGroup) || isRestricted) {
+        if (event.teamLimit || (isStage && !isSpecialGroup) || isRestricted) {
             const limit = event.teamLimit || 3;
             
-            // ✅ LOGIC: Count students in same TEAM AND same CATEGORY
             const count = students.filter(s => 
                 s.team === formData.team && 
                 s.category === formData.category && // <-- Counts only within the category
@@ -162,7 +165,7 @@ export default function AdminRegistrations() {
 
         // 2️⃣ INDIVIDUAL STUDENT LIMIT (Max 6 Stage Events)
         // Excludes Group events and General events from the count
-        if (isStage && !isGroup && !isGeneral) {
+        if (isStage && !isSpecialGroup && !isGeneral) {
             const currentStageCount = selectedEvents.filter(e => {
                 const nName = normalizeString(e.name);
                 const eIsGrp = e.groupEvent === true || nName === "histoart" || nName === "dictionarymaking" || nName === "swarafdebate" || nName === "swarfdebate";
@@ -185,7 +188,7 @@ export default function AdminRegistrations() {
             isStar: false, 
             type: event.type, 
             category: event.category, 
-            groupEvent: isGroup,
+            groupEvent: isSpecialGroup,
             teamLimit: event.teamLimit
         }]);
     }
@@ -201,7 +204,7 @@ export default function AdminRegistrations() {
 
       const name = normalizeString(target.name);
       
-      // 🚫 Block Stars for Swarf Debate
+      // 🚫 Block Stars for Special Events
       if (name === "speechtranslation" || name === "dictionarymaking" || name === "swarafdebate" || name === "swarfdebate") {
           return toast({ variant: "destructive", title: "Action Not Allowed", description: "This event does not need a star." });
       }
@@ -241,6 +244,7 @@ export default function AdminRegistrations() {
       setIsEditMode(false);
       setFormData({ name: "", team: "Auris", category: "Alpha" });
       setSelectedEvents([]);
+      setRegSearchQuery(""); // Clear search
   };
 
   // Filtering
@@ -251,11 +255,23 @@ export default function AdminRegistrations() {
   });
 
   const regModalEvents = events.filter(e => {
+      // 1. Filter by Type (Stage/Non-Stage)
       if (e.type !== activeRegTab) return false;
-      if (e.category === formData.category) return true;
-      if (formData.category === "Alpha" && e.category === "General-A") return true;
-      if ((formData.category === "Beta" || formData.category === "Omega") && e.category === "General-B") return true;
-      return false;
+      
+      // 2. Filter by Category
+      let categoryMatch = false;
+      if (e.category === formData.category) categoryMatch = true;
+      else if (formData.category === "Alpha" && e.category === "General-A") categoryMatch = true;
+      else if ((formData.category === "Beta" || formData.category === "Omega") && e.category === "General-B") categoryMatch = true;
+      
+      if (!categoryMatch) return false;
+
+      // 3. Filter by Search Query
+      if (regSearchQuery && !e.name.toLowerCase().includes(regSearchQuery.toLowerCase())) {
+          return false;
+      }
+
+      return true;
   });
 
   const starCount = selectedEvents.filter(e => e.isStar && e.type === "Non-Stage").length;
@@ -381,13 +397,22 @@ export default function AdminRegistrations() {
                           {activeRegTab === "Non-Stage" && <Badge variant="outline" className="bg-yellow-100 text-yellow-700 border-yellow-200"><Star className="w-3 h-3 mr-1 fill-current" /> {starCount}/{starLimit} Stars Used</Badge>}
                       </div>
                       
+                      {/* 🔥 ADDED SEARCH INPUT */}
+                      <div className="relative mb-2">
+                        <Search className="absolute left-2 top-2 h-3 w-3 text-slate-400" />
+                        <Input 
+                            placeholder="Search events..." 
+                            className="pl-7 h-7 text-xs bg-white border-slate-200 focus-visible:ring-purple-500" 
+                            value={regSearchQuery}
+                            onChange={(e) => setRegSearchQuery(e.target.value)}
+                        />
+                      </div>
+
                       <div className="h-48 overflow-y-auto pr-2 custom-scrollbar space-y-2">
                           {regModalEvents.map(ev => {
                               const isSel = selectedEvents.find(s => s.eventId === ev._id);
-                              // ✅ CHECK: Case-Insensitive Speech Translation
                               const isSpeechTrans = normalizeString(ev.name) === "speechtranslation" && ev.category === "Omega";
                               const isGeneral = ev.category.toLowerCase().includes("general");
-                              // ✅ Updated Group Logic for Swaraf Debate
                               const isGroup = ev.groupEvent === true || 
                                               normalizeString(ev.name) === "histoart" || 
                                               normalizeString(ev.name) === "dictionarymaking" || 
@@ -395,7 +420,7 @@ export default function AdminRegistrations() {
                                               normalizeString(ev.name) === "swarfdebate"; 
 
                               return (
-                                  <div key={ev._id} className={`flex justify-between items-center p-2 border rounded-md transition-all ${isSel ? 'bg-white border-purple-200 shadow-sm' : 'border-slate-100 hover:bg-slate-50'}`}>
+                                  <div key={ev._id} className={`flex justify-between items-center p-2 border rounded-md transition-all ${isSel ? 'bg-white border-purple-300 shadow-sm' : 'border-slate-100 hover:bg-slate-50'}`}>
                                       <div className="flex items-center gap-2 overflow-hidden">
                                           <span className="text-xs font-medium text-slate-700 truncate max-w-[150px]">{ev.name}</span>
                                           {isGeneral && <Badge className="text-[8px] h-4 px-1 bg-slate-800">Gen</Badge>}
