@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import axios from "axios"
-import { Users, Calendar, Trophy, ClipboardList, Star, PenTool, Lock, Unlock, Power, Settings, Key, UserCog, ShieldCheck } from "lucide-react"
+import { Users, Calendar, Trophy, ClipboardList, Star, PenTool, Lock, Unlock, Power, Settings, UserCog, ShieldCheck, Award } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -11,6 +11,16 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
+
+// ✅ UPDATED POINTS SYSTEM - Matches results and team dashboard
+const INDIVIDUAL_POINTS: any = { "A+": 11, "A": 10, "B": 7, "C": 5 };
+const OTHER_GRADE_POINTS: any = { "A+": 6, "A": 4, "B": 3, "C": 1 };
+const GROUP_POINTS: any = { "A+": 25, "A": 20, "B": 13, "C": 7 };
+
+const normalizeString = (str: string) => {
+  if (!str) return "";
+  return str.toLowerCase().replace(/[^a-z0-9]/g, "");
+};
 
 // --- COMPONENTS ---
 
@@ -44,7 +54,7 @@ function ChampionCard({ title, student, icon: Icon, subTitle }: any) {
             </div>
             <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0 relative z-10">
                 <CardTitle className="text-sm font-bold text-yellow-700 uppercase tracking-wider">{title}</CardTitle>
-                <Icon className="h-5 w-5 text-yellow-500" />
+                <Icon className="h-5 h-5 text-yellow-500" />
             </CardHeader>
             <CardContent className="relative z-10">
                 <div className="text-2xl font-black text-slate-800 truncate" title={student.name}>{student.name}</div>
@@ -53,6 +63,7 @@ function ChampionCard({ title, student, icon: Icon, subTitle }: any) {
                      <Badge className={student.team === "Auris" ? "bg-amber-100 text-amber-700 hover:bg-amber-200 border-amber-200" : "bg-violet-100 text-violet-700 hover:bg-violet-200 border-violet-200"}>
                         {student.team}
                      </Badge>
+                     <Badge variant="outline" className="text-xs bg-slate-100 text-slate-600">{student.category}</Badge>
                 </div>
                 <div className="mt-4 pt-3 border-t border-dashed">
                     <p className="text-xs text-slate-500 font-medium">
@@ -79,7 +90,7 @@ export default function AdminDashboard() {
   const [isCredModalOpen, setIsCredModalOpen] = useState(false)
   const [credData, setCredData] = useState({ currentUsername: "", oldPassword: "", newUsername: "", newPassword: "" })
   
-  // Team Credentials Modal (NEW)
+  // Team Credentials Modal
   const [isTeamModalOpen, setIsTeamModalOpen] = useState(false)
   const [teamCredData, setTeamCredData] = useState({ team: "", newUsername: "", newPassword: "" })
   const [updating, setUpdating] = useState(false)
@@ -149,7 +160,7 @@ export default function AdminDashboard() {
     }
   }
 
-  // Handle Team Credentials Update (NEW)
+  // Handle Team Credentials Update
   const handleUpdateTeamCreds = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!teamCredData.team) return toast({ variant: "destructive", title: "Select Team", description: "Please select a team first." })
@@ -167,7 +178,14 @@ export default function AdminDashboard() {
     }
   }
 
-  if (loading || !stats) return <div className="flex h-screen items-center justify-center text-slate-400">Loading Dashboard...</div>
+  if (loading || !stats) return (
+    <div className="flex h-screen items-center justify-center">
+      <div className="text-center space-y-3">
+        <div className="w-12 h-12 border-4 border-slate-200 border-t-emerald-600 rounded-full animate-spin mx-auto"></div>
+        <p className="text-slate-400 font-medium">Loading Dashboard...</p>
+      </div>
+    </div>
+  )
 
   return (
     <div className="space-y-8 p-6 bg-slate-50/50 min-h-screen">
@@ -198,11 +216,11 @@ export default function AdminDashboard() {
                     size="sm"
                     className="ml-auto font-bold shadow-sm"
                 >
-                    <Power className="w-4 h-4" />
+                    {toggling ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <Power className="w-4 h-4" />}
                 </Button>
             </div>
 
-            {/* 2. Team Settings Button (NEW) */}
+            {/* 2. Team Settings Button */}
             <Button 
                 onClick={() => setIsTeamModalOpen(true)}
                 className="h-auto bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 gap-2 shadow-sm rounded-xl px-4"
@@ -271,28 +289,36 @@ export default function AdminDashboard() {
       {/* 4. CATEGORY CHAMPIONS */}
       <div>
         <h2 className="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2">
-            <Users className="w-5 h-5 text-slate-600" /> Category Champions
+            <Award className="w-5 h-5 text-slate-600" /> Category Champions
         </h2>
         <div className="grid md:grid-cols-3 gap-4">
             {['Alpha', 'Beta', 'Omega'].map((cat) => {
                 const catData = stats.champions?.[cat.toLowerCase()];
                 return (
-                    <Card key={cat} className="overflow-hidden flex flex-col">
-                        <CardHeader className="bg-slate-100/80 py-3 border-b">
-                            <CardTitle className="text-sm font-bold text-center uppercase tracking-wider text-slate-600">{cat} Category</CardTitle>
+                    <Card key={cat} className="overflow-hidden flex flex-col border-2">
+                        <CardHeader className="bg-gradient-to-r from-slate-100 to-slate-50 py-3 border-b-2 border-slate-200">
+                            <CardTitle className="text-sm font-black text-center uppercase tracking-wider text-slate-700 flex items-center justify-center gap-2">
+                                <Award className="w-4 h-4" /> {cat} Category
+                            </CardTitle>
                         </CardHeader>
-                        <CardContent className="p-0 flex-1 flex flex-col divide-y">
-                            <div className="p-3 flex items-center justify-between hover:bg-yellow-50/30 transition-colors">
+                        <CardContent className="p-0 flex-1 flex flex-col divide-y divide-slate-100">
+                            <div className="p-4 flex items-center justify-between hover:bg-yellow-50/30 transition-colors">
                                 <div className="flex items-center gap-3">
-                                    <div className="w-8 h-8 rounded-full bg-yellow-100 flex items-center justify-center">
-                                        <Star className="w-4 h-4 text-yellow-600" />
+                                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-yellow-100 to-yellow-200 flex items-center justify-center shadow-sm">
+                                        <Star className="w-5 h-5 text-yellow-600" />
                                     </div>
                                     <div>
                                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Star of {cat}</p>
                                         {catData?.star ? (
                                             <>
                                                 <p className="font-bold text-sm text-slate-800 line-clamp-1">{catData.star.name}</p>
-                                                <p className="text-[10px] text-slate-500">{catData.star.team} • {catData.star.stagePoints} pts</p>
+                                                <div className="flex items-center gap-2 mt-0.5">
+                                                    <Badge variant="outline" className="text-[9px] h-4 px-1">{catData.star.chestNo}</Badge>
+                                                    <Badge className={catData.star.team === "Auris" ? "text-[9px] h-4 px-1 bg-amber-100 text-amber-700" : "text-[9px] h-4 px-1 bg-violet-100 text-violet-700"}>
+                                                        {catData.star.team}
+                                                    </Badge>
+                                                    <span className="text-[10px] font-bold text-emerald-600">{catData.star.stagePoints} pts</span>
+                                                </div>
                                             </>
                                         ) : (
                                             <p className="text-xs text-slate-400 italic">Not declared</p>
@@ -300,17 +326,23 @@ export default function AdminDashboard() {
                                     </div>
                                 </div>
                             </div>
-                            <div className="p-3 flex items-center justify-between hover:bg-teal-50/30 transition-colors">
+                            <div className="p-4 flex items-center justify-between hover:bg-teal-50/30 transition-colors">
                                 <div className="flex items-center gap-3">
-                                    <div className="w-8 h-8 rounded-full bg-teal-100 flex items-center justify-center">
-                                        <PenTool className="w-4 h-4 text-teal-600" />
+                                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-teal-100 to-teal-200 flex items-center justify-center shadow-sm">
+                                        <PenTool className="w-5 h-5 text-teal-600" />
                                     </div>
                                     <div>
                                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Pen of {cat}</p>
                                         {catData?.pen ? (
                                             <>
                                                 <p className="font-bold text-sm text-slate-800 line-clamp-1">{catData.pen.name}</p>
-                                                <p className="text-[10px] text-slate-500">{catData.pen.team} • {catData.pen.nonStagePoints} pts</p>
+                                                <div className="flex items-center gap-2 mt-0.5">
+                                                    <Badge variant="outline" className="text-[9px] h-4 px-1">{catData.pen.chestNo}</Badge>
+                                                    <Badge className={catData.pen.team === "Auris" ? "text-[9px] h-4 px-1 bg-amber-100 text-amber-700" : "text-[9px] h-4 px-1 bg-violet-100 text-violet-700"}>
+                                                        {catData.pen.team}
+                                                    </Badge>
+                                                    <span className="text-[10px] font-bold text-blue-600">{catData.pen.nonStagePoints} pts</span>
+                                                </div>
                                             </>
                                         ) : (
                                             <p className="text-xs text-slate-400 italic">Not declared</p>
@@ -365,6 +397,7 @@ export default function AdminDashboard() {
                     <div className="space-y-1">
                         <Label>New Password</Label>
                         <Input 
+                            type="password"
                             value={credData.newPassword} 
                             onChange={(e) => setCredData({...credData, newPassword: e.target.value})} 
                             required
@@ -373,13 +406,15 @@ export default function AdminDashboard() {
                 </div>
                 <DialogFooter>
                     <Button type="button" variant="ghost" onClick={() => setIsCredModalOpen(false)}>Cancel</Button>
-                    <Button type="submit" className="bg-slate-900" disabled={updating}>Update</Button>
+                    <Button type="submit" className="bg-slate-900" disabled={updating}>
+                        {updating ? "Updating..." : "Update Admin Login"}
+                    </Button>
                 </DialogFooter>
             </form>
         </DialogContent>
       </Dialog>
 
-      {/* --- MODAL 2: TEAM CREDENTIALS (NEW) --- */}
+      {/* --- MODAL 2: TEAM CREDENTIALS --- */}
       <Dialog open={isTeamModalOpen} onOpenChange={setIsTeamModalOpen}>
         <DialogContent className="max-w-md">
             <DialogHeader>
@@ -389,7 +424,7 @@ export default function AdminDashboard() {
                 
                 <div className="space-y-2">
                     <Label>Select Team</Label>
-                    <Select onValueChange={(val) => setTeamCredData({...teamCredData, team: val})}>
+                    <Select value={teamCredData.team} onValueChange={(val) => setTeamCredData({...teamCredData, team: val})}>
                         <SelectTrigger><SelectValue placeholder="Choose a team" /></SelectTrigger>
                         <SelectContent>
                             <SelectItem value="Auris">Auris</SelectItem>
@@ -412,6 +447,7 @@ export default function AdminDashboard() {
                     <div className="space-y-1">
                         <Label>New Password</Label>
                         <Input 
+                            type="password"
                             value={teamCredData.newPassword} 
                             onChange={(e) => setTeamCredData({...teamCredData, newPassword: e.target.value})} 
                             placeholder="e.g. auris123"

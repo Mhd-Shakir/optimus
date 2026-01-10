@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogFooter } from "@/components/ui/dialog"
 import { Card, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Search, Loader2, Users, Eye, Calendar, RefreshCcw, Trash2, AlertTriangle, Code, Download } from "lucide-react"
+import { Search, Loader2, Users, Eye, Calendar, RefreshCcw, Trash2, AlertTriangle, Code, Download, Printer } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
@@ -103,16 +103,149 @@ export default function EventsPage() {
     return map
   }, [events, students])
 
-  // 🔥 NEW: CATEGORY WISE STUDENT REPORT PDF
+  // 🔥 NEW: PRINT EVENT PARTICIPANTS (WITHOUT CHEST NUMBER)
+  const printEventParticipants = (event: Event) => {
+    const participants = participantsMap[event._id] || [];
+    
+    // Sort by name alphabetically
+    participants.sort((a, b) => a.name.localeCompare(b.name));
+
+    // Create print window
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      toast({ variant: "destructive", title: "Error", description: "Please allow pop-ups to print" });
+      return;
+    }
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>${event.name} - Participants</title>
+        <style>
+          body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            margin: 0;
+          }
+          .header {
+            text-align: center;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #333;
+            padding-bottom: 10px;
+          }
+          .header h1 {
+            margin: 0 0 5px 0;
+            font-size: 24px;
+            color: #333;
+          }
+          .header p {
+            margin: 2px 0;
+            color: #666;
+            font-size: 12px;
+          }
+          table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+          }
+          th, td {
+            border: 1px solid #333;
+            padding: 10px 8px;
+            text-align: left;
+          }
+          th {
+            background-color: #9333ea;
+            color: white;
+            font-weight: bold;
+            font-size: 14px;
+          }
+          td {
+            font-size: 13px;
+          }
+          .si {
+            text-align: center;
+            width: 50px;
+          }
+          .name {
+            width: 200px;
+          }
+          .team {
+            width: 80px;
+            text-align: center;
+          }
+          .category {
+            width: 80px;
+            text-align: center;
+          }
+          .grade {
+            width: 100px;
+            text-align: center;
+            background-color: #f9f9f9;
+          }
+          @media print {
+            body {
+              padding: 10px;
+            }
+            .header h1 {
+              font-size: 20px;
+            }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1>${event.name}</h1>
+          <p><strong>Category:</strong> ${event.category} | <strong>Type:</strong> ${event.type}</p>
+          <p><strong>Total Participants:</strong> ${participants.length}</p>
+        </div>
+        
+        <table>
+          <thead>
+            <tr>
+              <th class="si">SI</th>
+              <th class="name">Name</th>
+              <th class="team">Team</th>
+              <th class="category">Category</th>
+              <th class="grade">Code Letter</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${participants.map((s, index) => `
+              <tr>
+                <td class="si">${index + 1}</td>
+                <td class="name">${s.name}</td>
+                <td class="team">${s.team}</td>
+                <td class="category">${s.category}</td>
+                <td class="grade"></td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </body>
+      </html>
+    `;
+
+    printWindow.document.write(html);
+    printWindow.document.close();
+    
+    // Auto print after content loads
+    printWindow.onload = () => {
+      printWindow.focus();
+      printWindow.print();
+    };
+
+    toast({ title: "Print Ready ✅", description: `${event.name} participant list opened.` });
+  }
+
+  // 📥 CATEGORY WISE STUDENT REPORT PDF
   const downloadStudentReportPDF = () => {
     const doc = new jsPDF();
     
-    // Filter students based on currently selected category
     const reportStudents = filterCategory === "All" 
         ? students 
         : students.filter(s => s.category === filterCategory);
 
-    // Sort by Chest No
     reportStudents.sort((a, b) => a.chestNo.localeCompare(b.chestNo));
 
     doc.setFontSize(18);
@@ -126,7 +259,7 @@ export default function EventsPage() {
         s.name,
         s.team,
         s.category,
-        s.registeredEvents.map(e => e.name).join(", ") // List all events
+        s.registeredEvents.map(e => e.name).join(", ")
     ]);
 
     autoTable(doc, {
@@ -134,10 +267,10 @@ export default function EventsPage() {
         head: [["Chest No", "Name", "Team", "Category", "Registered Events"]],
         body: tableBody,
         theme: "grid",
-        headStyles: { fillColor: [15, 23, 42] }, // Slate-900
+        headStyles: { fillColor: [15, 23, 42] },
         styles: { fontSize: 9, cellPadding: 2 },
         columnStyles: {
-            4: { cellWidth: 80 } // Make events column wider
+            4: { cellWidth: 80 }
         }
     });
 
@@ -325,7 +458,7 @@ export default function EventsPage() {
       <div className="flex flex-col gap-4 bg-slate-50/50 p-1 rounded-xl">
         <div className="flex p-1 bg-white rounded-lg border w-fit shadow-sm self-start">
             <button onClick={() => setActiveTypeTab("Stage")} className={`px-6 py-2 rounded-md text-sm font-semibold transition-all ${activeTypeTab === "Stage" ? "bg-purple-100 text-purple-700 shadow-sm" : "text-slate-500 hover:bg-slate-50"}`}>🎤 Stage Events</button>
-            <button onClick={() => setActiveTypeTab("Non-Stage")} className={`px-6 py-2 rounded-md text-sm font-semibold transition-all ${activeTypeTab === "Non-Stage" ? "bg-teal-100 text-teal-700 shadow-sm" : "text-slate-500 hover:bg-slate-50"}`}>✍️ Non-Stage Items</button>
+            <button onClick={() => setActiveTypeTab("Non-Stage")} className={`px-6 py-2 rounded-md text-sm font-semibold transition-all ${activeTypeTab === "Non-Stage" ? "bg-teal-100 text-teal-700 shadow-sm" : "text-slate-500 hover:bg-slate-50"}`}>✏️ Non-Stage Items</button>
         </div>
         <div className="flex flex-col sm:flex-row gap-4 justify-between items-center">
             <div className="flex gap-2 overflow-x-auto pb-2 w-full sm:w-auto no-scrollbar">
@@ -335,13 +468,13 @@ export default function EventsPage() {
                 ))}
             </div>
             
-            {/* 🔥 SEARCH & PDF BUTTON AREA */}
+            {/* SEARCH & PDF BUTTON AREA */}
             <div className="flex items-center gap-2 w-full sm:w-auto">
                 <div className="relative w-full sm:max-w-xs">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                     <Input placeholder="Search events..." className="pl-9 bg-white" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
                 </div>
-                {/* PDF BUTTON FOR ADMIN */}
+                {/* PDF BUTTON FOR STUDENT REPORT */}
                 <Button onClick={downloadStudentReportPDF} variant="outline" size="icon" className="bg-white border-slate-300 hover:bg-slate-100" title="Download Student List PDF">
                     <Download className="w-4 h-4 text-slate-700" />
                 </Button>
@@ -382,7 +515,7 @@ export default function EventsPage() {
         </div>
       )}
 
-      {/* VIEW DIALOG (REMOVED OLD PDF BUTTON) */}
+      {/* VIEW DIALOG WITH PDF BUTTON */}
       <Dialog open={isViewOpen} onOpenChange={setIsViewOpen}>
         <DialogContent className="max-w-2xl">
             <DialogHeader className="flex flex-row items-center justify-between space-y-0 pb-2 border-b mb-2">
@@ -394,6 +527,20 @@ export default function EventsPage() {
                         Total Registrations: {selectedEvent ? (participantsMap[selectedEvent._id]?.length || 0) : 0}
                     </p>
                 </div>
+                {/* 🔥 PRINT BUTTON FOR INDIVIDUAL EVENT */}
+                {selectedEvent && (
+                    <Button 
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            printEventParticipants(selectedEvent);
+                        }}
+                        variant="outline"
+                        size="sm"
+                        className="bg-purple-50 border-purple-200 text-purple-700 hover:bg-purple-100"
+                    >
+                        <Printer className="w-4 h-4 mr-2" /> Print
+                    </Button>
+                )}
             </DialogHeader>
             <ScrollArea className="h-[60vh] pr-4">
                 <div className="space-y-2">

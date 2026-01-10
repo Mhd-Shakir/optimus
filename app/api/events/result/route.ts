@@ -25,7 +25,9 @@ export async function POST(req: Request) {
             second: results.second || null,
             secondGrade: results.secondGrade || "",
             third: results.third || null,
-            thirdGrade: results.thirdGrade || ""
+            thirdGrade: results.thirdGrade || "",
+            // ✅ FIX: Save the "others" array to the database
+            others: results.others || [] 
         }
       },
       { new: true }
@@ -40,7 +42,6 @@ export async function POST(req: Request) {
   }
 }
 
-// ✅ DELETE FUNCTION (Fix for 405 Error)
 export async function DELETE(req: Request) {
   try {
     await connectToDb();
@@ -51,11 +52,13 @@ export async function DELETE(req: Request) {
     const updatedEvent = await Event.findByIdAndUpdate(
       eventId,
       {
-        status: "upcoming", // Reset status
+        status: "upcoming", 
         results: {
             first: null, firstGrade: "",
             second: null, secondGrade: "",
-            third: null, thirdGrade: ""
+            third: null, thirdGrade: "",
+            // ✅ FIX: Reset the "others" array when deleting
+            others: [] 
         }
       },
       { new: true }

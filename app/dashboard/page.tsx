@@ -18,9 +18,11 @@ import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
-// ... [CONSTANTS KEPT SAME] ...
-const INDIVIDUAL_POINTS: any = { "A+": 10, "A": 7, "B": 5, "C": 3 };
+// ✅ UPDATED POINTS SYSTEM
+const INDIVIDUAL_POINTS: any = { "A+": 11, "A": 10, "B": 7, "C": 5 };
+const OTHER_GRADE_POINTS: any = { "A+": 6, "A": 4, "B": 3, "C": 1 };
 const GROUP_POINTS: any = { "A+": 25, "A": 20, "B": 13, "C": 7 };
+
 const normalizeString = (str: string) => str ? str.toLowerCase().replace(/[^a-z0-9]/g, "") : "";
 const RESTRICTED_LIMIT_EVENTS = ["qiraath", "bookaliphs", "alfiyarecitation", "hadeesrecitation", "paperpresentationenglish", "idealdialogue", "hifzulmuthoon", "hiqaya", "maashira", "qiraathulibara", "thadrees", "poemlecturingmal", "poemlecturingeng", "poemlectureringenglish", "poemlectureringmalayalam", "vlogmaking", "hifz", "azan", "swarafdebate", "swarfdebate"];
 
@@ -34,7 +36,6 @@ export default function TeamDashboard() {
   const [students, setStudents] = useState<any[]>([]); 
   const [loading, setLoading] = useState(true);
   
-  // Registration States
   const [isRegOpen, setIsRegOpen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false); 
   const [editId, setEditId] = useState(""); 
@@ -45,7 +46,6 @@ export default function TeamDashboard() {
   const [isSystemRegOpen, setIsSystemRegOpen] = useState(true);
   const [regSearchQuery, setRegSearchQuery] = useState("");
 
-  // Stage Control States
   const [stageEventId, setStageEventId] = useState("");
   const [stageSearch, setStageSearch] = useState("");
   const [stageTab, setStageTab] = useState("All");
@@ -70,7 +70,6 @@ export default function TeamDashboard() {
         axios.get('/api/student/list')
       ]);
       setEvents(eventsRes.data);
-      // Filter students by team for dashboard view
       const teamStudents = studentsRes.data.filter((s: any) => s.team === user?.team);
       setStudents(teamStudents);
     } catch (error) { console.error(error); } finally { setLoading(false); }
@@ -78,7 +77,6 @@ export default function TeamDashboard() {
 
   const filteredStudents = activeCategory==="All"?students:students.filter((s:any)=>s.category===activeCategory);
 
-  // 🔥 NEW: CATEGORY WISE STUDENT REPORT PDF (FOR TEAM)
   const downloadCategoryPDF = () => {
     const doc = new jsPDF();
     const categoryName = activeCategory === "All" ? "All Categories" : `${activeCategory} Category`;
@@ -100,29 +98,53 @@ export default function TeamDashboard() {
         head: [["Chest No", "Name", "Category", "Registered Events"]],
         body: tableBody,
         theme: "grid",
-        headStyles: { fillColor: [147, 51, 234] }, // Purple
+        headStyles: { fillColor: [147, 51, 234] },
         styles: { fontSize: 9 },
         columnStyles: { 3: { cellWidth: 80 } }
     });
     doc.save(`Team_${user?.team}_${activeCategory}_Report.pdf`);
   }
 
-  // ... [Keep helpers] ...
+  // ✅ UPDATED: Get result with new points logic including "others"
   const getEventResult = (studentId: string, eventId: string) => {
       const event = events.find(e => e._id === eventId);
       if (!event || !event.results) return { rank: null, grade: null, points: 0 };
-      const { first, second, third, firstGrade, secondGrade, thirdGrade } = event.results;
-      let grade = ""; let rank = "";
+      
+      const { first, second, third, firstGrade, secondGrade, thirdGrade, others } = event.results;
+      
+      let grade = ""; 
+      let rank = "";
+      let isOtherPosition = false;
+
       if (first === studentId) { rank = "1st"; grade = firstGrade; }
       else if (second === studentId) { rank = "2nd"; grade = secondGrade; }
       else if (third === studentId) { rank = "3rd"; grade = thirdGrade; }
+      else if (others && Array.isArray(others)) {
+        const otherEntry = others.find((o: any) => o.studentId === studentId);
+        if (otherEntry) {
+          grade = otherEntry.grade;
+          isOtherPosition = true;
+        }
+      }
+
       if (!grade) return { rank: null, grade: null, points: 0 };
+
       const eventName = normalizeString(event.name);
       const isActuallyGroup = event.groupEvent === true || eventName === "histoart" || eventName === "dictionarymaking" || eventName === "swarafdebate" || eventName === "swarfdebate"; 
       const groupWithIndividualPoints = ["speechtranslation", "dictionarymaking", "swarafdebate", "swarfdebate"]; 
       const useGroupPoints = isActuallyGroup && !groupWithIndividualPoints.includes(eventName);
-      const pointMap = useGroupPoints ? GROUP_POINTS : INDIVIDUAL_POINTS;
-      const points = pointMap[grade] || 0;
+
+      let points = 0;
+      if (useGroupPoints) {
+        points = GROUP_POINTS[grade] || 0;
+      } else {
+        if (isOtherPosition) {
+          points = OTHER_GRADE_POINTS[grade] || 0;
+        } else {
+          points = INDIVIDUAL_POINTS[grade] || 0;
+        }
+      }
+
       return { rank, grade, points };
   };
 
@@ -275,7 +297,6 @@ export default function TeamDashboard() {
                 <div className="p-4 border-b border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div className="flex items-center gap-2"><Users className="w-4 h-4 text-slate-500" /><h3 className="text-sm font-bold text-slate-700 uppercase tracking-wide">Registered Students</h3></div>
                     <div className="flex items-center gap-2">
-                        {/* 🔥 NEW PDF BUTTON */}
                         <Button onClick={downloadCategoryPDF} size="sm" variant="outline" className="text-xs h-8 border-emerald-200 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 gap-1">
                             <Download className="w-3.5 h-3.5" /> PDF ({activeCategory})
                         </Button>
@@ -299,7 +320,6 @@ export default function TeamDashboard() {
         </>
         )}
 
-        {/* REGISTRATION MODAL */}
         <Dialog open={isRegOpen} onOpenChange={closeModal}>
           <DialogContent className="max-w-xl p-0 border-none shadow-2xl rounded-xl overflow-hidden bg-white">
             <div className="bg-emerald-600 px-5 py-3 flex justify-between items-center text-white shrink-0">
@@ -308,22 +328,18 @@ export default function TeamDashboard() {
             </div>
             <form onSubmit={handleRegister}>
               <div className="p-5 space-y-4">
-                {/* ... Inputs ... */}
                 <div className="grid grid-cols-3 gap-3 border border-slate-100 bg-slate-50/50 p-3 rounded-lg">
                   <div className="space-y-1"><label className="text-[10px] font-black uppercase text-slate-400">Name</label><Input value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} placeholder="Student Name" className="h-9 text-sm" /></div>
                   <div className="space-y-1"><label className="text-[10px] font-black uppercase text-slate-400">Team</label><div className="h-9 px-3 flex items-center bg-slate-200 text-slate-600 text-sm font-bold rounded-md border border-slate-300 cursor-not-allowed">{user?.team || "Loading..."}</div></div>
                   <div className="space-y-1"><label className="text-[10px] font-black uppercase text-slate-400">Category</label><Select value={formData.category} onValueChange={val => setFormData({...formData, category: val})}><SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Alpha">Alpha</SelectItem><SelectItem value="Beta">Beta</SelectItem><SelectItem value="Omega">Omega</SelectItem></SelectContent></Select></div>
                 </div>
-                {/* ... Tabs ... */}
                 <div className="flex border rounded-lg overflow-hidden h-9">
                   <button type="button" onClick={() => setActiveRegTab("Stage")} className={`flex-1 flex items-center justify-center gap-2 text-xs font-bold transition-all ${activeRegTab === "Stage" ? "bg-purple-600 text-white" : "bg-white text-slate-500 hover:bg-slate-50 border-r"}`}><Mic className="w-3 h-3" /> Stage</button>
                   <button type="button" onClick={() => setActiveRegTab("Non-Stage")} className={`flex-1 flex items-center justify-center gap-2 text-xs font-bold transition-all ${activeRegTab === "Non-Stage" ? "bg-white border-l shadow-inner" : "bg-white text-slate-500 hover:bg-slate-50"}`}><PenTool className="w-3 h-3" /> Non-Stage</button>
                 </div>
-                {/* ... List with Search ... */}
                 <div className="border border-purple-600 rounded-lg p-3 relative bg-purple-50/10">
                   <div className="flex justify-between items-center mb-2"><p className="text-purple-700 font-bold text-[10px] uppercase">{activeRegTab} Items<span className="ml-2 text-slate-400 font-normal">(Selected: {selectedEvents.filter(e => e.type === activeRegTab).length})</span></p>{activeRegTab === "Non-Stage" && (<div className="flex items-center gap-1 bg-yellow-100 px-2 py-0.5 rounded text-[10px] font-black text-yellow-700 border border-yellow-200"><Star className="w-3 h-3 fill-current" />{starCount}/{starLimit} Stars Used</div>)}</div>
                   
-                  {/* SEARCH ADDED */}
                   <div className="relative mb-2">
                     <Search className="absolute left-2 top-2 h-3 w-3 text-slate-400" />
                     <Input placeholder="Search events..." className="pl-7 h-7 text-xs bg-white border-slate-200" value={regSearchQuery} onChange={(e) => setRegSearchQuery(e.target.value)} />
@@ -351,7 +367,6 @@ export default function TeamDashboard() {
           </DialogContent>
         </Dialog>
         
-        {/* STUDENT SCORE CARD MODAL */}
         {viewStudent && (
           <Dialog open={!!viewStudent} onOpenChange={(open) => !open && setViewStudent(null)}>
             <DialogContent className="max-w-md w-full p-0 border-none rounded-xl overflow-hidden bg-white">
