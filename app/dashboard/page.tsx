@@ -18,11 +18,6 @@ import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
-// ✅ UPDATED POINTS SYSTEM
-const INDIVIDUAL_POINTS: any = { "A+": 11, "A": 10, "B": 7, "C": 5 };
-const OTHER_GRADE_POINTS: any = { "A+": 6, "A": 4, "B": 3, "C": 1 };
-const GROUP_POINTS: any = { "A+": 25, "A": 20, "B": 13, "C": 7 };
-
 const normalizeString = (str: string) => str ? str.toLowerCase().replace(/[^a-z0-9]/g, "") : "";
 const RESTRICTED_LIMIT_EVENTS = ["qiraath", "bookaliphs", "alfiyarecitation", "hadeesrecitation", "paperpresentationenglish", "idealdialogue", "hifzulmuthoon", "hiqaya", "maashira", "qiraathulibara", "thadrees", "poemlecturingmal", "poemlecturingeng", "poemlectureringenglish", "poemlectureringmalayalam", "vlogmaking", "hifz", "azan", "swarafdebate", "swarfdebate"];
 
@@ -53,6 +48,59 @@ export default function TeamDashboard() {
 
   const [formData, setFormData] = useState({ name: "", team: "", category: "Alpha" });
   const [selectedEvents, setSelectedEvents] = useState<any[]>([]);
+
+  // ✅ UPDATED POINTS CALCULATION - Matches Admin Results Logic
+  const getGradePoints = (grade: string, isGroup: boolean) => {
+    if (isGroup) {
+        if (grade === 'A+') return 15;
+        if (grade === 'A') return 10;
+        if (grade === 'B') return 5;
+        if (grade === 'C') return 2;
+        return 0;
+    } else {
+        if (grade === 'A+') return 6;
+        if (grade === 'A') return 5;
+        if (grade === 'B') return 3;
+        if (grade === 'C') return 1;
+        return 0;
+    }
+  };
+
+  const getPoints = (grade: string, event: any, position: string) => {
+    if (!event || !grade) return 0;
+
+    const eventName = normalizeString(event?.name || "");
+
+    const isGroupEvent = event.groupEvent === true ||
+                         eventName === "histoart" ||
+                         eventName === "dictionarymaking" ||
+                         eventName === "swarafdebate" ||
+                         eventName === "swarfdebate";
+
+    const individualPointExceptions = [
+        "speechtranslation",
+        "dictionarymaking",
+        "swarafdebate",
+        "swarfdebate"
+    ];
+
+    const useGroupPoints = isGroupEvent && !individualPointExceptions.includes(eventName);
+    const gradePoints = getGradePoints(grade, useGroupPoints);
+
+    if (useGroupPoints) {
+      // Group points: position + grade for top 3, grade-based for others
+      if (position === 'first') return 10 + gradePoints;
+      if (position === 'second') return 6 + gradePoints;
+      if (position === 'third') return 3 + gradePoints;
+      return gradePoints;
+    } else {
+      // Individual points: position + grade for top 3, grade-based for others
+      if (position === 'first') return 5 + gradePoints;
+      if (position === 'second') return 3 + gradePoints;
+      if (position === 'third') return 1 + gradePoints;
+      return gradePoints;
+    }
+  }
 
   useEffect(() => {
     if (user?.team) {
@@ -108,44 +156,47 @@ export default function TeamDashboard() {
   // ✅ UPDATED: Get result with new points logic including "others"
   const getEventResult = (studentId: string, eventId: string) => {
       const event = events.find(e => e._id === eventId);
-      if (!event || !event.results) return { rank: null, grade: null, points: 0 };
+      if (!event || !event.results) return { rank: null, grade: null, points: 0, mark: null };
       
-      const { first, second, third, firstGrade, secondGrade, thirdGrade, others } = event.results;
+      const { first, second, third, firstGrade, secondGrade, thirdGrade, firstMark, secondMark, thirdMark, others } = event.results;
       
       let grade = ""; 
       let rank = "";
-      let isOtherPosition = false;
+      let mark = null;
+      let position = "";
 
-      if (first === studentId) { rank = "1st"; grade = firstGrade; }
-      else if (second === studentId) { rank = "2nd"; grade = secondGrade; }
-      else if (third === studentId) { rank = "3rd"; grade = thirdGrade; }
+      if (first === studentId) { 
+        rank = "1st"; 
+        grade = firstGrade; 
+        mark = firstMark;
+        position = "first";
+      }
+      else if (second === studentId) { 
+        rank = "2nd"; 
+        grade = secondGrade; 
+        mark = secondMark;
+        position = "second";
+      }
+      else if (third === studentId) { 
+        rank = "3rd"; 
+        grade = thirdGrade; 
+        mark = thirdMark;
+        position = "third";
+      }
       else if (others && Array.isArray(others)) {
         const otherEntry = others.find((o: any) => o.studentId === studentId);
         if (otherEntry) {
           grade = otherEntry.grade;
-          isOtherPosition = true;
+          mark = otherEntry.mark;
+          position = "other";
         }
       }
 
-      if (!grade) return { rank: null, grade: null, points: 0 };
+      if (!grade) return { rank: null, grade: null, points: 0, mark: null };
 
-      const eventName = normalizeString(event.name);
-      const isActuallyGroup = event.groupEvent === true || eventName === "histoart" || eventName === "dictionarymaking" || eventName === "swarafdebate" || eventName === "swarfdebate"; 
-      const groupWithIndividualPoints = ["speechtranslation", "dictionarymaking", "swarafdebate", "swarfdebate"]; 
-      const useGroupPoints = isActuallyGroup && !groupWithIndividualPoints.includes(eventName);
+      const points = getPoints(grade, event, position);
 
-      let points = 0;
-      if (useGroupPoints) {
-        points = GROUP_POINTS[grade] || 0;
-      } else {
-        if (isOtherPosition) {
-          points = OTHER_GRADE_POINTS[grade] || 0;
-        } else {
-          points = INDIVIDUAL_POINTS[grade] || 0;
-        }
-      }
-
-      return { rank, grade, points };
+      return { rank, grade, points, mark };
   };
 
   const calculateTotalPoints = (student: any) => {
@@ -375,7 +426,7 @@ export default function TeamDashboard() {
                   <div className="text-right relative z-10"><div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Total Score</div><div className="text-4xl font-black text-yellow-400 leading-none">{calculateTotalPoints(viewStudent)}</div></div>
                   <div className="absolute top-0 right-0 p-4 opacity-10"><Trophy className="w-32 h-32 text-white" /></div><button onClick={() => setViewStudent(null)} className="absolute top-2 right-2 p-2 text-white/50 hover:text-white z-20"><X className="w-5 h-5" /></button>
                 </div>
-                <div className="p-0 max-h-[60vh] overflow-y-auto bg-slate-50">{viewStudent.registeredEvents?.length === 0 ? (<div className="p-8 text-center text-slate-400 text-sm">No events registered.</div>) : (<div className="divide-y divide-slate-100">{viewStudent.registeredEvents?.map((e:any, idx:number) => { const { rank, grade, points } = getEventResult(viewStudent._id, e.eventId); const original = events.find(ev => ev._id === e.eventId); const isGrp = original?.groupEvent === true; return (<div key={idx} className="px-5 py-3 bg-white flex justify-between items-center hover:bg-slate-50 transition-colors"><div className="flex-1 pr-4"><div className="flex items-center gap-2"><span className="text-sm font-bold text-slate-800">{e.name}</span>{isGrp && <span className="text-[9px] bg-yellow-100 text-yellow-800 px-1 py-0.5 rounded uppercase font-bold border border-yellow-200">Group</span>}</div><div className="flex items-center gap-2 mt-1">{e.status === 'sent' && <Badge variant="outline" className="text-[9px] h-4 px-1 text-yellow-600 border-yellow-300 bg-yellow-50">Sent to Stage</Badge>}{e.status === 'reported' && <Badge variant="outline" className="text-[9px] h-4 px-1 text-emerald-600 border-emerald-300 bg-emerald-50">Completed</Badge>}{e.isStar && <span className="text-[9px] bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded font-bold flex items-center gap-0.5"><Star className="w-2 h-2 fill-current"/> Star</span>}</div></div><div className="text-right min-w-[60px]">{grade ? (<div><div className="text-lg font-black text-slate-900">{grade}</div><div className="text-[10px] font-bold text-emerald-600">+{points} pts</div></div>) : (<span className="text-[10px] font-bold text-slate-300 uppercase tracking-wider">Pending</span>)}</div></div>) })}</div>)}</div>
+                <div className="p-0 max-h-[60vh] overflow-y-auto bg-slate-50">{viewStudent.registeredEvents?.length === 0 ? (<div className="p-8 text-center text-slate-400 text-sm">No events registered.</div>) : (<div className="divide-y divide-slate-100">{viewStudent.registeredEvents?.map((e:any, idx:number) => { const { rank, grade, points, mark } = getEventResult(viewStudent._id, e.eventId); const original = events.find(ev => ev._id === e.eventId); const isGrp = original?.groupEvent === true; return (<div key={idx} className="px-5 py-3 bg-white flex justify-between items-center hover:bg-slate-50 transition-colors"><div className="flex-1 pr-4"><div className="flex items-center gap-2"><span className="text-sm font-bold text-slate-800">{e.name}</span>{isGrp && <span className="text-[9px] bg-yellow-100 text-yellow-800 px-1 py-0.5 rounded uppercase font-bold border border-yellow-200">Group</span>}</div><div className="flex items-center gap-2 mt-1">{e.status === 'sent' && <Badge variant="outline" className="text-[9px] h-4 px-1 text-yellow-600 border-yellow-300 bg-yellow-50">Sent to Stage</Badge>}{e.status === 'reported' && <Badge variant="outline" className="text-[9px] h-4 px-1 text-emerald-600 border-emerald-300 bg-emerald-50">Completed</Badge>}{e.isStar && <span className="text-[9px] bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded font-bold flex items-center gap-0.5"><Star className="w-2 h-2 fill-current"/> Star</span>}</div></div><div className="text-right min-w-[80px]">{grade ? (<div><div className="text-lg font-black text-slate-900">{grade}{mark && <span className="text-xs text-slate-500 ml-1">({mark})</span>}</div><div className="text-[10px] font-bold text-emerald-600">+{points} pts</div></div>) : (<span className="text-[10px] font-bold text-slate-300 uppercase tracking-wider">Pending</span>)}</div></div>) })}</div>)}</div>
             </DialogContent>
           </Dialog>
         )}

@@ -5,51 +5,66 @@ import Event from "@/lib/models/event";
 
 export const dynamic = "force-dynamic";
 
-// ✅ UPDATED POINTS SYSTEM - Matches results and team dashboard
-const INDIVIDUAL_POINTS: any = { "A+": 11, "A": 10, "B": 7, "C": 5 };
-const OTHER_GRADE_POINTS: any = { "A+": 6, "A": 4, "B": 3, "C": 1 };
-const GROUP_POINTS: any = { "A+": 25, "A": 20, "B": 13, "C": 7 };
-
+// ✅ UPDATED POINTS SYSTEM - Position-based for top 3, grade-based for others
 const normalizeString = (str: string) => {
   if (!str) return "";
   return str.toLowerCase().replace(/[^a-z0-9]/g, "");
 };
 
-// ✅ UPDATED: Now handles "others" and uses correct point system
-const getPoints = (grade: string, event: any, isOtherPosition: boolean = false) => {
-    if (!grade) return 0;
-    
+// ✅ UPDATED: Position + grade points for top 3, grade-based for others
+const getGradePoints = (grade: string, isGroup: boolean) => {
+    if (isGroup) {
+        if (grade === 'A+') return 15;
+        if (grade === 'A') return 10;
+        if (grade === 'B') return 5;
+        if (grade === 'C') return 2;
+        return 0;
+    } else {
+        if (grade === 'A+') return 6;
+        if (grade === 'A') return 5;
+        if (grade === 'B') return 3;
+        if (grade === 'C') return 1;
+        return 0;
+    }
+};
+
+const getPoints = (grade: string, event: any, position: string) => {
+    if (!grade && position !== 'first' && position !== 'second' && position !== 'third') return 0;
+
     const eventName = normalizeString(event.name);
-    
+
     // Check if it's a group event
-    const isGroupEvent = event.groupEvent === true || 
-                         eventName === "histoart" || 
-                         eventName === "dictionarymaking" || 
-                         eventName === "swarafdebate" || 
+    const isGroupEvent = event.groupEvent === true ||
+                         eventName === "histoart" ||
+                         eventName === "dictionarymaking" ||
+                         eventName === "swarafdebate" ||
                          eventName === "swarfdebate";
-    
+
     // Events that use individual points even though they're group events
     const individualPointExceptions = [
-        "speechtranslation", 
-        "dictionarymaking", 
-        "swarafdebate", 
+        "speechtranslation",
+        "dictionarymaking",
+        "swarafdebate",
         "swarfdebate"
     ];
-    
+
     const useGroupPoints = isGroupEvent && !individualPointExceptions.includes(eventName);
-    
+    const gradePoints = getGradePoints(grade, useGroupPoints);
+
     if (useGroupPoints) {
-      // Group points
-      return GROUP_POINTS[grade] || 0;
+      // Group points: position + grade for top 3, grade-based for others
+      if (position === 'first') return 10 + gradePoints;
+      if (position === 'second') return 6 + gradePoints;
+      if (position === 'third') return 3 + gradePoints;
+      // for others: grade points only
+      return gradePoints;
     } else {
-      // Individual points
-      if (isOtherPosition) {
-        // 4th+ positions get reduced points
-        return OTHER_GRADE_POINTS[grade] || 0;
-      } else {
-        // 1st, 2nd, 3rd get full individual points
-        return INDIVIDUAL_POINTS[grade] || 0;
-      }
+      // Individual points: position + grade for top 3, grade-based for others
+      if (position === 'first') return 5 + gradePoints;
+      if (position === 'second') return 3 + gradePoints;
+      if (position === 'third') return 1 + gradePoints;
+      // for others: grade points only
+      return gradePoints;
     }
 };
 
@@ -99,12 +114,12 @@ export async function GET() {
         const isStage = event.type === "Stage";
         const eventIdStr = event._id.toString();
 
-        const processResult = (studentId: string, grade: string, isOtherPosition: boolean = false) => {
-            if (!studentId || !grade) return;
-            
+        const processResult = (studentId: string, grade: string, position: string) => {
+            if (!studentId) return;
+
             // ✅ Calculate Points with new system
-            const points = getPoints(grade, event, isOtherPosition);
-            
+            const points = getPoints(grade, event, position);
+
             const student = students.find((std: any) => std._id.toString() === studentId.toString());
 
             if (student) {
@@ -115,7 +130,7 @@ export async function GET() {
                 // Individual Champion Scores
                 const registration = student.registeredEvents?.find((r: any) => r.eventId === eventIdStr);
                 const studentStats = initStudent(studentId.toString());
-                
+
                 if (isStage) {
                     // Stage Points
                     studentStats.totalPoints += points;
@@ -130,16 +145,16 @@ export async function GET() {
             }
         };
 
-        // Process top 3 positions with full points
-        if (first) processResult(first, firstGrade, false);
-        if (second) processResult(second, secondGrade, false);
-        if (third) processResult(third, thirdGrade, false);
-        
-        // ✅ Process 4th+ positions with reduced points
+        // Process top 3 positions with position-based points
+        if (first) processResult(first, firstGrade, 'first');
+        if (second) processResult(second, secondGrade, 'second');
+        if (third) processResult(third, thirdGrade, 'third');
+
+        // ✅ Process 4th+ positions with grade-based points
         if (others && Array.isArray(others)) {
             others.forEach((other: any) => {
-                if (other.studentId && other.grade) {
-                    processResult(other.studentId, other.grade, true);
+                if (other.studentId) {
+                    processResult(other.studentId, other.grade, 'other');
                 }
             });
         }
