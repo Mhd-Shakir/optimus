@@ -59,7 +59,7 @@ export default function AdminRegistrations() {
   const [submitting, setSubmitting] = useState(false);
 
   // Form Data
-  const [formData, setFormData] = useState({ name: "", team: "Auris", category: "Protons", studentClass: "" });
+  const [formData, setFormData] = useState({ name: "", team: "Team A", category: "Protons", studentClass: "" });
   const [selectedEvents, setSelectedEvents] = useState<any[]>([]);
   const [activeRegTab, setActiveRegTab] = useState<"Stage" | "Non-Stage">("Stage");
   
@@ -243,7 +243,7 @@ export default function AdminRegistrations() {
   const closeModal = () => {
       setIsModalOpen(false);
       setIsEditMode(false);
-      setFormData({ name: "", team: "Auris", category: "Protons", studentClass: "" });
+      setFormData({ name: "", team: "Team A", category: "Protons", studentClass: "" });
       setSelectedEvents([]);
       setRegSearchQuery(""); // Clear search
   };
@@ -395,14 +395,15 @@ export default function AdminRegistrations() {
               <SelectTrigger className="w-[180px] bg-white"><SelectValue placeholder="Filter Team" /></SelectTrigger>
               <SelectContent>
                   <SelectItem value="All">All Teams</SelectItem>
-                  <SelectItem value="Auris">Auris</SelectItem>
-                  <SelectItem value="Libras">Libras</SelectItem>
+                  <SelectItem value="Team A">Team A</SelectItem>
+                  <SelectItem value="Team B">Team B</SelectItem>
               </SelectContent>
           </Select>
       </div>
 
       <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
-          <Table>
+          <div className="overflow-x-auto w-full">
+            <Table className="min-w-[800px]">
               <TableHeader>
                   <TableRow className="bg-slate-50">
                       <TableHead>Name</TableHead>
@@ -421,7 +422,7 @@ export default function AdminRegistrations() {
                           <TableCell className="font-bold">{student.name}</TableCell>
                           <TableCell><Badge variant="outline">{student.chestNo}</Badge></TableCell>
                           <TableCell>
-                              <Badge className={student.team === "Auris" ? "bg-yellow-100 text-yellow-700" : "bg-blue-100 text-blue-700"}>
+                              <Badge className={student.team === "Team A" ? "bg-yellow-100 text-yellow-700" : "bg-blue-100 text-blue-700"}>
                                   {student.team}
                               </Badge>
                           </TableCell>
@@ -436,7 +437,8 @@ export default function AdminRegistrations() {
                       </TableRow>
                   ))}
               </TableBody>
-          </Table>
+            </Table>
+          </div>
       </div>
 
       {/* REGISTRATION MODAL */}
@@ -445,7 +447,7 @@ export default function AdminRegistrations() {
               <DialogTitle>{isEditMode ? "Edit Student" : "New Registration"}</DialogTitle>
               <form onSubmit={handleSubmit} className="space-y-4 pt-4">
                   
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="space-y-2">
                           <label className="text-xs font-bold uppercase text-slate-500">Student Name</label>
                           <Input value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} required placeholder="e.g. John Doe" />
@@ -456,14 +458,14 @@ export default function AdminRegistrations() {
                       </div>
                   </div>
 
-                  <div className="grid grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                       <div className="space-y-2">
                           <label className="text-xs font-bold uppercase text-slate-500">Team</label>
                           <Select value={formData.team} onValueChange={val => setFormData({...formData, team: val})}>
                               <SelectTrigger><SelectValue /></SelectTrigger>
                               <SelectContent>
-                                  <SelectItem value="Auris">Auris (Yellow)</SelectItem>
-                                  <SelectItem value="Libras">Libras (Blue)</SelectItem>
+                                  <SelectItem value="Team A">Team A (Yellow)</SelectItem>
+                                  <SelectItem value="Team B">Team B (Blue)</SelectItem>
                               </SelectContent>
                           </Select>
                       </div>

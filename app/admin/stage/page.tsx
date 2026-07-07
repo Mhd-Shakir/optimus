@@ -162,7 +162,7 @@ export default function AdminStagePage() {
                                     return (
                                         <div key={student._id} className={`p-4 flex items-center justify-between transition-all hover:bg-slate-50 ${status === 'sent' ? 'bg-yellow-50/50' : ''}`}>
                                             <div className="flex items-center gap-4">
-                                                <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm border ${student.team === 'Auris' ? 'bg-yellow-100 text-yellow-700 border-yellow-200' : 'bg-blue-100 text-blue-700 border-blue-200'}`}>
+                                                <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm border ${student.team === 'Team A' ? 'bg-yellow-100 text-yellow-700 border-yellow-200' : 'bg-blue-100 text-blue-700 border-blue-200'}`}>
                                                     {student.chestNo}
                                                 </div>
                                                 <div>

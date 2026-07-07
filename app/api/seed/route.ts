@@ -15,8 +15,8 @@ export async function GET() {
     // 3. Insert into Supabase
     const { error } = await supabaseAdmin.from('users').insert([
       { username: "admin", password: adminPassword, role: "super_admin", team: null },
-      { username: "auris", password: aurisPassword, role: "auris_leader", team: "Auris" },
-      { username: "libras", password: librasPassword, role: "libras_leader", team: "Libras" }
+      { username: "auris", password: aurisPassword, role: "auris_leader", team: "Team A" },
+      { username: "libras", password: librasPassword, role: "libras_leader", team: "Team B" }
     ]);
 
     if (error) {

@@ -30,7 +30,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const savedUser = localStorage.getItem("optimus_user");
     if (savedUser) {
       try {
-        setUser(JSON.parse(savedUser));
+        let parsedUser = JSON.parse(savedUser);
+        // Automatic migration of legacy team names without requiring re-login
+        if (parsedUser.team === "Auris") {
+            parsedUser.team = "Team A";
+            localStorage.setItem("optimus_user", JSON.stringify(parsedUser));
+        } else if (parsedUser.team === "Libras") {
+            parsedUser.team = "Team B";
+            localStorage.setItem("optimus_user", JSON.stringify(parsedUser));
+        }
+        setUser(parsedUser);
       } catch (e) {
         console.error("Failed to parse user from local storage");
       }

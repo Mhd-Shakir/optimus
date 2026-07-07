@@ -68,7 +68,7 @@ export default function EventsPage() {
       <div className="max-w-4xl mx-auto">
         
         {/* Header */}
-        <div className="flex justify-between items-center mb-8">
+        <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4 text-center md:text-left">
           <h1 className="text-3xl font-bold text-gray-800">Events & Competitions</h1>
           <button onClick={() => router.push("/dashboard")} className="text-blue-600 hover:underline">
             ← Back to Dashboard
@@ -118,7 +118,7 @@ export default function EventsPage() {
             <p className="text-gray-500">No events added yet.</p>
           ) : (
             events.map((event) => (
-              <div key={event._id} className="bg-white p-5 rounded-lg shadow-sm border border-gray-100 flex justify-between items-center">
+              <div key={event._id} className="bg-white p-5 rounded-lg shadow-sm border border-gray-100 flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
                 <div>
                   <h3 className="text-lg font-bold text-gray-800">{event.name}</h3>
                   <div className="flex gap-3 text-sm text-gray-500 mt-1">
@@ -128,15 +128,15 @@ export default function EventsPage() {
                 </div>
                 
                 {/* Status Badge */}
-                <div className="text-right">
+                <div className="text-left sm:text-right">
                   {event.winner ? (
-                    <span className={`px-3 py-1 rounded-full text-sm font-bold ${
-                      event.winner === "Auris" ? "bg-yellow-100 text-yellow-700" : "bg-blue-100 text-blue-700"
+                    <span className={`px-3 py-1 rounded-full text-sm font-bold inline-block ${
+                      event.winner === "Team A" ? "bg-yellow-100 text-yellow-700" : "bg-blue-100 text-blue-700"
                     }`}>
                       Winner: {event.winner} 🦁🦅
                     </span>
                   ) : (
-                    <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm">
+                    <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm inline-block">
                       Upcoming
                     </span>
                   )}

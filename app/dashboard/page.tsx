@@ -129,7 +129,7 @@ export default function TeamDashboard() {
     const categoryName = activeCategory === "All" ? "All Categories" : `${activeCategory} Category`;
 
     doc.setFontSize(16);
-    doc.text(`Team ${user?.team} - ${categoryName} Report`, 14, 20);
+    doc.text(`${user?.team} - ${categoryName} Report`, 14, 20);
     doc.setFontSize(10);
     doc.text(`Total Students: ${filteredStudents.length}`, 14, 26);
 
@@ -270,7 +270,7 @@ export default function TeamDashboard() {
     const target = selectedEvents.find(e => e.eventId === id); if (!target) return; if (target.category.toLowerCase().includes("general")) return;
     const name = normalizeString(target.name);
     if (name === "speechtranslation" || name === "dictionarymaking" || name === "swarafdebate" || name === "swarfdebate") { return toast({ variant: "destructive", title: "No Star Needed", description: "No star required." }); }
-    const limit = formData.category === "Protons" ? 6 : 8; const currentStars = selectedEvents.filter(e => e.isStar && e.type === "Non-Stage").length;
+    const limit = formData.category === "Protons" ? 6 : 9; const currentStars = selectedEvents.filter(e => e.isStar && e.type === "Non-Stage").length;
     if (!target.isStar && currentStars >= limit) { return toast({ variant: "destructive", title: "Limit Reached", description: `Max ${limit} stars allowed.` }); }
     setSelectedEvents(prev => prev.map(e => e.eventId === id ? { ...e, isStar: !e.isStar } : e));
   };
@@ -286,7 +286,7 @@ export default function TeamDashboard() {
       toast({ variant: "destructive", title: "Error", description: "Failed to delete student." });
     }
   };
-  const handleRegister = async (e: any) => { e.preventDefault(); if (!formData.name) return; setSubmitting(true); try { await axios.post(isEditMode ? "/api/student/update" : "/api/student/register", { ...formData, id: editId, chestNo: Math.floor(1000 + Math.random() * 9000).toString(), selectedEvents }); toast({ title: "Success" }); closeModal(); fetchData(); } catch (err: any) { toast({ variant: "destructive", title: "Error", description: err.response?.data?.error }); } finally { setSubmitting(false); } };
+  const handleRegister = async (e: any) => { e.preventDefault(); if (!formData.name) return toast({ variant: "destructive", title: "Missing Field", description: "Name is required." }); if (!formData.studentClass) return toast({ variant: "destructive", title: "Missing Field", description: "Class is required." }); setSubmitting(true); try { await axios.post(isEditMode ? "/api/student/update" : "/api/student/register", { ...formData, id: editId, chestNo: Math.floor(1000 + Math.random() * 9000).toString(), selectedEvents }); toast({ title: "Success" }); closeModal(); fetchData(); } catch (err: any) { toast({ variant: "destructive", title: "Error", description: err.response?.data?.error }); } finally { setSubmitting(false); } };
 
   const regModalEvents = events.filter(e => {
     if (e.type !== activeRegTab) return false;
@@ -305,11 +305,11 @@ export default function TeamDashboard() {
     if (regSearchQuery && !e.name.toLowerCase().includes(regSearchQuery.toLowerCase())) return false;
     return true;
   });
-  const starCount = selectedEvents.filter(e => e.isStar && e.type === "Non-Stage").length; const starLimit = formData.category === "Protons" ? 6 : 8;
+  const starCount = selectedEvents.filter(e => e.isStar && e.type === "Non-Stage").length; const starLimit = formData.category === "Protons" ? 6 : 9;
 
   return (
-    <div className="flex min-h-screen bg-slate-50 font-sans">
-      <aside className="w-64 bg-white border-r border-slate-200 hidden md:flex flex-col fixed h-full z-20">
+    <div className="flex h-[100dvh] w-full bg-slate-50 font-sans overflow-hidden">
+      <aside className="w-64 bg-white border-r border-slate-200 hidden md:flex flex-col h-full z-20 shrink-0">
         <div className="p-6 border-b border-slate-50"><h1 className="text-2xl font-black text-emerald-600">Optimus</h1><p className="text-[10px] text-slate-400 font-bold uppercase">Team Portal</p></div>
         <nav className="flex-1 px-4 py-6 space-y-1">
           <button onClick={() => setActiveView("dashboard")} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-semibold transition-all ${activeView === "dashboard" ? "bg-emerald-600 text-white shadow-md shadow-emerald-200" : "text-slate-500 hover:bg-slate-50"}`}><LayoutDashboard className="w-5 h-5" /> Dashboard</button>
@@ -318,22 +318,24 @@ export default function TeamDashboard() {
         <div className="p-4 border-t border-slate-100"><button onClick={() => { logout(); router.push("/login"); }} className="flex items-center gap-3 px-4 py-3 text-red-500 font-bold text-sm"><LogOut className="w-5 h-5" /> Logout</button></div>
       </aside>
 
-      <main className="flex-1 md:ml-64 p-6 md:p-10 flex flex-col min-h-screen">
-            <div className="flex flex-col items-center justify-center text-center space-y-4 mb-10 pt-10">
-              <div className={`w-20 h-20 rounded-3xl flex items-center justify-center text-white text-3xl font-black shadow-xl ${user?.team === 'Auris' ? 'bg-yellow-500 shadow-yellow-100' : 'bg-blue-600 shadow-blue-100'}`}>{user?.team?.charAt(0)}</div>
-              <div><h2 className="text-4xl font-black text-slate-900 tracking-tighter uppercase">Team {user?.team}</h2><p className="text-slate-400 font-bold text-xs uppercase tracking-widest mt-1">Total Students: {students.length}</p></div>
-              {isSystemRegOpen ? (<Button onClick={() => { setIsEditMode(false); setIsRegOpen(true); }} className="bg-emerald-600 hover:bg-emerald-700 text-white px-8 h-12 rounded-xl text-sm font-black shadow-lg shadow-emerald-100"><Plus className="w-4 h-4 mr-2" /> NEW REGISTRATION</Button>) : (<div className="flex items-center gap-2 bg-red-50 border border-red-200 text-red-600 px-6 py-3 rounded-xl font-bold text-sm shadow-sm"><Lock className="w-4 h-4" /> REGISTRATION CLOSED</div>)}
+      <div className="flex-1 flex flex-col h-full overflow-hidden w-full relative">
+        <main className="flex-1 overflow-y-auto p-4 md:p-10 pb-6 custom-scrollbar">
+            <div className="flex flex-col items-center justify-center text-center space-y-4 mb-8 pt-2 md:pt-4">
+              <div className={`w-16 h-16 md:w-20 md:h-20 rounded-2xl md:rounded-3xl flex items-center justify-center text-white text-2xl md:text-3xl font-black shadow-xl ${user?.team === 'Team A' ? 'bg-yellow-500 shadow-yellow-100' : 'bg-blue-600 shadow-blue-100'}`}>{user?.team?.split(' ')[1] || user?.team?.charAt(0)}</div>
+              <div><h2 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tighter uppercase">{user?.team}</h2><p className="text-slate-400 font-bold text-xs uppercase tracking-widest mt-1">Total Students: {students.length}</p></div>
+              {isSystemRegOpen ? (<Button onClick={() => { setIsEditMode(false); setIsRegOpen(true); }} className="bg-emerald-600 hover:bg-emerald-700 text-white px-8 h-12 rounded-xl text-sm font-black shadow-lg shadow-emerald-100 w-full sm:w-auto"><Plus className="w-4 h-4 mr-2" /> NEW REGISTRATION</Button>) : (<div className="flex items-center justify-center gap-2 bg-red-50 border border-red-200 text-red-600 px-6 py-3 rounded-xl font-bold text-sm shadow-sm w-full sm:w-auto"><Lock className="w-4 h-4" /> REGISTRATION CLOSED</div>)}
             </div>
 
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden mb-10">
               <div className="p-4 border-b border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="flex items-center gap-2"><Users className="w-4 h-4 text-slate-500" /><h3 className="text-sm font-bold text-slate-700 uppercase tracking-wide">Registered Students</h3></div>
-                <div className="flex items-center gap-2">
-                  <div className="flex p-1 bg-slate-200/50 rounded-lg overflow-x-auto">{['All', 'Protons', 'Nexus', 'Cosmos'].map((cat) => (<button key={cat} onClick={() => setActiveCategory(cat)} className={`px-4 py-1.5 text-xs font-bold rounded-md transition-all whitespace-nowrap ${activeCategory === cat ? "bg-white text-emerald-600 shadow-sm" : "text-slate-500 hover:text-emerald-600"}`}>{cat}</button>))}</div>
+                <div className="flex items-center gap-2 w-full sm:w-auto overflow-hidden">
+                  <div className="flex p-1 bg-slate-200/50 rounded-lg overflow-x-auto w-full no-scrollbar">{['All', 'Protons', 'Nexus', 'Cosmos'].map((cat) => (<button key={cat} onClick={() => setActiveCategory(cat)} className={`px-4 py-1.5 text-xs font-bold rounded-md transition-all whitespace-nowrap ${activeCategory === cat ? "bg-white text-emerald-600 shadow-sm" : "text-slate-500 hover:text-emerald-600"}`}>{cat}</button>))}</div>
                 </div>
               </div>
-              <Table>
-                <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Chest No</TableHead><TableHead>Events</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
+              <div className="overflow-x-auto w-full">
+                <Table className="min-w-[600px]">
+                  <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Chest No</TableHead><TableHead>Events</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
                 <TableBody>
                   {loading ? <TableRow><TableCell colSpan={4} className="h-24 text-center"><Loader2 className="animate-spin w-6 h-6 mx-auto text-slate-300" /></TableCell></TableRow> : filteredStudents.length === 0 ? <TableRow><TableCell colSpan={4} className="h-32 text-center text-slate-400">No students found.</TableCell></TableRow> : filteredStudents.map((student: any) => (
                     <TableRow key={student._id} className="hover:bg-slate-50 cursor-pointer" onClick={() => setViewStudent(student)}>
@@ -344,7 +346,8 @@ export default function TeamDashboard() {
                     </TableRow>
                   ))}
                 </TableBody>
-              </Table>
+                </Table>
+              </div>
             </div>
 
         <Dialog open={isRegOpen} onOpenChange={closeModal}>
@@ -353,12 +356,12 @@ export default function TeamDashboard() {
               <div><DialogTitle className="text-lg font-bold text-white">{isEditMode ? "Edit Student" : "Student Registration"}</DialogTitle><p className="text-[10px] opacity-90">Assign events and stars.</p></div>
             </div>
             <form onSubmit={handleRegister}>
-              <div className="p-5 space-y-4">
-                <div className="grid grid-cols-4 gap-3 border border-slate-100 bg-slate-50/50 p-3 rounded-lg">
-                  <div className="space-y-1"><label className="text-[10px] font-black uppercase text-slate-400">Name</label><Input value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} placeholder="Student Name" className="h-9 text-sm" /></div>
-                  <div className="space-y-1"><label className="text-[10px] font-black uppercase text-slate-400">Team</label><div className="h-9 px-3 flex items-center bg-slate-200 text-slate-600 text-sm font-bold rounded-md border border-slate-300 cursor-not-allowed">{user?.team || "Loading..."}</div></div>
-                  <div className="space-y-1"><label className="text-[10px] font-black uppercase text-slate-400">Category</label><Select value={formData.category} onValueChange={val => setFormData({ ...formData, category: val, studentClass: "" })}><SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Protons">Protons</SelectItem><SelectItem value="Nexus">Nexus</SelectItem><SelectItem value="Cosmos">Cosmos</SelectItem></SelectContent></Select></div>
-                  <div className="space-y-1"><label className="text-[10px] font-black uppercase text-slate-400">Class</label><Select value={formData.studentClass} onValueChange={val => setFormData({ ...formData, studentClass: val })}><SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Select" /></SelectTrigger><SelectContent>{(formData.category === "Protons" ? ['8', '9'] : formData.category === "Nexus" ? ['10', 'HS1', 'HS2', 'BS1'] : formData.category === "Cosmos" ? ['BS2', 'BS3', 'BS4', 'BS5'] : formData.category === "General-A" ? ['8', '9', '10'] : formData.category === "General-B" ? ['HS1', 'HS2', 'BS1', 'BS2', 'BS3', 'BS4', 'BS5'] : []).map(cls => (<SelectItem key={cls} value={cls}>{cls}</SelectItem>))}</SelectContent></Select></div>
+              <div className="p-4 md:p-5 space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 border border-slate-100 bg-slate-50/50 p-3 rounded-lg">
+                  <div className="space-y-1"><label className="text-[10px] font-black uppercase text-slate-400">Name <span className="text-red-500">*</span></label><Input value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} placeholder="Student Name" className="h-9 text-sm" /></div>
+                  <div className="space-y-1"><label className="text-[10px] font-black uppercase text-slate-400">Team <span className="text-red-500">*</span></label><div className="h-9 px-3 flex items-center bg-slate-200 text-slate-600 text-sm font-bold rounded-md border border-slate-300 cursor-not-allowed">{user?.team || "Loading..."}</div></div>
+                  <div className="space-y-1"><label className="text-[10px] font-black uppercase text-slate-400">Category <span className="text-red-500">*</span></label><Select value={formData.category} onValueChange={val => setFormData({ ...formData, category: val, studentClass: "" })}><SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Protons">Protons</SelectItem><SelectItem value="Nexus">Nexus</SelectItem><SelectItem value="Cosmos">Cosmos</SelectItem></SelectContent></Select></div>
+                  <div className="space-y-1"><label className="text-[10px] font-black uppercase text-slate-400">Class <span className="text-red-500">*</span></label><Select value={formData.studentClass} onValueChange={val => setFormData({ ...formData, studentClass: val })}><SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Select" /></SelectTrigger><SelectContent>{(formData.category === "Protons" ? ['8', '9'] : formData.category === "Nexus" ? ['10', 'HS1', 'HS2', 'BS1'] : formData.category === "Cosmos" ? ['BS2', 'BS3', 'BS4', 'BS5'] : formData.category === "General-A" ? ['8', '9', '10'] : formData.category === "General-B" ? ['HS1', 'HS2', 'BS1', 'BS2', 'BS3', 'BS4', 'BS5'] : []).map(cls => (<SelectItem key={cls} value={cls}>{cls}</SelectItem>))}</SelectContent></Select></div>
                 </div>
                 <div className="flex border rounded-lg overflow-hidden h-9">
                   <button type="button" onClick={() => setActiveRegTab("Stage")} className={`flex-1 flex items-center justify-center gap-2 text-xs font-bold transition-all ${activeRegTab === "Stage" ? "bg-purple-600 text-white" : "bg-white text-slate-500 hover:bg-slate-50 border-r"}`}><Mic className="w-3 h-3" /> Stage</button>
@@ -406,7 +409,26 @@ export default function TeamDashboard() {
             </DialogContent>
           </Dialog>
         )}
-      </main>
+        </main>
+
+        {/* Mobile Bottom Navigation */}
+        <div className="md:hidden shrink-0 w-full bg-white border-t border-slate-200 flex justify-around items-center p-2 pb-4 shadow-[0_-4px_10px_-1px_rgba(0,0,0,0.1)] z-30">
+          <button onClick={() => setActiveView("dashboard")} className={`flex flex-col items-center gap-1 p-2 rounded-lg transition-all ${activeView === "dashboard" ? "text-emerald-600" : "text-slate-400"}`}>
+            <LayoutDashboard className="w-5 h-5" />
+            <span className="text-[10px] font-bold">Dashboard</span>
+          </button>
+          {isSystemRegOpen && (
+            <button onClick={() => { setIsEditMode(false); setIsRegOpen(true); }} className="flex flex-col items-center gap-1 p-2 rounded-lg transition-all text-slate-400 hover:text-emerald-600">
+              <ClipboardList className="w-5 h-5" />
+              <span className="text-[10px] font-bold">Register</span>
+            </button>
+          )}
+          <button onClick={() => { logout(); router.push("/login"); }} className="flex flex-col items-center gap-1 p-2 rounded-lg transition-all text-slate-400 hover:text-red-500">
+            <LogOut className="w-5 h-5" />
+            <span className="text-[10px] font-bold">Logout</span>
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

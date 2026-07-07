@@ -16,7 +16,7 @@ type Student = {
   name: string;
   admissionNo: string;
   chestNo: string;
-  team: "Auris" | "Libras";
+  team: "Team A" | "Team B";
   category: "Protons" | "Nexus" | "Cosmos" | "General-A" | "General-B";
   studentClass: string;
 }
@@ -139,12 +139,12 @@ export default function StudentsPage() {
                     <Select onValueChange={(val) => setFormData({...formData, team: val})}>
                     <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
                     <SelectContent>
-                        <SelectItem value="Auris">Auris</SelectItem>
-                        <SelectItem value="Libras">Libras</SelectItem>
+                        <SelectItem value="Team A">Team A</SelectItem>
+                        <SelectItem value="Team B">Team B</SelectItem>
                     </SelectContent>
                     </Select>
                 </div>
-                <div className="space-y-2 col-span-2">
+                <div className="space-y-2 col-span-2 sm:col-span-2">
                     <Label>Class</Label>
                     <Select onValueChange={(val) => setFormData({...formData, studentClass: val})}>
                     <SelectTrigger><SelectValue placeholder="Select Class" /></SelectTrigger>
@@ -187,15 +187,15 @@ export default function StudentsPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="All">All Teams</SelectItem>
-                  <SelectItem value="Auris">Auris</SelectItem>
-                  <SelectItem value="Libras">Libras</SelectItem>
+                  <SelectItem value="Team A">Team A</SelectItem>
+                  <SelectItem value="Team B">Team B</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </div>
 
-          <div className="overflow-x-auto">
-            <Table>
+          <div className="overflow-x-auto w-full">
+            <Table className="min-w-[800px]">
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-[60px]">SI</TableHead> 
@@ -224,7 +224,7 @@ export default function StudentsPage() {
                       <TableCell className="font-mono font-bold">{student.chestNo}</TableCell>
                       <TableCell className="font-medium">{student.name}</TableCell>
                       <TableCell>
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${student.team === "Auris" ? "bg-yellow-100 text-yellow-700" : "bg-blue-100 text-blue-700"}`}>
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${student.team === "Team A" ? "bg-yellow-100 text-yellow-700" : "bg-blue-100 text-blue-700"}`}>
                           {student.team}
                         </span>
                       </TableCell>

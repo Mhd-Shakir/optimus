@@ -6,6 +6,7 @@ export async function POST(req: Request) {
     const { id, name, category, studentClass, selectedEvents } = await req.json();
 
     if (!id) return NextResponse.json({ error: "Student ID missing" }, { status: 400 });
+    if (!studentClass) return NextResponse.json({ error: "Class is required" }, { status: 400 });
 
     // 1. Update Student Table
     const { data: updatedStudent, error: updateError } = await supabaseAdmin

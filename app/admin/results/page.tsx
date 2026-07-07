@@ -307,7 +307,8 @@ export default function AdminResultsPage() {
                 </div>
 
                 <Card>
-                    <Table>
+                    <div className="overflow-x-auto w-full">
+                    <Table className="min-w-[800px]">
                         <TableHeader>
                             <TableRow>
                                 <TableHead className="w-[50px]">SI</TableHead>
@@ -440,6 +441,7 @@ export default function AdminResultsPage() {
                             })}
                         </TableBody>
                     </Table>
+                    </div>
                 </Card>
 
                 <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
@@ -481,7 +483,7 @@ export default function AdminResultsPage() {
                                 ) : (
                                     <div className="space-y-2">
                                         {resultData.first.map((winner, idx) => (
-                                            <div key={idx} className="flex gap-2 items-center bg-white p-2 rounded-lg border border-yellow-100">
+                                            <div key={idx} className="flex flex-wrap sm:flex-nowrap gap-2 items-center bg-white p-2 rounded-lg border border-yellow-100">
                                                 <span className="text-xs font-bold text-yellow-700 w-8">#{idx + 1}</span>
                                                 <Select value={winner.studentId} onValueChange={val => updatePosition('first', idx, 'studentId', val)}>
                                                     <SelectTrigger className="flex-1 h-9 text-xs border-yellow-200"><SelectValue placeholder="Select Winner" /></SelectTrigger>
@@ -538,7 +540,7 @@ export default function AdminResultsPage() {
                                 ) : (
                                     <div className="space-y-2">
                                         {resultData.second.map((winner, idx) => (
-                                            <div key={idx} className="flex gap-2 items-center bg-white p-2 rounded-lg border border-slate-100">
+                                            <div key={idx} className="flex flex-wrap sm:flex-nowrap gap-2 items-center bg-white p-2 rounded-lg border border-slate-100">
                                                 <span className="text-xs font-bold text-slate-500 w-8">#{idx + 1}</span>
                                                 <Select value={winner.studentId} onValueChange={val => updatePosition('second', idx, 'studentId', val)}>
                                                     <SelectTrigger className="flex-1 h-9 text-xs"><SelectValue placeholder="Select Winner" /></SelectTrigger>
@@ -593,7 +595,7 @@ export default function AdminResultsPage() {
                                 ) : (
                                     <div className="space-y-2">
                                         {resultData.third.map((winner, idx) => (
-                                            <div key={idx} className="flex gap-2 items-center bg-white p-2 rounded-lg border border-orange-100">
+                                            <div key={idx} className="flex flex-wrap sm:flex-nowrap gap-2 items-center bg-white p-2 rounded-lg border border-orange-100">
                                                 <span className="text-xs font-bold text-orange-700 w-8">#{idx + 1}</span>
                                                 <Select value={winner.studentId} onValueChange={val => updatePosition('third', idx, 'studentId', val)}>
                                                     <SelectTrigger className="flex-1 h-9 text-xs border-orange-200"><SelectValue placeholder="Select Winner" /></SelectTrigger>
@@ -648,7 +650,7 @@ export default function AdminResultsPage() {
                                 ) : (
                                     <div className="space-y-2">
                                         {resultData.others.map((other, idx) => (
-                                            <div key={idx} className="flex gap-2 items-center bg-white p-2 rounded-lg border border-blue-100">
+                                            <div key={idx} className="flex flex-wrap sm:flex-nowrap gap-2 items-center bg-white p-2 rounded-lg border border-blue-100">
                                                 <span className="text-xs font-bold text-slate-500 w-8">#{idx + 4}</span>
                                                 <Select value={other.studentId} onValueChange={val => updateOther(idx, 'studentId', val)}>
                                                     <SelectTrigger className="flex-1 h-9 text-xs"><SelectValue placeholder="Select Student" /></SelectTrigger>

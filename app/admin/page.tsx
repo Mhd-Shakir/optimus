@@ -60,7 +60,7 @@ function ChampionCard({ title, student, icon: Icon, subTitle }: any) {
                 <div className="text-2xl font-black text-slate-800 truncate" title={student.name}>{student.name}</div>
                 <div className="flex gap-2 mt-2">
                      <Badge variant="outline" className="text-xs bg-white">{student.chestNo}</Badge>
-                     <Badge className={student.team === "Auris" ? "bg-amber-100 text-amber-700 hover:bg-amber-200 border-amber-200" : "bg-violet-100 text-violet-700 hover:bg-violet-200 border-violet-200"}>
+                     <Badge className={student.team === "Team A" ? "bg-amber-100 text-amber-700 hover:bg-amber-200 border-amber-200" : "bg-violet-100 text-violet-700 hover:bg-violet-200 border-violet-200"}>
                         {student.team}
                      </Badge>
                      <Badge variant="outline" className="text-xs bg-slate-100 text-slate-600">{student.category}</Badge>
@@ -258,18 +258,18 @@ export default function AdminDashboard() {
       <div className="grid md:grid-cols-2 gap-6">
           <Card className="bg-gradient-to-br from-amber-50 to-white border-amber-200 shadow-sm overflow-hidden relative">
              <div className="absolute right-0 top-0 h-full w-24 bg-gradient-to-l from-amber-100/50 to-transparent"></div>
-             <CardHeader><CardTitle className="text-amber-700 flex items-center gap-2 relative z-10"><Trophy className="w-5 h-5"/> Team Auris</CardTitle></CardHeader>
+             <CardHeader><CardTitle className="text-amber-700 flex items-center gap-2 relative z-10"><Trophy className="w-5 h-5"/> Team A</CardTitle></CardHeader>
              <CardContent className="relative z-10">
-                <div className="text-6xl font-black text-amber-500 tracking-tighter">{stats.scores.Auris}</div>
+                <div className="text-6xl font-black text-amber-500 tracking-tighter">{stats.scores["Team A"]}</div>
                 <p className="text-sm text-amber-600/80 mt-1 font-medium">Total Points</p>
              </CardContent>
           </Card>
 
           <Card className="bg-gradient-to-br from-violet-50 to-white border-violet-200 shadow-sm overflow-hidden relative">
              <div className="absolute right-0 top-0 h-full w-24 bg-gradient-to-l from-violet-100/50 to-transparent"></div>
-             <CardHeader><CardTitle className="text-violet-700 flex items-center gap-2 relative z-10"><Trophy className="w-5 h-5"/> Team Libras</CardTitle></CardHeader>
+             <CardHeader><CardTitle className="text-violet-700 flex items-center gap-2 relative z-10"><Trophy className="w-5 h-5"/> Team B</CardTitle></CardHeader>
              <CardContent className="relative z-10">
-                <div className="text-6xl font-black text-violet-500 tracking-tighter">{stats.scores.Libras}</div>
+                <div className="text-6xl font-black text-violet-500 tracking-tighter">{stats.scores["Team B"]}</div>
                 <p className="text-sm text-violet-600/80 mt-1 font-medium">Total Points</p>
              </CardContent>
           </Card>
@@ -314,7 +314,7 @@ export default function AdminDashboard() {
                                                 <p className="font-bold text-sm text-slate-800 line-clamp-1">{catData.star.name}</p>
                                                 <div className="flex items-center gap-2 mt-0.5">
                                                     <Badge variant="outline" className="text-[9px] h-4 px-1">{catData.star.chestNo}</Badge>
-                                                    <Badge className={catData.star.team === "Auris" ? "text-[9px] h-4 px-1 bg-amber-100 text-amber-700" : "text-[9px] h-4 px-1 bg-violet-100 text-violet-700"}>
+                                                    <Badge className={catData.star.team === "Team A" ? "text-[9px] h-4 px-1 bg-amber-100 text-amber-700" : "text-[9px] h-4 px-1 bg-violet-100 text-violet-700"}>
                                                         {catData.star.team}
                                                     </Badge>
                                                     <span className="text-[10px] font-bold text-emerald-600">{catData.star.stagePoints} pts</span>
@@ -338,7 +338,7 @@ export default function AdminDashboard() {
                                                 <p className="font-bold text-sm text-slate-800 line-clamp-1">{catData.pen.name}</p>
                                                 <div className="flex items-center gap-2 mt-0.5">
                                                     <Badge variant="outline" className="text-[9px] h-4 px-1">{catData.pen.chestNo}</Badge>
-                                                    <Badge className={catData.pen.team === "Auris" ? "text-[9px] h-4 px-1 bg-amber-100 text-amber-700" : "text-[9px] h-4 px-1 bg-violet-100 text-violet-700"}>
+                                                    <Badge className={catData.pen.team === "Team A" ? "text-[9px] h-4 px-1 bg-amber-100 text-amber-700" : "text-[9px] h-4 px-1 bg-violet-100 text-violet-700"}>
                                                         {catData.pen.team}
                                                     </Badge>
                                                     <span className="text-[10px] font-bold text-blue-600">{catData.pen.nonStagePoints} pts</span>
@@ -427,8 +427,8 @@ export default function AdminDashboard() {
                     <Select value={teamCredData.team} onValueChange={(val) => setTeamCredData({...teamCredData, team: val})}>
                         <SelectTrigger><SelectValue placeholder="Choose a team" /></SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="Auris">Auris</SelectItem>
-                            <SelectItem value="Libras">Libras</SelectItem>
+                            <SelectItem value="Team A">Team A</SelectItem>
+                            <SelectItem value="Team B">Team B</SelectItem>
                         </SelectContent>
                     </Select>
                 </div>

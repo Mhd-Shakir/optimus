@@ -29,9 +29,9 @@ export default function StudentsPage() {
       // Filter based on role
       let teamData = data;
       if (user?.role === "auris_leader") {
-        teamData = data.filter((s: any) => s.team === "Auris");
+        teamData = data.filter((s: any) => s.team === "Team A");
       } else if (user?.role === "libras_leader") {
-        teamData = data.filter((s: any) => s.team === "Libras");
+        teamData = data.filter((s: any) => s.team === "Team B");
       }
       
       setStudents(teamData);
@@ -124,7 +124,8 @@ export default function StudentsPage() {
 
         {/* Student List Table */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-          <table className="w-full text-left border-collapse">
+          <div className="overflow-x-auto w-full">
+          <table className="w-full text-left border-collapse min-w-[700px]">
             <thead className="bg-gray-100 text-gray-600 text-sm uppercase">
               <tr>
                 <th className="p-4 border-b">Chest No</th>
@@ -159,7 +160,7 @@ export default function StudentsPage() {
                       {student.studentClass}
                     </td>
                     <td className="p-4">
-                      <span className={`font-bold ${student.team === "Auris" ? "text-yellow-600" : "text-blue-600"}`}>
+                      <span className={`font-bold ${student.team === "Team A" ? "text-yellow-600" : "text-blue-600"}`}>
                         {student.team}
                       </span>
                     </td>
@@ -182,6 +183,7 @@ export default function StudentsPage() {
               )}
             </tbody>
           </table>
+          </div>
         </div>
 
       </div>

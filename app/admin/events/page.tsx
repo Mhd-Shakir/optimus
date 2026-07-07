@@ -546,7 +546,7 @@ export default function EventsPage() {
                         selectedEvent && participantsMap[selectedEvent._id]?.map((student) => (
                             <div key={student._id} onClick={() => handleStudentClick(student)} className="flex items-center justify-between p-3 rounded-lg border bg-white hover:bg-slate-50 cursor-pointer transition-all">
                                 <div className="flex items-center gap-3">
-                                    <div className={`w-9 h-9 rounded-full flex items-center justify-center font-bold text-xs shadow-sm ${student.team === 'Auris' ? 'bg-yellow-100 text-yellow-700' : 'bg-blue-100 text-blue-700'}`}>{student.chestNo}</div>
+                                    <div className={`w-9 h-9 rounded-full flex items-center justify-center font-bold text-xs shadow-sm ${student.team === 'Team A' ? 'bg-yellow-100 text-yellow-700' : 'bg-blue-100 text-blue-700'}`}>{student.chestNo}</div>
                                     <div><p className="font-semibold text-sm text-slate-900">{student.name}</p><p className="text-xs text-slate-500">{student.team} • {student.category}</p></div>
                                 </div>
                                 <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-slate-400"><Eye className="w-4 h-4" /></Button>

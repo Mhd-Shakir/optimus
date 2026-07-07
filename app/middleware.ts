@@ -18,14 +18,14 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/login', request.url));
   }
 
-  // B. Protect Auris Team Routes
+  // B. Protect Team A Routes
   // If trying to access /team/auris AND role is NOT auris_leader -> Redirect
   // (Optional: Allow super_admin to see everything by adding: && role !== 'super_admin')
   if (path.startsWith('/team/auris') && role !== 'auris_leader' && role !== 'super_admin') {
     return NextResponse.redirect(new URL('/unauthorized', request.url));
   }
 
-  // C. Protect Libras Team Routes
+  // C. Protect Team B Routes
   // If trying to access /team/libras AND role is NOT libras_leader -> Redirect
   if (path.startsWith('/team/libras') && role !== 'libras_leader' && role !== 'super_admin') {
     return NextResponse.redirect(new URL('/unauthorized', request.url));
