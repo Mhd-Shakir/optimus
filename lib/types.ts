@@ -1,6 +1,6 @@
 export type StudentCategory = "Alpha" | "Beta" | "Omega"
 export type EventCategory = "Alpha" | "Beta" | "Omega" | "General-A" | "General-B"
-export type Team = "Team A" | "Team B"
+export type Team = "Ignis" | "Ventus"
 export type PlacementType = "first" | "second" | "third"
 
 export interface Student {

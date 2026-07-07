@@ -16,7 +16,7 @@ type Student = {
   name: string;
   admissionNo: string;
   chestNo: string;
-  team: "Team A" | "Team B";
+  team: "Ignis" | "Ventus";
   category: "Protons" | "Nexus" | "Cosmos" | "General-A" | "General-B";
   studentClass: string;
 }
@@ -139,8 +139,8 @@ export default function StudentsPage() {
                     <Select onValueChange={(val) => setFormData({...formData, team: val})}>
                     <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
                     <SelectContent>
-                        <SelectItem value="Team A">Team A</SelectItem>
-                        <SelectItem value="Team B">Team B</SelectItem>
+                        <SelectItem value="Ignis">Ignis</SelectItem>
+                        <SelectItem value="Ventus">Ventus</SelectItem>
                     </SelectContent>
                     </Select>
                 </div>
@@ -187,8 +187,8 @@ export default function StudentsPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="All">All Teams</SelectItem>
-                  <SelectItem value="Team A">Team A</SelectItem>
-                  <SelectItem value="Team B">Team B</SelectItem>
+                  <SelectItem value="Ignis">Ignis</SelectItem>
+                  <SelectItem value="Ventus">Ventus</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -224,7 +224,7 @@ export default function StudentsPage() {
                       <TableCell className="font-mono font-bold">{student.chestNo}</TableCell>
                       <TableCell className="font-medium">{student.name}</TableCell>
                       <TableCell>
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${student.team === "Team A" ? "bg-yellow-100 text-yellow-700" : "bg-blue-100 text-blue-700"}`}>
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${student.team === "Ignis" ? "bg-yellow-100 text-yellow-700" : "bg-blue-100 text-blue-700"}`}>
                           {student.team}
                         </span>
                       </TableCell>

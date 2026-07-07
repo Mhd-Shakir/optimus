@@ -131,7 +131,7 @@ export default function EventsPage() {
                 <div className="text-left sm:text-right">
                   {event.winner ? (
                     <span className={`px-3 py-1 rounded-full text-sm font-bold inline-block ${
-                      event.winner === "Team A" ? "bg-yellow-100 text-yellow-700" : "bg-blue-100 text-blue-700"
+                      event.winner === "Ignis" ? "bg-yellow-100 text-yellow-700" : "bg-blue-100 text-blue-700"
                     }`}>
                       Winner: {event.winner} 🦁🦅
                     </span>

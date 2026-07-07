@@ -68,8 +68,8 @@ export async function GET() {
             const { points } = calculateGradeAndPoints(reg.mark, useGroupPoints);
 
             // Team Scores
-            if (student.team === "Team A") aurisScore += points;
-            if (student.team === "Team B") librasScore += points;
+            if (student.team === "Ignis") aurisScore += points;
+            if (student.team === "Ventus") librasScore += points;
 
             // Individual Scores
             const studentStats = initStudent(student.id);
@@ -110,8 +110,8 @@ export async function GET() {
                 registrations: registrationsCount
             },
             scores: {
-                "Team A": aurisScore,
-                "Team B": librasScore
+                "Ignis": aurisScore,
+                "Ventus": librasScore
             },
             champions: {
                 alpha,

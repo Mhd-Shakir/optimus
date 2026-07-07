@@ -32,11 +32,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         let parsedUser = JSON.parse(savedUser);
         // Automatic migration of legacy team names without requiring re-login
-        if (parsedUser.team === "Auris") {
-            parsedUser.team = "Team A";
+        if (parsedUser.team === "Auris" || parsedUser.team === "Team A") {
+            parsedUser.team = "Ignis";
             localStorage.setItem("optimus_user", JSON.stringify(parsedUser));
-        } else if (parsedUser.team === "Libras") {
-            parsedUser.team = "Team B";
+        } else if (parsedUser.team === "Libras" || parsedUser.team === "Team B") {
+            parsedUser.team = "Ventus";
             localStorage.setItem("optimus_user", JSON.stringify(parsedUser));
         }
         setUser(parsedUser);

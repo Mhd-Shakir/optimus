@@ -23,7 +23,7 @@ export async function POST(req: Request) {
     const studentMap = new Map();
     students?.forEach((s: any) => studentMap.set(s.id, s.team));
 
-    const teamPoints: any = { "Team A": 0, "Team B": 0 };
+    const teamPoints: any = { "Ignis": 0, "Ventus": 0 };
     const registrationUpdates: any[] = [];
 
     const processWinners = (winnerArray: any[], position: string) => {
@@ -62,8 +62,8 @@ export async function POST(req: Request) {
     const { data: updatedEvent, error: updateError } = await supabaseAdmin.from('events')
       .update({
         status: "completed",
-        team_points_auris: teamPoints["Team A"],
-        team_points_libras: teamPoints["Team B"]
+        team_points_auris: teamPoints["Ignis"],
+        team_points_libras: teamPoints["Ventus"]
       })
       .eq('id', eventId)
       .select()

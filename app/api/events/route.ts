@@ -11,8 +11,8 @@ const mapEvent = (dbEvent: any) => ({
   status: dbEvent.status,
   groupEvent: dbEvent.is_group_event,
   teamPoints: {
-    "Team A": dbEvent.team_points_auris,
-    "Team B": dbEvent.team_points_libras
+    "Ignis": dbEvent.team_points_auris,
+    "Ventus": dbEvent.team_points_libras
   },
   teamLimit: dbEvent.team_limit,
   createdAt: dbEvent.created_at,

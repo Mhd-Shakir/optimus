@@ -59,7 +59,7 @@ export default function AdminRegistrations() {
   const [submitting, setSubmitting] = useState(false);
 
   // Form Data
-  const [formData, setFormData] = useState({ name: "", team: "Team A", category: "Protons", studentClass: "" });
+  const [formData, setFormData] = useState({ name: "", team: "Ignis", category: "Protons", studentClass: "" });
   const [selectedEvents, setSelectedEvents] = useState<any[]>([]);
   const [activeRegTab, setActiveRegTab] = useState<"Stage" | "Non-Stage">("Stage");
   
@@ -243,7 +243,7 @@ export default function AdminRegistrations() {
   const closeModal = () => {
       setIsModalOpen(false);
       setIsEditMode(false);
-      setFormData({ name: "", team: "Team A", category: "Protons", studentClass: "" });
+      setFormData({ name: "", team: "Ignis", category: "Protons", studentClass: "" });
       setSelectedEvents([]);
       setRegSearchQuery(""); // Clear search
   };
@@ -395,8 +395,8 @@ export default function AdminRegistrations() {
               <SelectTrigger className="w-[180px] bg-white"><SelectValue placeholder="Filter Team" /></SelectTrigger>
               <SelectContent>
                   <SelectItem value="All">All Teams</SelectItem>
-                  <SelectItem value="Team A">Team A</SelectItem>
-                  <SelectItem value="Team B">Team B</SelectItem>
+                  <SelectItem value="Ignis">Ignis</SelectItem>
+                  <SelectItem value="Ventus">Ventus</SelectItem>
               </SelectContent>
           </Select>
       </div>
@@ -422,7 +422,7 @@ export default function AdminRegistrations() {
                           <TableCell className="font-bold">{student.name}</TableCell>
                           <TableCell><Badge variant="outline">{student.chestNo}</Badge></TableCell>
                           <TableCell>
-                              <Badge className={student.team === "Team A" ? "bg-yellow-100 text-yellow-700" : "bg-blue-100 text-blue-700"}>
+                              <Badge className={student.team === "Ignis" ? "bg-yellow-100 text-yellow-700" : "bg-blue-100 text-blue-700"}>
                                   {student.team}
                               </Badge>
                           </TableCell>
@@ -464,8 +464,8 @@ export default function AdminRegistrations() {
                           <Select value={formData.team} onValueChange={val => setFormData({...formData, team: val})}>
                               <SelectTrigger><SelectValue /></SelectTrigger>
                               <SelectContent>
-                                  <SelectItem value="Team A">Team A (Yellow)</SelectItem>
-                                  <SelectItem value="Team B">Team B (Blue)</SelectItem>
+                                  <SelectItem value="Ignis">Ignis (Yellow)</SelectItem>
+                                  <SelectItem value="Ventus">Ventus (Blue)</SelectItem>
                               </SelectContent>
                           </Select>
                       </div>
