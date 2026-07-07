@@ -3,10 +3,13 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/app/context/AuthContext";
 import { useRouter } from "next/navigation";
+import { useToast } from "@/hooks/use-toast";
+import { ToastAction } from "@/components/ui/toast";
 
 export default function StudentsPage() {
   const { user } = useAuth();
   const router = useRouter();
+  const { toast } = useToast();
   
   const [students, setStudents] = useState<any[]>([]);
   const [filteredStudents, setFilteredStudents] = useState<any[]>([]);
@@ -62,8 +65,6 @@ export default function StudentsPage() {
 
   // Handle Delete
   const handleDelete = async (id: string, name: string) => {
-    if (!confirm(`Are you sure you want to delete ${name}? This cannot be undone.`)) return;
-
     try {
       const res = await fetch("/api/student/delete", {
         method: "POST",
@@ -72,13 +73,13 @@ export default function StudentsPage() {
       });
 
       if (res.ok) {
-        alert("Student deleted!");
+        toast({ title: "Student Deleted", description: `${name} was successfully removed.` });
         fetchStudents(); // Refresh list
       } else {
-        alert("Failed to delete");
+        toast({ variant: "destructive", title: "Failed to delete" });
       }
     } catch (error) {
-      alert("Error deleting student");
+      toast({ variant: "destructive", title: "Error deleting student" });
     }
   };
 

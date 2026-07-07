@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/app/context/AuthContext";
 import { useRouter } from "next/navigation";
+import { useToast } from "@/hooks/use-toast";
 
 interface Event {
   _id: string;
@@ -16,6 +17,7 @@ interface Event {
 export default function EventsPage() {
   const { user } = useAuth();
   const router = useRouter();
+  const { toast } = useToast();
   const [events, setEvents] = useState<Event[]>([]);
   const [newEvent, setNewEvent] = useState({ name: "", category: "stage", points: 10 });
   const [loading, setLoading] = useState(true);
@@ -52,10 +54,12 @@ export default function EventsPage() {
       if (res.ok) {
         setNewEvent({ name: "", category: "stage", points: 10 }); // Reset form
         fetchEvents(); // Refresh list
-        alert("Event added successfully!");
+        toast({ title: "Event added successfully!" });
+      } else {
+        toast({ variant: "destructive", title: "Failed to add event" });
       }
     } catch (error) {
-      alert("Failed to add event");
+      toast({ variant: "destructive", title: "Failed to add event" });
     }
   };
 

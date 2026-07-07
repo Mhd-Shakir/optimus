@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
+import { ToastAction } from "@/components/ui/toast";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
@@ -39,10 +40,7 @@ export default function TeamDashboard() {
   const [isSystemRegOpen, setIsSystemRegOpen] = useState(true);
   const [regSearchQuery, setRegSearchQuery] = useState("");
 
-  const [stageEventId, setStageEventId] = useState("");
-  const [stageSearch, setStageSearch] = useState("");
-  const [stageTab, setStageTab] = useState("All");
-  const [updatingStatus, setUpdatingStatus] = useState("");
+
 
   const [formData, setFormData] = useState({ name: "", team: "", category: "Protons", studentClass: "" });
   const [selectedEvents, setSelectedEvents] = useState<any[]>([]);
@@ -244,25 +242,7 @@ export default function TeamDashboard() {
     return total;
   };
 
-  const updateStatus = async (studentId: string, eventId: string, status: string) => {
-    setUpdatingStatus(studentId);
-    try {
-      await axios.post('/api/stage/update', { studentId, eventId, status });
-      toast({ title: "Updated", description: `Student marked as ${status}` });
-      fetchData();
-    } catch (error) { toast({ variant: "destructive", title: "Error", description: "Failed to update status" }); } finally { setUpdatingStatus(""); }
-  }
 
-  const getStageStudents = () => {
-    if (!stageEventId) return [];
-    return students.filter(s => s.registeredEvents.some((e: any) => e.eventId === stageEventId));
-  }
-
-  const filteredStageEvents = events.filter(ev => {
-    const matchSearch = ev.name.toLowerCase().includes(stageSearch.toLowerCase());
-    const matchTab = stageTab === "All" || ev.category === stageTab;
-    return matchSearch && matchTab;
-  });
 
   const handleEdit = (e: any, s: any) => { e.stopPropagation(); if (!isSystemRegOpen) return toast({ variant: "destructive", title: "Closed", description: "Registration closed." }); setEditId(s._id); setFormData({ name: s.name, team: s.team, category: s.category }); const mapped = s.registeredEvents.map((ev: any) => { const orig = events.find(x => x._id === ev.eventId); return { eventId: ev.eventId, name: ev.name || orig?.name, type: orig?.type || "Stage", isStar: ev.isStar, category: orig?.category || "", groupEvent: orig?.groupEvent || false, teamLimit: orig?.teamLimit } }); setSelectedEvents(mapped); setIsEditMode(true); setIsRegOpen(true); };
 
@@ -296,7 +276,16 @@ export default function TeamDashboard() {
   };
 
   const closeModal = () => { setIsRegOpen(false); setIsEditMode(false); setEditId(""); setFormData({ name: "", team: user?.team || "", category: "Protons", studentClass: "" }); setSelectedEvents([]); setRegSearchQuery(""); };
-  const handleDelete = async (e: any, id: string) => { e.stopPropagation(); if (!confirm("Sure?")) return; await axios.post('/api/student/delete', { id }); toast({ title: "Deleted" }); fetchData(); };
+  const handleDelete = async (e: any, id: string) => { 
+    e.stopPropagation(); 
+    try {
+      await axios.post('/api/student/delete', { id });
+      toast({ title: "Student Deleted", description: "The student has been successfully removed." });
+      fetchData();
+    } catch (error) {
+      toast({ variant: "destructive", title: "Error", description: "Failed to delete student." });
+    }
+  };
   const handleRegister = async (e: any) => { e.preventDefault(); if (!formData.name) return; setSubmitting(true); try { await axios.post(isEditMode ? "/api/student/update" : "/api/student/register", { ...formData, id: editId, chestNo: Math.floor(1000 + Math.random() * 9000).toString(), selectedEvents }); toast({ title: "Success" }); closeModal(); fetchData(); } catch (err: any) { toast({ variant: "destructive", title: "Error", description: err.response?.data?.error }); } finally { setSubmitting(false); } };
 
   const regModalEvents = events.filter(e => {
@@ -324,66 +313,12 @@ export default function TeamDashboard() {
         <div className="p-6 border-b border-slate-50"><h1 className="text-2xl font-black text-emerald-600">Optimus</h1><p className="text-[10px] text-slate-400 font-bold uppercase">Team Portal</p></div>
         <nav className="flex-1 px-4 py-6 space-y-1">
           <button onClick={() => setActiveView("dashboard")} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-semibold transition-all ${activeView === "dashboard" ? "bg-emerald-600 text-white shadow-md shadow-emerald-200" : "text-slate-500 hover:bg-slate-50"}`}><LayoutDashboard className="w-5 h-5" /> Dashboard</button>
-          <button onClick={() => setActiveView("stage")} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-semibold transition-all ${activeView === "stage" ? "bg-purple-600 text-white shadow-md shadow-purple-200" : "text-slate-500 hover:bg-slate-50"}`}><Send className="w-5 h-5" /> Stage Control</button>
           {isSystemRegOpen && <button onClick={() => { setIsEditMode(false); setIsRegOpen(true); }} className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-semibold text-slate-500 hover:bg-slate-50"><ClipboardList className="w-5 h-5" /> Registration</button>}
         </nav>
         <div className="p-4 border-t border-slate-100"><button onClick={() => { logout(); router.push("/login"); }} className="flex items-center gap-3 px-4 py-3 text-red-500 font-bold text-sm"><LogOut className="w-5 h-5" /> Logout</button></div>
       </aside>
 
       <main className="flex-1 md:ml-64 p-6 md:p-10 flex flex-col min-h-screen">
-        {activeView === "stage" ? (
-          <div className="max-w-4xl mx-auto w-full pt-10">
-            <div className="mb-8 flex justify-between items-end">
-              <div><h2 className="text-3xl font-black text-slate-900 tracking-tight">Stage Control</h2><p className="text-slate-500 mt-1">Send your team students to the stage.</p></div>
-              {stageEventId && <Button variant="outline" onClick={() => setStageEventId("")}><ArrowLeft className="w-4 h-4 mr-2" /> Change Event</Button>}
-            </div>
-
-            {!stageEventId ? (
-              <div className="space-y-6">
-                <div className="bg-white p-4 rounded-xl border shadow-sm space-y-4">
-                  <div className="relative"><Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" /><Input placeholder="Search Event Name..." className="pl-9 h-10" value={stageSearch} onChange={e => setStageSearch(e.target.value)} /></div>
-                  <div className="flex gap-2 overflow-x-auto pb-1 custom-scrollbar">{["All", "Protons", "Nexus", "Cosmos", "General-A", "General-B"].map(cat => (<button key={cat} onClick={() => setStageTab(cat)} className={`px-4 py-2 rounded-lg text-xs font-bold whitespace-nowrap transition-all ${stageTab === cat ? "bg-purple-600 text-white shadow-md" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}>{cat}</button>))}</div>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4">
-                  {filteredStageEvents.length === 0 ? <div className="col-span-full text-center py-10 text-slate-400">No events found.</div> : filteredStageEvents.map(ev => (
-                    <div key={ev._id} onClick={() => setStageEventId(ev._id)} className="bg-white p-5 rounded-xl border border-slate-200 hover:border-purple-500 hover:shadow-md cursor-pointer transition-all group">
-                      <h3 className="font-bold text-slate-800 text-lg group-hover:text-purple-700">{ev.name}</h3><Badge variant="secondary" className="text-[10px] mt-2">{ev.category}</Badge>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ) : (
-              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                <div className="p-5 bg-slate-50 border-b font-bold flex justify-between items-center">
-                  <span className="text-slate-700">Participants from {user?.team}</span>
-                  <Badge variant="outline" className="bg-white">{getStageStudents().length}</Badge>
-                </div>
-                <div className="divide-y divide-slate-100">
-                  {getStageStudents().length === 0 ? (
-                    <div className="p-10 text-center text-slate-400">No students registered.</div>
-                  ) : getStageStudents().map(student => {
-                    const eventData = student.registeredEvents.find((e: any) => e.eventId === stageEventId);
-                    const status = eventData?.status || "registered";
-                    return (
-                      <div key={student._id} className="p-5 flex items-center justify-between hover:bg-slate-50 transition-colors">
-                        <div className="flex items-center gap-4">
-                          <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center font-bold text-slate-600 border border-slate-200">{student.chestNo}</div>
-                          <div><p className="font-bold text-lg text-slate-900">{student.name}</p><p className="text-xs text-slate-500 font-medium uppercase">{student.category}</p></div>
-                        </div>
-                        <div>
-                          {status === "registered" && (<Button onClick={() => updateStatus(student._id, stageEventId, "sent")} disabled={updatingStatus === student._id} className="bg-blue-600 hover:bg-blue-700 text-white shadow-blue-100 shadow-lg">{updatingStatus === student._id ? <Loader2 className="animate-spin" /> : <><Send className="w-4 h-4 mr-2" /> Send to Stage</>}</Button>)}
-                          {status === "sent" && <Badge className="bg-yellow-100 text-yellow-700 border-yellow-200 px-3 py-1.5 text-xs font-bold animate-pulse flex items-center gap-2"><Loader2 className="w-3 h-3 animate-spin" /> SENT & WAITING</Badge>}
-                          {status === "reported" && <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 px-3 py-1.5 text-xs font-bold flex items-center gap-2"><CheckCircle2 className="w-3.5 h-3.5" /> REPORTED ON STAGE</Badge>}
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-            )}
-          </div>
-        ) : (
-          <>
             <div className="flex flex-col items-center justify-center text-center space-y-4 mb-10 pt-10">
               <div className={`w-20 h-20 rounded-3xl flex items-center justify-center text-white text-3xl font-black shadow-xl ${user?.team === 'Auris' ? 'bg-yellow-500 shadow-yellow-100' : 'bg-blue-600 shadow-blue-100'}`}>{user?.team?.charAt(0)}</div>
               <div><h2 className="text-4xl font-black text-slate-900 tracking-tighter uppercase">Team {user?.team}</h2><p className="text-slate-400 font-bold text-xs uppercase tracking-widest mt-1">Total Students: {students.length}</p></div>
@@ -411,14 +346,11 @@ export default function TeamDashboard() {
                 </TableBody>
               </Table>
             </div>
-          </>
-        )}
 
         <Dialog open={isRegOpen} onOpenChange={closeModal}>
           <DialogContent className="max-w-xl p-0 border-none shadow-2xl rounded-xl overflow-hidden bg-white">
             <div className="bg-emerald-600 px-5 py-3 flex justify-between items-center text-white shrink-0">
               <div><DialogTitle className="text-lg font-bold text-white">{isEditMode ? "Edit Student" : "Student Registration"}</DialogTitle><p className="text-[10px] opacity-90">Assign events and stars.</p></div>
-              <button onClick={closeModal}><X className="w-5 h-5" /></button>
             </div>
             <form onSubmit={handleRegister}>
               <div className="p-5 space-y-4">
