@@ -44,6 +44,10 @@ export default function TeamDashboard() {
 
   const [formData, setFormData] = useState({ name: "", team: "", category: "Protons", studentClass: "" });
   const [selectedEvents, setSelectedEvents] = useState<any[]>([]);
+  const [groupParticipants, setGroupParticipants] = useState<string[]>([]);
+  const [groupCategory, setGroupCategory] = useState("Protons");
+  const [groupEventId, setGroupEventId] = useState("");
+  const [isParticipantsOpen, setIsParticipantsOpen] = useState(false);
 
   // ✅ UPDATED POINTS CALCULATION - Matches Admin Results Logic
   const getGradePoints = (grade: string, isGroup: boolean) => {
@@ -266,6 +270,43 @@ export default function TeamDashboard() {
     }
   };
 
+  const groupRegistrations = events
+    .filter(e => e.groupEvent === true || normalizeString(e.name) === "histoart" || normalizeString(e.name) === "dictionarymaking" || normalizeString(e.name) === "swarafdebate" || normalizeString(e.name) === "swarfdebate")
+    .map(event => {
+        const participants = students.filter(s => s.registeredEvents?.some((re: any) => re.eventId === event._id));
+        return { event, participants };
+    })
+    .filter(g => g.participants.length > 0);
+
+  const downloadGroupListPDF = async () => {
+    const { default: jsPDF } = await import("jspdf");
+    const { default: autoTable } = (await import("jspdf-autotable")) as any;
+    
+    const doc = new jsPDF();
+    doc.setFontSize(16);
+    doc.setFont("helvetica", "bold");
+    doc.text(`Registered Groups - ${user?.team || "Team"}`, 14, 20);
+    
+    const tableRows = groupRegistrations.map(g => {
+        return [
+            g.event.name,
+            g.event.category,
+            g.participants.map((p: any) => p.name).join(", ")
+        ];
+    });
+
+    autoTable(doc, {
+        startY: 30,
+        head: [["Event", "Category", "Participants"]],
+        body: tableRows,
+        theme: "grid",
+        headStyles: { fillColor: [240, 240, 240], textColor: [0, 0, 0], fontStyle: "bold" },
+        styles: { fontSize: 10, cellPadding: 3, textColor: [0, 0, 0] },
+    });
+    
+    doc.save(`${user?.team || "Team"}_Group_Registrations.pdf`);
+  };
+
   const toggleStar = (id: string) => {
     const target = selectedEvents.find(e => e.eventId === id); if (!target) return; if (target.category.toLowerCase().includes("general")) return;
     const name = normalizeString(target.name);
@@ -287,6 +328,24 @@ export default function TeamDashboard() {
     }
   };
   const handleRegister = async (e: any) => { e.preventDefault(); if (!formData.name) return toast({ variant: "destructive", title: "Missing Field", description: "Name is required." }); if (!formData.studentClass) return toast({ variant: "destructive", title: "Missing Field", description: "Class is required." }); setSubmitting(true); try { await axios.post(isEditMode ? "/api/student/update" : "/api/student/register", { ...formData, id: editId, chestNo: Math.floor(1000 + Math.random() * 9000).toString(), selectedEvents }); toast({ title: "Success" }); closeModal(); fetchData(); } catch (err: any) { toast({ variant: "destructive", title: "Error", description: err.response?.data?.error }); } finally { setSubmitting(false); } };
+
+  const handleGroupRegister = async (e: any) => {
+    e.preventDefault();
+    if (!groupEventId) return toast({ variant: "destructive", title: "Missing Field", description: "Please select an event." });
+    if (groupParticipants.length === 0) return toast({ variant: "destructive", title: "Missing Field", description: "Please select at least one participant." });
+    setSubmitting(true);
+    try {
+      await axios.post("/api/student/register-group", { eventId: groupEventId, studentIds: groupParticipants });
+      toast({ title: "Success", description: "Group registered successfully." });
+      setGroupParticipants([]);
+      setGroupEventId("");
+      fetchData();
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Error", description: err.response?.data?.error || "Registration failed" });
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   const regModalEvents = events.filter(e => {
     if (e.type !== activeRegTab) return false;
@@ -314,12 +373,15 @@ export default function TeamDashboard() {
         <nav className="flex-1 px-4 py-6 space-y-1">
           <button onClick={() => setActiveView("dashboard")} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-semibold transition-all ${activeView === "dashboard" ? "bg-emerald-600 text-white shadow-md shadow-emerald-200" : "text-slate-500 hover:bg-slate-50"}`}><LayoutDashboard className="w-5 h-5" /> Dashboard</button>
           {isSystemRegOpen && <button onClick={() => { setIsEditMode(false); setIsRegOpen(true); }} className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-semibold text-slate-500 hover:bg-slate-50"><ClipboardList className="w-5 h-5" /> Registration</button>}
+          <button onClick={() => setActiveView("group")} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-semibold transition-all ${activeView === "group" ? "bg-emerald-600 text-white shadow-md shadow-emerald-200" : "text-slate-500 hover:bg-slate-50"}`}><Users className="w-5 h-5" /> Group</button>
         </nav>
         <div className="p-4 border-t border-slate-100"><button onClick={() => { logout(); router.push("/login"); }} className="flex items-center gap-3 px-4 py-3 text-red-500 font-bold text-sm"><LogOut className="w-5 h-5" /> Logout</button></div>
       </aside>
 
       <div className="flex-1 flex flex-col h-full overflow-hidden w-full relative">
         <main className="flex-1 overflow-y-auto p-4 md:p-10 pb-6 custom-scrollbar">
+          {activeView === "dashboard" && (
+            <>
             <div className="flex flex-col items-center justify-center text-center space-y-4 mb-8 pt-2 md:pt-4">
               <div className={`w-16 h-16 md:w-20 md:h-20 rounded-2xl md:rounded-3xl flex items-center justify-center text-white text-2xl md:text-3xl font-black shadow-xl ${user?.team === 'Ignis' ? 'bg-yellow-500 shadow-yellow-100' : 'bg-blue-600 shadow-blue-100'}`}>{user?.team?.split(' ')[1] || user?.team?.charAt(0)}</div>
               <div><h2 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tighter uppercase">{user?.team}</h2><p className="text-slate-400 font-bold text-xs uppercase tracking-widest mt-1">Total Students: {students.length}</p></div>
@@ -349,6 +411,161 @@ export default function TeamDashboard() {
                 </Table>
               </div>
             </div>
+            </>
+          )}
+
+          {activeView === "group" && (
+            <div className="max-w-3xl mx-auto mt-4">
+              <div className="flex flex-col items-center justify-center text-center space-y-3 mb-8">
+                <div className="w-16 h-16 rounded-2xl flex items-center justify-center bg-purple-600 text-white shadow-lg shadow-purple-200">
+                  <Users className="w-8 h-8" />
+                </div>
+                <div>
+                  <h2 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tighter uppercase">Group Registration</h2>
+                  <p className="text-slate-400 font-bold text-xs uppercase tracking-widest mt-1">Register for Group Events</p>
+                </div>
+              </div>
+
+              <div className="bg-white p-6 md:p-8 rounded-2xl border border-slate-200 shadow-sm">
+                <form className="space-y-6" onSubmit={handleGroupRegister}>
+                  <div className="space-y-2">
+                    <label className="text-xs font-black text-slate-400 uppercase tracking-wider">Participant Names <span className="text-red-500">*</span></label>
+                    <div className="relative">
+                      <div 
+                        onClick={() => setIsParticipantsOpen(!isParticipantsOpen)}
+                        className="w-full min-h-[40px] p-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all cursor-pointer flex flex-wrap gap-1.5 bg-white items-center"
+                      >
+                        {groupParticipants.length === 0 ? (
+                          <span className="text-slate-400 px-1 py-1">Select participant names</span>
+                        ) : (
+                          groupParticipants.map(id => {
+                            const st = students.find(s => s._id === id);
+                            return st ? (
+                              <Badge key={id} className="bg-purple-100 text-purple-700 hover:bg-purple-200 border-none font-bold flex items-center gap-1.5 px-2.5 py-1 text-[10px] uppercase">
+                                {st.name}
+                                <X className="w-3 h-3 cursor-pointer hover:text-purple-900" onClick={(e) => { e.stopPropagation(); setGroupParticipants(prev => prev.filter(p => p !== id)); }} />
+                              </Badge>
+                            ) : null;
+                          })
+                        )}
+                      </div>
+                      {isParticipantsOpen && (
+                        <>
+                          <div className="fixed inset-0 z-40" onClick={() => setIsParticipantsOpen(false)} />
+                          <div className="absolute top-full left-0 mt-1 w-full max-h-56 overflow-y-auto bg-white border border-slate-200 rounded-lg shadow-xl z-50 p-1 custom-scrollbar">
+                            {students.filter(s => s.category === groupCategory || s.category.includes("General")).length === 0 ? (
+                              <div className="p-4 text-xs font-bold text-slate-400 text-center uppercase tracking-wider">No students found</div>
+                            ) : (
+                              students.filter(s => s.category === groupCategory || s.category.includes("General")).map(student => (
+                                <label key={student._id} className="flex items-center gap-3 p-2.5 hover:bg-slate-50 rounded-md cursor-pointer transition-colors border-b border-slate-50 last:border-0">
+                                  <input 
+                                    type="checkbox" 
+                                    checked={groupParticipants.includes(student._id)}
+                                    onChange={() => setGroupParticipants(prev => prev.includes(student._id) ? prev.filter(p => p !== student._id) : [...prev, student._id])}
+                                    className="w-4 h-4 rounded border-slate-300 text-purple-600 focus:ring-purple-500"
+                                  />
+                                  <div>
+                                    <span className="text-sm font-bold text-slate-700 block">{student.name}</span>
+                                    <span className="text-[9px] text-slate-400 font-black uppercase tracking-widest">{student.category}</span>
+                                  </div>
+                                </label>
+                              ))
+                            )}
+                          </div>
+                        </>
+                      )}
+                    </div>
+                    <p className="text-[10px] text-slate-400 font-medium">Select all team members who are participating in this group event.</p>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <label className="text-xs font-black text-slate-400 uppercase tracking-wider">Group <span className="text-red-500">*</span></label>
+                      <div className="h-10 px-3 flex items-center bg-slate-100 text-slate-600 text-sm font-bold rounded-lg border border-slate-200 cursor-not-allowed">
+                        {user?.team || "Loading..."}
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <label className="text-xs font-black text-slate-400 uppercase tracking-wider">Category <span className="text-red-500">*</span></label>
+                      <Select value={groupCategory} onValueChange={(val) => { setGroupCategory(val); setGroupParticipants([]); }}>
+                        <SelectTrigger className="h-10 text-sm">
+                          <SelectValue placeholder="Select Category" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Protons">Protons</SelectItem>
+                          <SelectItem value="Nexus">Nexus</SelectItem>
+                          <SelectItem value="Cosmos">Cosmos</SelectItem>
+                          <SelectItem value="General-A">General-A</SelectItem>
+                          <SelectItem value="General-B">General-B</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-xs font-black text-slate-400 uppercase tracking-wider">Event <span className="text-red-500">*</span></label>
+                    <Select value={groupEventId} onValueChange={setGroupEventId}>
+                      <SelectTrigger className="h-10 text-sm">
+                        <SelectValue placeholder="Select Group Event" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {events.filter(e => e.groupEvent === true || normalizeString(e.name) === "histoart" || normalizeString(e.name) === "dictionarymaking" || normalizeString(e.name) === "swarafdebate" || normalizeString(e.name) === "swarfdebate").map(e => (
+                          <SelectItem key={e._id} value={e._id}>{e.name} <span className="text-[10px] text-slate-400 ml-1">({e.category})</span></SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="pt-4 border-t border-slate-100">
+                    <Button type="submit" disabled={submitting} className="w-full h-12 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl shadow-lg shadow-purple-100 transition-all">
+                      {submitting ? <Loader2 className="animate-spin w-5 h-5 mr-2" /> : <CheckCircle2 className="w-5 h-5 mr-2" />} Complete Group Registration
+                    </Button>
+                  </div>
+                </form>
+              </div>
+              
+              <div className="mt-10 mb-10">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-black text-slate-800 uppercase tracking-widest">Registered Groups</h3>
+                  <Button onClick={downloadGroupListPDF} variant="outline" size="sm" className="h-8 border-slate-200">
+                    <Download className="w-3 h-3 mr-2" /> Download PDF
+                  </Button>
+                </div>
+                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                  <Table className="min-w-[600px]">
+                    <TableHeader>
+                      <TableRow className="bg-slate-50">
+                        <TableHead>Event</TableHead>
+                        <TableHead>Category</TableHead>
+                        <TableHead>Participants</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {groupRegistrations.length === 0 ? (
+                        <TableRow><TableCell colSpan={3} className="h-24 text-center text-slate-400">No group registrations yet.</TableCell></TableRow>
+                      ) : (
+                        groupRegistrations.map((group, idx) => (
+                          <TableRow key={idx}>
+                            <TableCell className="font-bold text-slate-800">{group.event.name}</TableCell>
+                            <TableCell><span className="text-xs font-bold text-slate-500">{group.event.category}</span></TableCell>
+                            <TableCell>
+                              <div className="flex flex-wrap gap-1">
+                                {group.participants.map((p: any) => (
+                                  <Badge key={p._id} variant="outline" className="text-[10px] bg-slate-50">{p.name}</Badge>
+                                ))}
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
+
+            </div>
+          )}
 
         <Dialog open={isRegOpen} onOpenChange={closeModal}>
           <DialogContent className="max-w-xl p-0 border-none shadow-2xl rounded-xl overflow-hidden bg-white">
@@ -423,6 +640,10 @@ export default function TeamDashboard() {
               <span className="text-[10px] font-bold">Register</span>
             </button>
           )}
+          <button onClick={() => setActiveView("group")} className={`flex flex-col items-center gap-1 p-2 rounded-lg transition-all ${activeView === "group" ? "text-emerald-600" : "text-slate-400 hover:text-emerald-600"}`}>
+            <Users className="w-5 h-5" />
+            <span className="text-[10px] font-bold">Group</span>
+          </button>
           <button onClick={() => { logout(); router.push("/login"); }} className="flex flex-col items-center gap-1 p-2 rounded-lg transition-all text-slate-400 hover:text-red-500">
             <LogOut className="w-5 h-5" />
             <span className="text-[10px] font-bold">Logout</span>

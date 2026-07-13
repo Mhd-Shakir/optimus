@@ -62,6 +62,7 @@ export default function AdminRegistrations() {
   const [formData, setFormData] = useState({ name: "", team: "Ignis", category: "Protons", studentClass: "" });
   const [selectedEvents, setSelectedEvents] = useState<any[]>([]);
   const [activeRegTab, setActiveRegTab] = useState<"Stage" | "Non-Stage">("Stage");
+  const [activeRegView, setActiveRegView] = useState<"Individual" | "Group">("Individual");
   
   // 🔥 NEW: Search State for Registration Modal
   const [regSearchQuery, setRegSearchQuery] = useState("");
@@ -369,6 +370,19 @@ export default function AdminRegistrations() {
   const starCount = selectedEvents.filter(e => e.isStar && e.type === "Non-Stage").length;
   const starLimit = formData.category === "Protons" ? 6 : 8;
 
+  const groupRegistrations = events
+      .filter(e => e.groupEvent === true || normalizeString(e.name) === "histoart" || normalizeString(e.name) === "dictionarymaking" || normalizeString(e.name) === "swarafdebate" || normalizeString(e.name) === "swarfdebate")
+      .flatMap(event => {
+          const teams = ["Ignis", "Ventus"];
+          return teams.map(team => {
+              const participants = students.filter(s => s.team === team && s.registeredEvents?.some((re: any) => re.eventId === event._id));
+              return { event, team, participants };
+          });
+      })
+      .filter(g => g.participants.length > 0)
+      .filter(g => filterTeam === "All" || g.team === filterTeam)
+      .filter(g => g.event.name.toLowerCase().includes(searchTerm.toLowerCase()));
+
   return (
     <div className="p-6 space-y-6 min-h-screen bg-slate-50/50">
       <div className="flex flex-col md:flex-row justify-between items-center gap-4">
@@ -401,43 +415,83 @@ export default function AdminRegistrations() {
           </Select>
       </div>
 
+      <div className="flex bg-white rounded-lg p-1 border shadow-sm w-full md:w-64 mb-4">
+        <button onClick={() => setActiveRegView("Individual")} className={`flex-1 text-xs font-bold py-2 rounded-md transition-all ${activeRegView === "Individual" ? "bg-slate-900 text-white shadow" : "text-slate-500 hover:bg-slate-50"}`}>Individual</button>
+        <button onClick={() => setActiveRegView("Group")} className={`flex-1 text-xs font-bold py-2 rounded-md transition-all ${activeRegView === "Group" ? "bg-purple-600 text-white shadow" : "text-slate-500 hover:bg-slate-50"}`}>Groups</button>
+      </div>
+
       <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
           <div className="overflow-x-auto w-full">
-            <Table className="min-w-[800px]">
-              <TableHeader>
-                  <TableRow className="bg-slate-50">
-                      <TableHead>Name</TableHead>
-                      <TableHead>Chest No</TableHead>
-                      <TableHead>Team</TableHead>
-                      <TableHead>Category</TableHead>
-                      <TableHead>Events</TableHead>
-                      <TableHead className="text-right">Action</TableHead>
-                  </TableRow>
-              </TableHeader>
-              <TableBody>
-                  {loading ? <TableRow><TableCell colSpan={6} className="h-24 text-center"><Loader2 className="animate-spin mx-auto"/></TableCell></TableRow> : 
-                   filteredStudents.length === 0 ? <TableRow><TableCell colSpan={6} className="h-24 text-center text-slate-500">No students found.</TableCell></TableRow> :
-                   filteredStudents.map(student => (
-                      <TableRow key={student._id}>
-                          <TableCell className="font-bold">{student.name}</TableCell>
-                          <TableCell><Badge variant="outline">{student.chestNo}</Badge></TableCell>
-                          <TableCell>
-                              <Badge className={student.team === "Ignis" ? "bg-yellow-100 text-yellow-700" : "bg-blue-100 text-blue-700"}>
-                                  {student.team}
-                              </Badge>
-                          </TableCell>
-                          <TableCell>{student.category}</TableCell>
-                          <TableCell>{student.registeredEvents.length} Items</TableCell>
-                          <TableCell className="text-right">
-                              <div className="flex justify-end gap-2">
-                                  <Button size="icon" variant="ghost" onClick={() => handleEdit(student)}><Pencil className="w-4 h-4 text-slate-500" /></Button>
-                                  <Button size="icon" variant="ghost" onClick={() => handleDelete(student._id)}><Trash2 className="w-4 h-4 text-red-500" /></Button>
+            {activeRegView === "Individual" ? (
+              <Table className="min-w-[800px]">
+                <TableHeader>
+                    <TableRow className="bg-slate-50">
+                        <TableHead>Name</TableHead>
+                        <TableHead>Chest No</TableHead>
+                        <TableHead>Team</TableHead>
+                        <TableHead>Category</TableHead>
+                        <TableHead>Events</TableHead>
+                        <TableHead className="text-right">Action</TableHead>
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    {loading ? <TableRow><TableCell colSpan={6} className="h-24 text-center"><Loader2 className="animate-spin mx-auto"/></TableCell></TableRow> : 
+                     filteredStudents.length === 0 ? <TableRow><TableCell colSpan={6} className="h-24 text-center text-slate-500">No students found.</TableCell></TableRow> :
+                     filteredStudents.map(student => (
+                        <TableRow key={student._id}>
+                            <TableCell className="font-bold">{student.name}</TableCell>
+                            <TableCell><Badge variant="outline">{student.chestNo}</Badge></TableCell>
+                            <TableCell>
+                                <Badge className={student.team === "Ignis" ? "bg-yellow-100 text-yellow-700" : "bg-blue-100 text-blue-700"}>
+                                    {student.team}
+                                </Badge>
+                            </TableCell>
+                            <TableCell>{student.category}</TableCell>
+                            <TableCell>{student.registeredEvents.length} Items</TableCell>
+                            <TableCell className="text-right">
+                                <div className="flex justify-end gap-2">
+                                    <Button size="icon" variant="ghost" onClick={() => handleEdit(student)}><Pencil className="w-4 h-4 text-slate-500" /></Button>
+                                    <Button size="icon" variant="ghost" onClick={() => handleDelete(student._id)}><Trash2 className="w-4 h-4 text-red-500" /></Button>
+                                </div>
+                            </TableCell>
+                        </TableRow>
+                    ))}
+                </TableBody>
+              </Table>
+            ) : (
+              <Table className="min-w-[800px]">
+                <TableHeader>
+                    <TableRow className="bg-slate-50">
+                        <TableHead>Event</TableHead>
+                        <TableHead>Team</TableHead>
+                        <TableHead>Category</TableHead>
+                        <TableHead>Participants</TableHead>
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    {loading ? <TableRow><TableCell colSpan={4} className="h-24 text-center"><Loader2 className="animate-spin mx-auto"/></TableCell></TableRow> : 
+                     groupRegistrations.length === 0 ? <TableRow><TableCell colSpan={4} className="h-24 text-center text-slate-500">No groups found.</TableCell></TableRow> :
+                     groupRegistrations.map((group, idx) => (
+                        <TableRow key={idx}>
+                            <TableCell className="font-bold">{group.event.name}</TableCell>
+                            <TableCell>
+                                <Badge className={group.team === "Ignis" ? "bg-yellow-100 text-yellow-700" : "bg-blue-100 text-blue-700"}>
+                                    {group.team}
+                                </Badge>
+                            </TableCell>
+                            <TableCell>{group.event.category}</TableCell>
+                            <TableCell>
+                              <div className="flex flex-wrap gap-1">
+                                {group.participants.map((p: any) => (
+                                  <Badge key={p._id} variant="outline" className="text-[10px] bg-slate-50">{p.name}</Badge>
+                                ))}
                               </div>
-                          </TableCell>
-                      </TableRow>
-                  ))}
-              </TableBody>
-            </Table>
+                            </TableCell>
+                        </TableRow>
+                    ))}
+                </TableBody>
+              </Table>
+            )}
           </div>
       </div>
 
