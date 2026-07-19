@@ -85,6 +85,7 @@ export default function AdminDashboard() {
   // Registration Control
   const [regOpen, setRegOpen] = useState(true)
   const [toggling, setToggling] = useState(false)
+  const [categorySettings, setCategorySettings] = useState<Record<string, boolean>>({})
   
   // Admin Credentials Modal
   const [isCredModalOpen, setIsCredModalOpen] = useState(false)
@@ -117,6 +118,7 @@ export default function AdminDashboard() {
         try {
             const res = await axios.get('/api/settings')
             setRegOpen(res.data.registrationOpen)
+            setCategorySettings(res.data.categories || {})
         } catch (error) {
             console.error("Failed to load settings", error)
         }
@@ -141,6 +143,21 @@ export default function AdminDashboard() {
         toast({ variant: "destructive", title: "Error", description: "Failed to update settings" })
     } finally {
         setToggling(false)
+    }
+  }
+
+  // Toggle Category
+  const toggleCategory = async (category: string, currentState: boolean) => {
+    const newState = !currentState;
+    try {
+        await axios.post('/api/settings', { category, open: newState })
+        setCategorySettings(prev => ({ ...prev, [category]: newState }))
+        toast({ 
+            title: newState ? `${category} OPENED 🟢` : `${category} CLOSED 🔴`,
+            description: newState ? `Teams can now register students in ${category}.` : `New registrations in ${category} are blocked.`
+        })
+    } catch (error) {
+        toast({ variant: "destructive", title: "Error", description: "Failed to update settings" })
     }
   }
 
@@ -244,6 +261,31 @@ export default function AdminDashboard() {
                 </div>
             </Button>
         </div>
+      </div>
+
+      {/* 1.5 CATEGORY CONTROLS */}
+      <div className="bg-white rounded-xl shadow-sm border p-4">
+          <h2 className="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2 uppercase tracking-wider">
+              <ClipboardList className="w-4 h-4 text-emerald-600" /> Category Registration Limits
+          </h2>
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+              {['Cosmos', 'Nexus', 'Protons', 'General-A', 'General-B'].map((cat) => {
+                  const isOpen = categorySettings[cat] ?? true;
+                  return (
+                      <div key={cat} className="p-3 border rounded-lg flex flex-col items-center gap-2 bg-slate-50/50">
+                          <span className="font-bold text-slate-700 text-xs uppercase">{cat}</span>
+                          <Button 
+                              onClick={() => toggleCategory(cat, isOpen)} 
+                              variant={isOpen ? "outline" : "destructive"}
+                              size="sm"
+                              className={`w-full h-8 text-xs font-bold ${isOpen ? "text-emerald-700 border-emerald-200 bg-emerald-50 hover:bg-emerald-100" : ""}`}
+                          >
+                              {isOpen ? "OPEN" : "CLOSED"}
+                          </Button>
+                      </div>
+                  )
+              })}
+          </div>
       </div>
 
       {/* 1. TOP STATS */}

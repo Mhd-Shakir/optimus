@@ -24,6 +24,28 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Missing required fields, including Class" }, { status: 400 });
     }
 
+    // Dynamic category-based auto close logic
+    const CATEGORY_IDS: Record<string, number> = {
+      Cosmos: 2,
+      Nexus: 3,
+      Protons: 4,
+      'General-A': 5,
+      'General-B': 6
+    };
+    
+    const catId = CATEGORY_IDS[category];
+    if (catId) {
+      const { data: catSettings } = await supabaseAdmin
+        .from('settings')
+        .select('registration_open')
+        .eq('id', catId)
+        .single();
+        
+      if (catSettings && catSettings.registration_open === false) {
+        return NextResponse.json({ error: `Registration for ${category} is currently CLOSED.` }, { status: 403 });
+      }
+    }
+
     // 2. Create Student
     const { data: newStudent, error: studentError } = await supabaseAdmin
       .from('students')

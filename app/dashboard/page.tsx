@@ -48,6 +48,11 @@ export default function TeamDashboard() {
   const [groupCategory, setGroupCategory] = useState("Protons");
   const [groupEventId, setGroupEventId] = useState("");
   const [isParticipantsOpen, setIsParticipantsOpen] = useState(false);
+  const [participantSearch, setParticipantSearch] = useState("");
+  const [isGroupEditMode, setIsGroupEditMode] = useState(false);
+  const [editGroupEventId, setEditGroupEventId] = useState("");
+  const [groupNo, setGroupNo] = useState<number>(1);
+  const [originalGroupNo, setOriginalGroupNo] = useState<number>(1);
 
   // ✅ UPDATED POINTS CALCULATION - Matches Admin Results Logic
   const getGradePoints = (grade: string, isGroup: boolean) => {
@@ -104,7 +109,7 @@ export default function TeamDashboard() {
 
   useEffect(() => {
     if (user?.team) {
-      setFormData(prev => ({ ...prev, team: user.team }));
+      setFormData(prev => ({ ...prev, team: user.team || "" }));
       fetchData();
       axios.get('/api/settings').then(res => setIsSystemRegOpen(res.data.registrationOpen));
     }
@@ -248,7 +253,7 @@ export default function TeamDashboard() {
 
 
 
-  const handleEdit = (e: any, s: any) => { e.stopPropagation(); if (!isSystemRegOpen) return toast({ variant: "destructive", title: "Closed", description: "Registration closed." }); setEditId(s._id); setFormData({ name: s.name, team: s.team, category: s.category }); const mapped = s.registeredEvents.map((ev: any) => { const orig = events.find(x => x._id === ev.eventId); return { eventId: ev.eventId, name: ev.name || orig?.name, type: orig?.type || "Stage", isStar: ev.isStar, category: orig?.category || "", groupEvent: orig?.groupEvent || false, teamLimit: orig?.teamLimit } }); setSelectedEvents(mapped); setIsEditMode(true); setIsRegOpen(true); };
+  const handleEdit = (e: any, s: any) => { e.stopPropagation(); if (!isSystemRegOpen) return toast({ variant: "destructive", title: "Closed", description: "Registration closed." }); setEditId(s._id); setFormData({ name: s.name, team: s.team, category: s.category, studentClass: s.studentClass || "" }); const mapped = s.registeredEvents.map((ev: any) => { const orig = events.find(x => x._id === ev.eventId); return { eventId: ev.eventId, name: ev.name || orig?.name, type: orig?.type || "Stage", isStar: ev.isStar, category: orig?.category || "", groupEvent: orig?.groupEvent || false, teamLimit: orig?.teamLimit } }); setSelectedEvents(mapped); setIsEditMode(true); setIsRegOpen(true); };
 
   const toggleEvent = (event: any) => {
     const exists = selectedEvents.find(e => e.eventId === event._id);
@@ -270,13 +275,37 @@ export default function TeamDashboard() {
     }
   };
 
-  const groupRegistrations = events
-    .filter(e => e.groupEvent === true || normalizeString(e.name) === "histoart" || normalizeString(e.name) === "dictionarymaking" || normalizeString(e.name) === "swarafdebate" || normalizeString(e.name) === "swarfdebate")
-    .map(event => {
-        const participants = students.filter(s => s.registeredEvents?.some((re: any) => re.eventId === event._id));
-        return { event, participants };
-    })
-    .filter(g => g.participants.length > 0);
+  const groupRegistrations = (() => {
+    const list: any[] = [];
+    events
+      .filter(e => e.groupEvent === true || normalizeString(e.name) === "histoart" || normalizeString(e.name) === "dictionarymaking" || normalizeString(e.name) === "swarafdebate" || normalizeString(e.name) === "swarfdebate")
+      .forEach(event => {
+          const eventStudents = students.filter(s => s.registeredEvents?.some((re: any) => re.eventId === event._id));
+          const groupsMap: Record<number, any[]> = {};
+          
+          eventStudents.forEach(s => {
+              const reg = s.registeredEvents.find((re: any) => re.eventId === event._id);
+              const gNo = reg?.groupNo || 1;
+              if (!groupsMap[gNo]) groupsMap[gNo] = [];
+              groupsMap[gNo].push(s);
+          });
+
+          Object.keys(groupsMap).forEach(gNoStr => {
+              const gNo = parseInt(gNoStr, 10);
+              list.push({
+                  event,
+                  groupNo: gNo,
+                  participants: groupsMap[gNo]
+              });
+          });
+      });
+
+    list.sort((a, b) => {
+        if (a.event.name !== b.event.name) return a.event.name.localeCompare(b.event.name);
+        return a.groupNo - b.groupNo;
+    });
+    return list;
+  })();
 
   const downloadGroupListPDF = async () => {
     const { default: jsPDF } = await import("jspdf");
@@ -289,9 +318,9 @@ export default function TeamDashboard() {
     
     const tableRows = groupRegistrations.map(g => {
         return [
-            g.event.name,
+            `${g.event.name} (Group ${g.groupNo})`,
             g.event.category,
-            g.participants.map((p: any) => p.name).join(", ")
+            g.participants.map((p: any) => p.name).join("\n")
         ];
     });
 
@@ -300,8 +329,14 @@ export default function TeamDashboard() {
         head: [["Event", "Category", "Participants"]],
         body: tableRows,
         theme: "grid",
-        headStyles: { fillColor: [240, 240, 240], textColor: [0, 0, 0], fontStyle: "bold" },
-        styles: { fontSize: 10, cellPadding: 3, textColor: [0, 0, 0] },
+        headStyles: { fillColor: [88, 28, 135], textColor: [255, 255, 255], fontStyle: "bold" },
+        styles: { fontSize: 10, cellPadding: 4, textColor: [0, 0, 0], valign: 'middle' },
+        columnStyles: {
+            0: { cellWidth: 70, fontStyle: 'bold' },
+            1: { cellWidth: 40 },
+            2: { cellWidth: 'auto' }
+        },
+        alternateRowStyles: { fillColor: [250, 250, 250] },
     });
     
     doc.save(`${user?.team || "Team"}_Group_Registrations.pdf`);
@@ -329,16 +364,46 @@ export default function TeamDashboard() {
   };
   const handleRegister = async (e: any) => { e.preventDefault(); if (!formData.name) return toast({ variant: "destructive", title: "Missing Field", description: "Name is required." }); if (!formData.studentClass) return toast({ variant: "destructive", title: "Missing Field", description: "Class is required." }); setSubmitting(true); try { await axios.post(isEditMode ? "/api/student/update" : "/api/student/register", { ...formData, id: editId, chestNo: Math.floor(1000 + Math.random() * 9000).toString(), selectedEvents }); toast({ title: "Success" }); closeModal(); fetchData(); } catch (err: any) { toast({ variant: "destructive", title: "Error", description: err.response?.data?.error }); } finally { setSubmitting(false); } };
 
+  const handleGroupEdit = (group: any) => {
+    setIsGroupEditMode(true);
+    setEditGroupEventId(group.event._id);
+    setGroupCategory(group.event.category);
+    setGroupEventId(group.event._id);
+    setGroupNo(group.groupNo);
+    setOriginalGroupNo(group.groupNo);
+    setGroupParticipants(group.participants.map((p: any) => p._id));
+    setIsParticipantsOpen(false);
+  };
+
+  const cancelGroupEdit = () => {
+    setIsGroupEditMode(false);
+    setEditGroupEventId("");
+    setGroupCategory("Protons");
+    setGroupEventId("");
+    setGroupNo(1);
+    setOriginalGroupNo(1);
+    setGroupParticipants([]);
+    setIsParticipantsOpen(false);
+  };
+
   const handleGroupRegister = async (e: any) => {
     e.preventDefault();
-    if (!groupEventId) return toast({ variant: "destructive", title: "Missing Field", description: "Please select an event." });
+    const eventId = isGroupEditMode ? editGroupEventId : groupEventId;
+    if (!eventId) return toast({ variant: "destructive", title: "Missing Field", description: "Please select an event." });
     if (groupParticipants.length === 0) return toast({ variant: "destructive", title: "Missing Field", description: "Please select at least one participant." });
     setSubmitting(true);
     try {
-      await axios.post("/api/student/register-group", { eventId: groupEventId, studentIds: groupParticipants });
-      toast({ title: "Success", description: "Group registered successfully." });
-      setGroupParticipants([]);
-      setGroupEventId("");
+      if (isGroupEditMode) {
+        await axios.post("/api/student/update-group", { eventId, studentIds: groupParticipants, team: user?.team, groupNo, originalGroupNo });
+        toast({ title: "Success", description: "Group registration updated successfully." });
+        cancelGroupEdit();
+      } else {
+        await axios.post("/api/student/register-group", { eventId, studentIds: groupParticipants, groupNo });
+        toast({ title: "Success", description: "Group registered successfully." });
+        setGroupParticipants([]);
+        setGroupEventId("");
+        setGroupNo(1);
+      }
       fetchData();
     } catch (err: any) {
       toast({ variant: "destructive", title: "Error", description: err.response?.data?.error || "Registration failed" });
@@ -421,8 +486,8 @@ export default function TeamDashboard() {
                   <Users className="w-8 h-8" />
                 </div>
                 <div>
-                  <h2 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tighter uppercase">Group Registration</h2>
-                  <p className="text-slate-400 font-bold text-xs uppercase tracking-widest mt-1">Register for Group Events</p>
+                  <h2 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tighter uppercase">{isGroupEditMode ? "Edit Group Registration" : "Group Registration"}</h2>
+                  <p className="text-slate-400 font-bold text-xs uppercase tracking-widest mt-1">{isGroupEditMode ? "Modify participant list for this group event" : "Register for Group Events"}</p>
                 </div>
               </div>
 
@@ -452,25 +517,57 @@ export default function TeamDashboard() {
                       {isParticipantsOpen && (
                         <>
                           <div className="fixed inset-0 z-40" onClick={() => setIsParticipantsOpen(false)} />
-                          <div className="absolute top-full left-0 mt-1 w-full max-h-56 overflow-y-auto bg-white border border-slate-200 rounded-lg shadow-xl z-50 p-1 custom-scrollbar">
-                            {students.filter(s => s.category === groupCategory || s.category.includes("General")).length === 0 ? (
-                              <div className="p-4 text-xs font-bold text-slate-400 text-center uppercase tracking-wider">No students found</div>
-                            ) : (
-                              students.filter(s => s.category === groupCategory || s.category.includes("General")).map(student => (
-                                <label key={student._id} className="flex items-center gap-3 p-2.5 hover:bg-slate-50 rounded-md cursor-pointer transition-colors border-b border-slate-50 last:border-0">
-                                  <input 
-                                    type="checkbox" 
-                                    checked={groupParticipants.includes(student._id)}
-                                    onChange={() => setGroupParticipants(prev => prev.includes(student._id) ? prev.filter(p => p !== student._id) : [...prev, student._id])}
-                                    className="w-4 h-4 rounded border-slate-300 text-purple-600 focus:ring-purple-500"
-                                  />
-                                  <div>
-                                    <span className="text-sm font-bold text-slate-700 block">{student.name}</span>
-                                    <span className="text-[9px] text-slate-400 font-black uppercase tracking-widest">{student.category}</span>
-                                  </div>
-                                </label>
-                              ))
-                            )}
+                          <div className="absolute top-full left-0 mt-1 w-full max-h-72 flex flex-col bg-white border border-slate-200 rounded-lg shadow-xl z-50 overflow-hidden">
+                            <div className="p-2 border-b border-slate-100 bg-slate-50/50">
+                              <div className="relative">
+                                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                                <input 
+                                  type="text" 
+                                  placeholder="Search participant..." 
+                                  value={participantSearch}
+                                  onChange={(e) => setParticipantSearch(e.target.value)}
+                                  className="w-full h-9 pl-9 pr-3 text-sm bg-white border border-slate-200 rounded-md focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-all"
+                                  autoFocus
+                                />
+                              </div>
+                            </div>
+                            <div className="overflow-y-auto custom-scrollbar p-1 max-h-56">
+                              {(() => {
+                                const filtered = students.filter(s => {
+                                  let matchCat = false;
+                                  if (groupCategory === "General-A") matchCat = ["8", "9", "10"].includes(s.studentClass);
+                                  else if (groupCategory === "General-B") matchCat = ["HS1", "HS2", "BS1", "BS2", "BS3", "BS4", "BS5"].includes(s.studentClass);
+                                  else matchCat = s.category === groupCategory;
+                                  
+                                  if (!matchCat) return false;
+                                  
+                                  if (participantSearch) {
+                                    const searchLower = participantSearch.toLowerCase();
+                                    return s.name.toLowerCase().includes(searchLower) || (s.chestNo && s.chestNo.toLowerCase().includes(searchLower));
+                                  }
+                                  return true;
+                                });
+
+                                return filtered.length === 0 ? (
+                                  <div className="p-6 text-xs font-bold text-slate-400 text-center uppercase tracking-wider">No students found</div>
+                                ) : (
+                                  filtered.map(student => (
+                                    <label key={student._id} className="flex items-center gap-3 p-2.5 hover:bg-slate-50 rounded-md cursor-pointer transition-colors border-b border-slate-50 last:border-0">
+                                      <input 
+                                        type="checkbox" 
+                                        checked={groupParticipants.includes(student._id)}
+                                        onChange={() => setGroupParticipants(prev => prev.includes(student._id) ? prev.filter(p => p !== student._id) : [...prev, student._id])}
+                                        className="w-4 h-4 rounded border-slate-300 text-purple-600 focus:ring-purple-500"
+                                      />
+                                      <div>
+                                        <span className="text-sm font-bold text-slate-700 block">{student.name} <span className="text-slate-400 font-normal">({student.studentClass})</span></span>
+                                        <span className="text-[9px] text-slate-400 font-black uppercase tracking-widest">{student.category}</span>
+                                      </div>
+                                    </label>
+                                  ))
+                                );
+                              })()}
+                            </div>
                           </div>
                         </>
                       )}
@@ -478,9 +575,9 @@ export default function TeamDashboard() {
                     <p className="text-[10px] text-slate-400 font-medium">Select all team members who are participating in this group event.</p>
                   </div>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <div className="space-y-2">
-                      <label className="text-xs font-black text-slate-400 uppercase tracking-wider">Group <span className="text-red-500">*</span></label>
+                      <label className="text-xs font-black text-slate-400 uppercase tracking-wider">Team <span className="text-red-500">*</span></label>
                       <div className="h-10 px-3 flex items-center bg-slate-100 text-slate-600 text-sm font-bold rounded-lg border border-slate-200 cursor-not-allowed">
                         {user?.team || "Loading..."}
                       </div>
@@ -488,7 +585,7 @@ export default function TeamDashboard() {
                     
                     <div className="space-y-2">
                       <label className="text-xs font-black text-slate-400 uppercase tracking-wider">Category <span className="text-red-500">*</span></label>
-                      <Select value={groupCategory} onValueChange={(val) => { setGroupCategory(val); setGroupParticipants([]); }}>
+                      <Select disabled={isGroupEditMode} value={groupCategory} onValueChange={(val) => { setGroupCategory(val); setGroupParticipants([]); }}>
                         <SelectTrigger className="h-10 text-sm">
                           <SelectValue placeholder="Select Category" />
                         </SelectTrigger>
@@ -501,25 +598,50 @@ export default function TeamDashboard() {
                         </SelectContent>
                       </Select>
                     </div>
+
+                    <div className="space-y-2">
+                      <label className="text-xs font-black text-slate-400 uppercase tracking-wider">Group Number <span className="text-red-500">*</span></label>
+                      <Select value={groupNo.toString()} onValueChange={(val) => { setGroupNo(parseInt(val, 10)); setGroupParticipants([]); }}>
+                        <SelectTrigger className="h-10 text-sm">
+                          <SelectValue placeholder="Select Group Number" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="1">Group 1</SelectItem>
+                          <SelectItem value="2">Group 2</SelectItem>
+                          <SelectItem value="3">Group 3</SelectItem>
+                          <SelectItem value="4">Group 4</SelectItem>
+                          <SelectItem value="5">Group 5</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
 
                   <div className="space-y-2">
                     <label className="text-xs font-black text-slate-400 uppercase tracking-wider">Event <span className="text-red-500">*</span></label>
-                    <Select value={groupEventId} onValueChange={setGroupEventId}>
+                    <Select disabled={isGroupEditMode} value={groupEventId} onValueChange={setGroupEventId}>
                       <SelectTrigger className="h-10 text-sm">
                         <SelectValue placeholder="Select Group Event" />
                       </SelectTrigger>
                       <SelectContent>
-                        {events.filter(e => e.groupEvent === true || normalizeString(e.name) === "histoart" || normalizeString(e.name) === "dictionarymaking" || normalizeString(e.name) === "swarafdebate" || normalizeString(e.name) === "swarfdebate").map(e => (
+                        {events.filter(e => 
+                          (e.groupEvent === true || normalizeString(e.name) === "histoart" || normalizeString(e.name) === "dictionarymaking" || normalizeString(e.name) === "swarafdebate" || normalizeString(e.name) === "swarfdebate") && 
+                          e.category === groupCategory
+                        ).map(e => (
                           <SelectItem key={e._id} value={e._id}>{e.name} <span className="text-[10px] text-slate-400 ml-1">({e.category})</span></SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   </div>
 
-                  <div className="pt-4 border-t border-slate-100">
-                    <Button type="submit" disabled={submitting} className="w-full h-12 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl shadow-lg shadow-purple-100 transition-all">
-                      {submitting ? <Loader2 className="animate-spin w-5 h-5 mr-2" /> : <CheckCircle2 className="w-5 h-5 mr-2" />} Complete Group Registration
+                  <div className="pt-4 border-t border-slate-100 flex gap-3">
+                    {isGroupEditMode && (
+                      <Button type="button" onClick={cancelGroupEdit} variant="outline" className="flex-1 h-12 border-slate-200 text-slate-500 hover:text-slate-700 font-bold rounded-xl transition-all">
+                        Cancel Edit
+                      </Button>
+                    )}
+                    <Button type="submit" disabled={submitting} className={`h-12 text-white font-bold rounded-xl shadow-lg transition-all ${isGroupEditMode ? 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-100 flex-[2]' : 'w-full bg-purple-600 hover:bg-purple-700 shadow-purple-100'}`}>
+                      {submitting ? <Loader2 className="animate-spin w-5 h-5 mr-2" /> : <CheckCircle2 className="w-5 h-5 mr-2" />} 
+                      {isGroupEditMode ? "Save Changes" : "Complete Group Registration"}
                     </Button>
                   </div>
                 </form>
@@ -539,15 +661,21 @@ export default function TeamDashboard() {
                         <TableHead>Event</TableHead>
                         <TableHead>Category</TableHead>
                         <TableHead>Participants</TableHead>
+                        <TableHead className="text-right pr-6">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {groupRegistrations.length === 0 ? (
-                        <TableRow><TableCell colSpan={3} className="h-24 text-center text-slate-400">No group registrations yet.</TableCell></TableRow>
+                        <TableRow><TableCell colSpan={4} className="h-24 text-center text-slate-400">No group registrations yet.</TableCell></TableRow>
                       ) : (
                         groupRegistrations.map((group, idx) => (
                           <TableRow key={idx}>
-                            <TableCell className="font-bold text-slate-800">{group.event.name}</TableCell>
+                            <TableCell className="font-bold text-slate-800">
+                              {group.event.name}
+                              <Badge variant="secondary" className="ml-2 bg-slate-100 text-slate-600 font-bold border-slate-200">
+                                Group {group.groupNo}
+                              </Badge>
+                            </TableCell>
                             <TableCell><span className="text-xs font-bold text-slate-500">{group.event.category}</span></TableCell>
                             <TableCell>
                               <div className="flex flex-wrap gap-1">
@@ -555,6 +683,16 @@ export default function TeamDashboard() {
                                   <Badge key={p._id} variant="outline" className="text-[10px] bg-slate-50">{p.name}</Badge>
                                 ))}
                               </div>
+                            </TableCell>
+                            <TableCell className="text-right pr-4">
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-8 w-8 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                onClick={() => handleGroupEdit(group)}
+                              >
+                                <Pencil className="w-4 h-4" />
+                              </Button>
                             </TableCell>
                           </TableRow>
                         ))
@@ -622,7 +760,60 @@ export default function TeamDashboard() {
                 
                 <div className="absolute top-0 right-0 p-4 opacity-10"><Trophy className="w-32 h-32 text-white" /></div><button onClick={() => setViewStudent(null)} className="absolute top-2 right-2 p-2 text-white/50 hover:text-white z-20"><X className="w-5 h-5" /></button>
               </div>
-              <div className="p-0 max-h-[60vh] overflow-y-auto bg-slate-50">{viewStudent.registeredEvents?.length === 0 ? (<div className="p-8 text-center text-slate-400 text-sm">No events registered.</div>) : (<div className="divide-y divide-slate-100">{viewStudent.registeredEvents?.map((e: any, idx: number) => { const { rank, grade, points, mark } = getEventResult(viewStudent._id, e.eventId); const original = events.find(ev => ev._id === e.eventId); const isGrp = original?.groupEvent === true; return (<div key={idx} className="px-5 py-3 bg-white flex justify-between items-center hover:bg-slate-50 transition-colors"><div className="flex-1 pr-4"><div className="flex items-center gap-2"><span className="text-sm font-bold text-slate-800">{e.name || original?.name || "Unknown Event"}</span>{isGrp && <span className="text-[9px] bg-yellow-100 text-yellow-800 px-1 py-0.5 rounded uppercase font-bold border border-yellow-200">Group</span>}</div><div className="flex items-center gap-2 mt-1">{e.status === 'sent' && <Badge variant="outline" className="text-[9px] h-4 px-1 text-yellow-600 border-yellow-300 bg-yellow-50">Sent to Stage</Badge>}{e.status === 'reported' && <Badge variant="outline" className="text-[9px] h-4 px-1 text-emerald-600 border-emerald-300 bg-emerald-50">Completed</Badge>}{e.isStar && <span className="text-[9px] bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded font-bold flex items-center gap-0.5"><Star className="w-2 h-2 fill-current" /> Star</span>}</div></div><div className="text-right min-w-[80px]">{grade ? (<div><div className="text-lg font-black text-slate-900">{grade}{mark && <span className="text-xs text-slate-500 ml-1">({mark})</span>}</div><div className="text-[10px] font-bold text-emerald-600">+{points} pts</div></div>) : (<span className="text-[10px] font-bold text-slate-300 uppercase tracking-wider">Pending</span>)}</div></div>) })}</div>)}</div>
+              <div className="p-0 max-h-[60vh] overflow-y-auto bg-slate-50">
+                {viewStudent.registeredEvents?.length === 0 ? (
+                  <div className="p-8 text-center text-slate-400 text-sm">No events registered.</div>
+                ) : (
+                  <div className="p-4 space-y-6">
+                    {["Stage", "Non-Stage"].map(type => {
+                      const typeEvents = viewStudent.registeredEvents?.filter((e: any) => {
+                        const original = events.find(ev => ev._id === e.eventId);
+                        return original?.type === type;
+                      });
+                      
+                      if (!typeEvents || typeEvents.length === 0) return null;
+                      
+                      return (
+                        <div key={type}>
+                          <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 px-1">{type} Events <span className="text-slate-300 ml-1">({typeEvents.length})</span></h4>
+                          <div className="divide-y divide-slate-100 bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+                            {typeEvents.map((e: any, idx: number) => { 
+                              const { rank, grade, points, mark } = getEventResult(viewStudent._id, e.eventId); 
+                              const original = events.find(ev => ev._id === e.eventId); 
+                              const isGrp = original?.groupEvent === true; 
+                              return (
+                                <div key={idx} className="px-5 py-3 flex justify-between items-center hover:bg-slate-50 transition-colors">
+                                  <div className="flex-1 pr-4">
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-sm font-bold text-slate-800">{e.name || original?.name || "Unknown Event"}</span>
+                                      {isGrp && <span className="text-[9px] bg-yellow-100 text-yellow-800 px-1 py-0.5 rounded uppercase font-bold border border-yellow-200">Group</span>}
+                                    </div>
+                                    <div className="flex items-center gap-2 mt-1">
+                                      {e.status === 'sent' && <Badge variant="outline" className="text-[9px] h-4 px-1 text-yellow-600 border-yellow-300 bg-yellow-50">Sent to Stage</Badge>}
+                                      {e.status === 'reported' && <Badge variant="outline" className="text-[9px] h-4 px-1 text-emerald-600 border-emerald-300 bg-emerald-50">Completed</Badge>}
+                                      {e.isStar && <span className="text-[9px] bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded font-bold flex items-center gap-0.5"><Star className="w-2 h-2 fill-current" /> Star</span>}
+                                    </div>
+                                  </div>
+                                  <div className="text-right min-w-[80px]">
+                                    {grade ? (
+                                      <div>
+                                        <div className="text-lg font-black text-slate-900">{grade}{mark && <span className="text-xs text-slate-500 ml-1">({mark})</span>}</div>
+                                        <div className="text-[10px] font-bold text-emerald-600">+{points} pts</div>
+                                      </div>
+                                    ) : (
+                                      <span className="text-[10px] font-bold text-slate-300 uppercase tracking-wider">Pending</span>
+                                    )}
+                                  </div>
+                                </div>
+                              ) 
+                            })}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
             </DialogContent>
           </Dialog>
         )}

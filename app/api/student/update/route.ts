@@ -8,6 +8,28 @@ export async function POST(req: Request) {
     if (!id) return NextResponse.json({ error: "Student ID missing" }, { status: 400 });
     if (!studentClass) return NextResponse.json({ error: "Class is required" }, { status: 400 });
 
+    // Dynamic category-based auto close logic
+    const CATEGORY_IDS: Record<string, number> = {
+      Cosmos: 2,
+      Nexus: 3,
+      Protons: 4,
+      'General-A': 5,
+      'General-B': 6
+    };
+    
+    const catId = CATEGORY_IDS[category];
+    if (catId) {
+      const { data: catSettings } = await supabaseAdmin
+        .from('settings')
+        .select('registration_open')
+        .eq('id', catId)
+        .single();
+        
+      if (catSettings && catSettings.registration_open === false) {
+        return NextResponse.json({ error: `Registration for ${category} is currently CLOSED.` }, { status: 403 });
+      }
+    }
+
     // 1. Update Student Table
     const { data: updatedStudent, error: updateError } = await supabaseAdmin
       .from('students')

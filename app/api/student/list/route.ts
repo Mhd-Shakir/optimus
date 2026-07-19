@@ -15,7 +15,8 @@ const mapStudent = (dbStudent: any, registrations: any[] = []) => ({
     isStar: reg.is_star,
     status: reg.status,
     position: reg.position,
-    grade: reg.grade
+    grade: reg.grade,
+    groupNo: reg.group_no
   }))
 });
 

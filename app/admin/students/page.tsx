@@ -30,6 +30,8 @@ export default function StudentsPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
   const [teamFilter, setTeamFilter] = useState("All")
+  const [categoryFilter, setCategoryFilter] = useState("All")
+  const [classFilter, setClassFilter] = useState("All")
   
   // Form State
   const [formData, setFormData] = useState({
@@ -88,7 +90,9 @@ export default function StudentsPage() {
     const q = searchQuery.toLowerCase()
     const matchSearch = student.name.toLowerCase().includes(q) || (student.chestNo && student.chestNo.toLowerCase().includes(q))
     const matchTeam = teamFilter === "All" || student.team === teamFilter
-    return matchSearch && matchTeam
+    const matchCategory = categoryFilter === "All" || student.category === categoryFilter
+    const matchClass = classFilter === "All" || student.studentClass === classFilter
+    return matchSearch && matchTeam && matchCategory && matchClass
   })
 
   return (
@@ -128,7 +132,7 @@ export default function StudentsPage() {
                     <Select onValueChange={(val) => setFormData({...formData, category: val, studentClass: ""})}>
                     <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
                     <SelectContent>
-                        {["Protons", "Nexus", "Cosmos", "General-A", "General-B"].map((cat) => (
+                        {["Protons", "Nexus", "Cosmos"].map((cat) => (
                         <SelectItem key={cat} value={cat}>{cat}</SelectItem>
                         ))}
                     </SelectContent>
@@ -180,17 +184,41 @@ export default function StudentsPage() {
                 className="pl-9"
               />
             </div>
-            <div className="w-full sm:w-48">
-              <Select value={teamFilter} onValueChange={setTeamFilter}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Filter by Team" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="All">All Teams</SelectItem>
-                  <SelectItem value="Ignis">Ignis</SelectItem>
-                  <SelectItem value="Ventus">Ventus</SelectItem>
-                </SelectContent>
-              </Select>
+            <div className="flex gap-2 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0 custom-scrollbar">
+              <div className="w-[140px] shrink-0">
+                <Select value={teamFilter} onValueChange={setTeamFilter}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Team" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="All">All Teams</SelectItem>
+                    <SelectItem value="Ignis">Ignis</SelectItem>
+                    <SelectItem value="Ventus">Ventus</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="w-[140px] shrink-0">
+                <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                  <SelectTrigger><SelectValue placeholder="Category" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="All">All Categories</SelectItem>
+                    <SelectItem value="Protons">Protons</SelectItem>
+                    <SelectItem value="Nexus">Nexus</SelectItem>
+                    <SelectItem value="Cosmos">Cosmos</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="w-[120px] shrink-0">
+                <Select value={classFilter} onValueChange={setClassFilter}>
+                  <SelectTrigger><SelectValue placeholder="Class" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="All">All Classes</SelectItem>
+                    {['8', '9', '10', 'HS1', 'HS2', 'BS1', 'BS2', 'BS3', 'BS4', 'BS5'].map(cls => (
+                      <SelectItem key={cls} value={cls}>{cls}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
 

@@ -1,39 +1,56 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 
+export const CATEGORY_IDS: Record<string, number> = {
+  overall: 1,
+  Cosmos: 2,
+  Nexus: 3,
+  Protons: 4,
+  'General-A': 5,
+  'General-B': 6
+};
+
 export async function GET() {
-  let { data: settings, error } = await supabaseAdmin
+  const { data: settings, error } = await supabaseAdmin
     .from('settings')
-    .select('*')
-    .limit(1)
-    .single();
+    .select('*');
 
   if (error || !settings) {
-    // If not found, create default
-    const { data: newSettings } = await supabaseAdmin
-      .from('settings')
-      .insert([{ id: 1, registration_open: true }])
-      .select()
-      .single();
-    settings = newSettings;
+    return NextResponse.json({ error: "Failed to fetch settings" }, { status: 500 });
+  }
+
+  // Map settings to categories
+  const settingsMap: Record<string, boolean> = {};
+  
+  for (const [name, id] of Object.entries(CATEGORY_IDS)) {
+    const row = settings.find(s => s.id === id);
+    if (row) {
+      settingsMap[name] = row.registration_open;
+    } else {
+      // Return default true for missing ones, no need to insert them dynamically unless they toggle
+      settingsMap[name] = true;
+    }
   }
   
-  // Format for frontend
-  return NextResponse.json({ registrationOpen: settings?.registration_open });
+  return NextResponse.json({ 
+    registrationOpen: settingsMap.overall,
+    categories: settingsMap
+  });
 }
 
 export async function POST(req: Request) {
-  const { registrationOpen } = await req.json();
+  const body = await req.json();
   
-  const { data: settings, error } = await supabaseAdmin
-    .from('settings')
-    .upsert([{ id: 1, registration_open: registrationOpen }])
-    .select()
-    .single();
-
-  if (error) {
-    return NextResponse.json({ error: "Failed to update settings" }, { status: 500 });
+  if (body.hasOwnProperty('registrationOpen')) {
+    await supabaseAdmin.from('settings').upsert([{ id: 1, registration_open: body.registrationOpen }]);
   }
   
-  return NextResponse.json({ registrationOpen: settings.registration_open });
+  if (body.hasOwnProperty('category') && body.hasOwnProperty('open')) {
+    const id = CATEGORY_IDS[body.category];
+    if (id) {
+      await supabaseAdmin.from('settings').upsert([{ id, registration_open: body.open }]);
+    }
+  }
+
+  return NextResponse.json({ success: true });
 }
