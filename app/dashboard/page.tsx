@@ -55,6 +55,7 @@ export default function TeamDashboard() {
   const [originalGroupNo, setOriginalGroupNo] = useState<number>(1);
   const [eventSearchQuery, setEventSearchQuery] = useState("");
   const [eventFilterCategory, setEventFilterCategory] = useState("All");
+  const [eventFilterType, setEventFilterType] = useState("All");
 
   // ✅ UPDATED POINTS CALCULATION - Matches Admin Results Logic
   const getGradePoints = (grade: string, isGroup: boolean) => {
@@ -361,7 +362,7 @@ export default function TeamDashboard() {
         })
         .map((re: any) => {
           const ev = events.find(e => e._id === re.eventId);
-          const name = ev?.name ? ev.name.replace(/\s*&\s*$/, '').trim() : "Unknown";
+          const name = ev?.name ? ev.name.replace(/[\s&]+$/, '') : "Unknown";
           return name + (ev?.groupEvent ? " (Group)" : "") + (re.isStar ? " ★" : "");
         }) || [];
 
@@ -372,7 +373,7 @@ export default function TeamDashboard() {
         })
         .map((re: any) => {
           const ev = events.find(e => e._id === re.eventId);
-          const name = ev?.name ? ev.name.replace(/\s*&\s*$/, '').trim() : "Unknown";
+          const name = ev?.name ? ev.name.replace(/[\s&]+$/, '') : "Unknown";
           return name + (ev?.groupEvent ? " (Group)" : "") + (re.isStar ? " ★" : "");
         }) || [];
 
@@ -380,8 +381,8 @@ export default function TeamDashboard() {
         student.name,
         student.chestNo || "N/A",
         `${student.category} (${student.studentClass || "N/A"})`,
-        stageList.join(", ") || "None",
-        nonStageList.join(", ") || "None"
+        stageList.join("\n") || "None",
+        nonStageList.join("\n") || "None"
       ];
     });
 
@@ -396,8 +397,8 @@ export default function TeamDashboard() {
         0: { cellWidth: 35, fontStyle: 'bold' },
         1: { cellWidth: 15 },
         2: { cellWidth: 25 },
-        3: { cellWidth: 45 },
-        4: { cellWidth: 'auto' }
+        3: { cellWidth: 50 },
+        4: { cellWidth: 57 }
       },
       alternateRowStyles: { fillColor: [250, 250, 250] },
     });
@@ -417,7 +418,7 @@ export default function TeamDashboard() {
         })
         .map((re: any) => {
           const ev = events.find(e => e._id === re.eventId);
-          const name = ev?.name ? ev.name.replace(/\s*&\s*$/, '').trim() : "Unknown";
+          const name = ev?.name ? ev.name.replace(/[\s&]+$/, '') : "Unknown";
           return name + (ev?.groupEvent ? " (Group)" : "") + (re.isStar ? " ★" : "");
         }) || [];
 
@@ -428,13 +429,13 @@ export default function TeamDashboard() {
         })
         .map((re: any) => {
           const ev = events.find(e => e._id === re.eventId);
-          const name = ev?.name ? ev.name.replace(/\s*&\s*$/, '').trim() : "Unknown";
+          const name = ev?.name ? ev.name.replace(/[\s&]+$/, '') : "Unknown";
           return name + (ev?.groupEvent ? " (Group)" : "") + (re.isStar ? " ★" : "");
         }) || [];
 
       const eventsContent = `
-        ${stageList.length > 0 ? `<div><strong>Stage:</strong> ${stageList.join(", ")}</div>` : ''}
-        ${nonStageList.length > 0 ? `<div style="margin-top: 4px;"><strong>Non-Stage:</strong> ${nonStageList.join(", ")}</div>` : ''}
+        ${stageList.length > 0 ? `<div><strong>Stage:</strong><br/>${stageList.join("<br/>")}</div>` : ''}
+        ${nonStageList.length > 0 ? `<div style="margin-top: 4px;"><strong>Non-Stage:</strong><br/>${nonStageList.join("<br/>")}</div>` : ''}
         ${stageList.length === 0 && nonStageList.length === 0 ? '<div>None</div>' : ''}
       `;
 
@@ -1043,7 +1044,7 @@ export default function TeamDashboard() {
                       onChange={(e) => setEventSearchQuery(e.target.value)} 
                     />
                   </div>
-                  <div className="flex items-center gap-2 overflow-x-auto no-scrollbar max-w-full">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 overflow-x-auto no-scrollbar max-w-full">
                     <div className="flex p-1 bg-slate-200/50 rounded-lg overflow-x-auto no-scrollbar">
                       {['All', 'Protons', 'Nexus', 'Cosmos', 'General-A', 'General-B'].map((cat) => (
                         <button 
@@ -1055,6 +1056,17 @@ export default function TeamDashboard() {
                         </button>
                       ))}
                     </div>
+                    <div className="flex p-1 bg-slate-200/50 rounded-lg overflow-x-auto no-scrollbar">
+                      {['All', 'Stage', 'Non-Stage'].map((type) => (
+                        <button 
+                          key={type} 
+                          onClick={() => setEventFilterType(type)} 
+                          className={`px-4 py-1.5 text-xs font-bold rounded-md transition-all whitespace-nowrap ${eventFilterType === type ? "bg-white text-purple-600 shadow-sm" : "text-slate-500 hover:text-purple-600"}`}
+                        >
+                          {type}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
 
@@ -1062,6 +1074,7 @@ export default function TeamDashboard() {
                   {(() => {
                     const filteredEvents = events.filter(e => {
                       if (eventFilterCategory !== "All" && e.category !== eventFilterCategory) return false;
+                      if (eventFilterType !== "All" && e.type !== eventFilterType) return false;
                       if (eventSearchQuery && !e.name.toLowerCase().includes(eventSearchQuery.toLowerCase())) return false;
                       return true;
                     }).sort((a, b) => a.name.localeCompare(b.name));
@@ -1071,7 +1084,7 @@ export default function TeamDashboard() {
                     }
 
                     return filteredEvents.map(event => {
-                      const cleanEventName = event.name.replace(/\s*&\s*$/, '').trim();
+                      const cleanEventName = event.name.replace(/[\s&]+$/, '');
                       const isGrp = event.groupEvent === true || normalizeString(event.name) === "histoart" || normalizeString(event.name) === "dictionarymaking" || normalizeString(event.name) === "swarafdebate" || normalizeString(event.name) === "swarfdebate";
 
                       const registeredStudents = students.filter(s => 
