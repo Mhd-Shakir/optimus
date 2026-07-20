@@ -365,20 +365,17 @@ export default function TeamDashboard() {
       return original?.type === "Non-Stage";
     }) || [];
 
-    const getEventRow = (e: any) => {
+    const getEventItem = (e: any) => {
       const original = events.find(ev => ev._id === e.eventId);
       const isGrp = original?.groupEvent === true;
-      const starIndicator = e.isStar ? '<span style="color: #7c3aed; font-weight: bold;">★ Star</span>' : '-';
       return `
-        <tr style="border-bottom: 1px solid #e2e8f0;">
-          <td style="padding: 12px 16px; font-size: 14px; font-weight: bold; color: #1e293b;">
+        <div class="event-item">
+          <span class="event-name">
             ${original?.name || "Unknown Event"}
-            ${isGrp ? '<span style="font-size: 10px; font-weight: bold; background: #fef08a; color: #854d0e; padding: 2px 6px; border-radius: 4px; margin-left: 8px; text-transform: uppercase;">Group</span>' : ''}
-          </td>
-          <td style="padding: 12px 16px; font-size: 14px; text-align: right;">
-            ${starIndicator}
-          </td>
-        </tr>
+            ${isGrp ? '<span class="group-badge">Group</span>' : ''}
+          </span>
+          <span class="event-star">${e.isStar ? '★' : ''}</span>
+        </div>
       `;
     };
 
@@ -389,52 +386,104 @@ export default function TeamDashboard() {
           <title>Registered Events - ${student.name}</title>
           <style>
             @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap');
-            body { font-family: 'Inter', sans-serif; padding: 40px; color: #1e293b; background-color: #ffffff; }
-            .container { max-width: 600px; margin: 0 auto; }
-            .header { border-bottom: 2px solid #f1f5f9; padding-bottom: 20px; margin-bottom: 25px; }
-            .student-name { font-size: 24px; font-weight: 900; margin: 0; color: #0f172a; text-transform: uppercase; letter-spacing: -0.02em; }
-            .student-details { font-size: 13px; color: #64748b; font-weight: 700; margin-top: 6px; text-transform: uppercase; letter-spacing: 0.05em; }
-            .section-title { font-size: 11px; font-weight: 900; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 12px; margin-top: 30px; }
-            table { width: 100%; border-collapse: collapse; background: white; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; margin-bottom: 20px; }
-            th { background: #f8fafc; padding: 12px 16px; text-align: left; font-size: 11px; font-weight: 800; color: #475569; text-transform: uppercase; border-bottom: 1px solid #e2e8f0; }
-            th.right { text-align: right; }
+            body { 
+              font-family: 'Inter', sans-serif; 
+              padding: 20px; 
+              color: #1e293b; 
+              background-color: #ffffff; 
+              margin: 0;
+            }
+            .header { 
+              border-bottom: 2px solid #cbd5e1; 
+              padding-bottom: 12px; 
+              margin-bottom: 15px; 
+            }
+            .student-name { 
+              font-size: 20px; 
+              font-weight: 900; 
+              margin: 0; 
+              color: #0f172a; 
+              text-transform: uppercase; 
+              letter-spacing: -0.02em; 
+            }
+            .student-details { 
+              font-size: 11px; 
+              color: #475569; 
+              font-weight: 700; 
+              margin-top: 4px; 
+              text-transform: uppercase; 
+              letter-spacing: 0.05em; 
+            }
+            .events-columns {
+              column-count: 3;
+              column-gap: 24px;
+              column-rule: 1px solid #f1f5f9;
+            }
+            .section-title { 
+              font-size: 10px; 
+              font-weight: 900; 
+              color: #94a3b8; 
+              text-transform: uppercase; 
+              letter-spacing: 0.1em; 
+              margin-bottom: 8px; 
+              margin-top: 15px;
+              break-inside: avoid;
+              break-after: avoid;
+              border-bottom: 1px solid #e2e8f0;
+              padding-bottom: 4px;
+            }
+            .section-title:first-child {
+              margin-top: 0;
+            }
+            .event-item {
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+              padding: 4.5px 0;
+              border-bottom: 1px dashed #e2e8f0;
+              break-inside: avoid;
+            }
+            .event-name {
+              font-size: 10px;
+              font-weight: 700;
+              color: #334155;
+              line-height: 1.2;
+              padding-right: 8px;
+            }
+            .group-badge {
+              font-size: 8px;
+              font-weight: 800;
+              background-color: #fef08a;
+              color: #854d0e;
+              padding: 1px 4px;
+              border-radius: 3px;
+              margin-left: 4px;
+              text-transform: uppercase;
+              display: inline-block;
+            }
+            .event-star {
+              font-size: 11px;
+              color: #7c3aed;
+              font-weight: bold;
+              flex-shrink: 0;
+            }
           </style>
         </head>
         <body>
-          <div class="container">
-            <div class="header">
-              <h1 class="student-name">${student.name}</h1>
-              <div class="student-details">Team: ${student.team} &nbsp;|&nbsp; Category: ${student.category} &nbsp;|&nbsp; Chest No: ${student.chestNo}</div>
-            </div>
-            
+          <div class="header">
+            <h1 class="student-name">${student.name}</h1>
+            <div class="student-details">Team: ${student.team} &nbsp;|&nbsp; Category: ${student.category} &nbsp;|&nbsp; Chest No: ${student.chestNo}</div>
+          </div>
+          
+          <div class="events-columns">
             ${stageEvents.length > 0 ? `
               <div class="section-title">Stage Events (${stageEvents.length})</div>
-              <table>
-                <thead>
-                  <tr>
-                    <th style="width: 75%;">Event</th>
-                    <th style="width: 25%; text-align: right;" class="right">Star</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  ${stageEvents.map(getEventRow).join('')}
-                </tbody>
-              </table>
+              ${stageEvents.map(getEventItem).join('')}
             ` : ''}
             
             ${nonStageEvents.length > 0 ? `
               <div class="section-title">Non-Stage Events (${nonStageEvents.length})</div>
-              <table>
-                <thead>
-                  <tr>
-                    <th style="width: 75%;">Event</th>
-                    <th style="width: 25%; text-align: right;" class="right">Star</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  ${nonStageEvents.map(getEventRow).join('')}
-                </tbody>
-              </table>
+              ${nonStageEvents.map(getEventItem).join('')}
             ` : ''}
           </div>
           <script>
