@@ -342,6 +342,156 @@ export default function TeamDashboard() {
     doc.save(`${user?.team || "Team"}_Group_Registrations.pdf`);
   };
 
+  const downloadStudentListPDF = async () => {
+    const { default: jsPDF } = await import("jspdf");
+    const { default: autoTable } = (await import("jspdf-autotable")) as any;
+    
+    const doc = new jsPDF();
+    doc.setFontSize(16);
+    doc.setFont("helvetica", "bold");
+    doc.text(`${user?.team || "Team"} - Student Registrations (${activeCategory})`, 14, 20);
+    
+    const tableRows = filteredStudents.map(student => {
+      const stageList = student.registeredEvents
+        ?.filter((re: any) => {
+          const ev = events.find(e => e._id === re.eventId);
+          return ev?.type === "Stage";
+        })
+        .map((re: any) => {
+          const ev = events.find(e => e._id === re.eventId);
+          return ev?.name + (ev?.groupEvent ? " (Group)" : "") + (re.isStar ? " ★" : "");
+        }) || [];
+
+      const nonStageList = student.registeredEvents
+        ?.filter((re: any) => {
+          const ev = events.find(e => e._id === re.eventId);
+          return ev?.type === "Non-Stage";
+        })
+        .map((re: any) => {
+          const ev = events.find(e => e._id === re.eventId);
+          return ev?.name + (ev?.groupEvent ? " (Group)" : "") + (re.isStar ? " ★" : "");
+        }) || [];
+
+      const allEventsText = [
+        stageList.length > 0 ? `Stage: ${stageList.join(", ")}` : "",
+        nonStageList.length > 0 ? `Non-Stage: ${nonStageList.join(", ")}` : ""
+      ].filter(Boolean).join("\n\n");
+
+      return [
+        student.name,
+        student.chestNo || "N/A",
+        `${student.category} (${student.studentClass || "N/A"})`,
+        allEventsText || "None"
+      ];
+    });
+
+    autoTable(doc, {
+      startY: 30,
+      head: [["Name", "Chest No", "Category (Class)", "Registered Events"]],
+      body: tableRows,
+      theme: "grid",
+      headStyles: { fillColor: [5, 150, 105], textColor: [255, 255, 255], fontStyle: "bold" },
+      styles: { fontSize: 8, cellPadding: 4, textColor: [0, 0, 0], valign: 'middle' },
+      columnStyles: {
+        0: { cellWidth: 45, fontStyle: 'bold' },
+        1: { cellWidth: 20 },
+        2: { cellWidth: 35 },
+        3: { cellWidth: 'auto' }
+      },
+      alternateRowStyles: { fillColor: [250, 250, 250] },
+    });
+    
+    doc.save(`${user?.team || "Team"}_Students_List_${activeCategory}.pdf`);
+  };
+
+  const handlePrintAllStudents = () => {
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) return;
+
+    const rowsHtml = filteredStudents.map(student => {
+      const stageList = student.registeredEvents
+        ?.filter((re: any) => {
+          const ev = events.find(e => e._id === re.eventId);
+          return ev?.type === "Stage";
+        })
+        .map((re: any) => {
+          const ev = events.find(e => e._id === re.eventId);
+          return ev?.name + (ev?.groupEvent ? " (Group)" : "") + (re.isStar ? " ★" : "");
+        }) || [];
+
+      const nonStageList = student.registeredEvents
+        ?.filter((re: any) => {
+          const ev = events.find(e => e._id === re.eventId);
+          return ev?.type === "Non-Stage";
+        })
+        .map((re: any) => {
+          const ev = events.find(e => e._id === re.eventId);
+          return ev?.name + (ev?.groupEvent ? " (Group)" : "") + (re.isStar ? " ★" : "");
+        }) || [];
+
+      const eventsContent = `
+        ${stageList.length > 0 ? `<div><strong>Stage:</strong> ${stageList.join(", ")}</div>` : ''}
+        ${nonStageList.length > 0 ? `<div style="margin-top: 4px;"><strong>Non-Stage:</strong> ${nonStageList.join(", ")}</div>` : ''}
+        ${stageList.length === 0 && nonStageList.length === 0 ? '<div>None</div>' : ''}
+      `;
+
+      return `
+        <tr style="border-bottom: 1px solid #e2e8f0;">
+          <td style="padding: 10px 12px; font-weight: bold; font-size: 12px; color: #0f172a; width: 25%;">${student.name}</td>
+          <td style="padding: 10px 12px; font-family: monospace; font-size: 11px; color: #475569; width: 12%;">${student.chestNo || "N/A"}</td>
+          <td style="padding: 10px 12px; font-size: 11px; color: #475569; width: 18%;">${student.category} (${student.studentClass || "N/A"})</td>
+          <td style="padding: 10px 12px; font-size: 11px; color: #334155; width: 45%;">${eventsContent}</td>
+        </tr>
+      `;
+    }).join('');
+
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Student Registrations - ${user?.team || "Team"}</title>
+          <style>
+            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap');
+            body { font-family: 'Inter', sans-serif; padding: 30px; color: #1e293b; background-color: #ffffff; }
+            .header { border-bottom: 2px solid #cbd5e1; padding-bottom: 12px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: flex-end; }
+            .title { font-size: 22px; font-weight: 900; margin: 0; color: #0f172a; text-transform: uppercase; }
+            .subtitle { font-size: 12px; color: #64748b; font-weight: 700; margin-top: 4px; text-transform: uppercase; }
+            table { width: 100%; border-collapse: collapse; background: white; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; }
+            th { background: #f8fafc; padding: 12px; text-align: left; font-size: 11px; font-weight: 800; color: #475569; text-transform: uppercase; border-bottom: 1px solid #e2e8f0; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <div>
+              <h1 class="title">${user?.team || "Team"} - Student Registrations</h1>
+              <div class="subtitle">Category: ${activeCategory} | Total Students: ${filteredStudents.length}</div>
+            </div>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>Student Name</th>
+                <th>Chest No</th>
+                <th>Category (Class)</th>
+                <th>Registered Programs</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rowsHtml}
+            </tbody>
+          </table>
+          <script>
+            window.onload = function() {
+              window.print();
+              setTimeout(function() { window.close(); }, 500);
+            }
+          </script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+  };
+
   const toggleStar = (id: string) => {
     const target = selectedEvents.find(e => e.eventId === id); if (!target) return; if (target.category.toLowerCase().includes("general")) return;
     const name = normalizeString(target.name);
@@ -602,7 +752,20 @@ export default function TeamDashboard() {
 
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden mb-10">
               <div className="p-4 border-b border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div className="flex items-center gap-2"><Users className="w-4 h-4 text-slate-500" /><h3 className="text-sm font-bold text-slate-700 uppercase tracking-wide">Registered Students</h3></div>
+                <div className="flex items-center gap-4 flex-wrap">
+                  <div className="flex items-center gap-2">
+                    <Users className="w-4 h-4 text-slate-500" />
+                    <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wide">Registered Students</h3>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <Button onClick={downloadStudentListPDF} variant="outline" size="sm" className="h-8 border-slate-200 text-xs font-bold bg-white">
+                      <Download className="w-3.5 h-3.5 mr-1.5 text-slate-500" /> PDF
+                    </Button>
+                    <Button onClick={handlePrintAllStudents} variant="outline" size="sm" className="h-8 border-slate-200 text-xs font-bold bg-white">
+                      <Printer className="w-3.5 h-3.5 mr-1.5 text-slate-500" /> Print
+                    </Button>
+                  </div>
+                </div>
                 <div className="flex items-center gap-2 w-full sm:w-auto overflow-hidden">
                   <div className="flex p-1 bg-slate-200/50 rounded-lg overflow-x-auto w-full no-scrollbar">{['All', 'Protons', 'Nexus', 'Cosmos'].map((cat) => (<button key={cat} onClick={() => setActiveCategory(cat)} className={`px-4 py-1.5 text-xs font-bold rounded-md transition-all whitespace-nowrap ${activeCategory === cat ? "bg-white text-emerald-600 shadow-sm" : "text-slate-500 hover:text-emerald-600"}`}>{cat}</button>))}</div>
                 </div>
