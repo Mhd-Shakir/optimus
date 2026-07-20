@@ -6,7 +6,7 @@ import { useState, useEffect } from "react";
 import axios from "axios";
 import {
   LayoutDashboard, ClipboardList, LogOut, Plus, Loader2, Mic, PenTool,
-  CheckCircle2, X, Star, Users, Trash2, Pencil, Lock, User, Send, Search, ArrowLeft, Trophy, Download
+  CheckCircle2, X, Star, Users, Trash2, Pencil, Lock, User, Send, Search, ArrowLeft, Trophy, Download, Printer
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -349,6 +349,104 @@ export default function TeamDashboard() {
     const limit = formData.category === "Protons" ? 6 : 9; const currentStars = selectedEvents.filter(e => e.isStar && e.type === "Non-Stage").length;
     if (!target.isStar && currentStars >= limit) { return toast({ variant: "destructive", title: "Limit Reached", description: `Max ${limit} stars allowed.` }); }
     setSelectedEvents(prev => prev.map(e => e.eventId === id ? { ...e, isStar: !e.isStar } : e));
+  };
+
+  const handlePrintStudent = (student: any) => {
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) return;
+
+    const stageEvents = student.registeredEvents?.filter((e: any) => {
+      const original = events.find(ev => ev._id === e.eventId);
+      return original?.type === "Stage";
+    }) || [];
+
+    const nonStageEvents = student.registeredEvents?.filter((e: any) => {
+      const original = events.find(ev => ev._id === e.eventId);
+      return original?.type === "Non-Stage";
+    }) || [];
+
+    const getEventRow = (e: any) => {
+      const original = events.find(ev => ev._id === e.eventId);
+      const isGrp = original?.groupEvent === true;
+      const starIndicator = e.isStar ? '<span style="color: #7c3aed; font-weight: bold;">★ Star</span>' : '-';
+      return `
+        <tr style="border-bottom: 1px solid #e2e8f0;">
+          <td style="padding: 12px 16px; font-size: 14px; font-weight: bold; color: #1e293b;">
+            ${original?.name || "Unknown Event"}
+            ${isGrp ? '<span style="font-size: 10px; font-weight: bold; background: #fef08a; color: #854d0e; padding: 2px 6px; border-radius: 4px; margin-left: 8px; text-transform: uppercase;">Group</span>' : ''}
+          </td>
+          <td style="padding: 12px 16px; font-size: 14px; text-align: right;">
+            ${starIndicator}
+          </td>
+        </tr>
+      `;
+    };
+
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Registered Events - ${student.name}</title>
+          <style>
+            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap');
+            body { font-family: 'Inter', sans-serif; padding: 40px; color: #1e293b; background-color: #ffffff; }
+            .container { max-width: 600px; margin: 0 auto; }
+            .header { border-bottom: 2px solid #f1f5f9; padding-bottom: 20px; margin-bottom: 25px; }
+            .student-name { font-size: 24px; font-weight: 900; margin: 0; color: #0f172a; text-transform: uppercase; letter-spacing: -0.02em; }
+            .student-details { font-size: 13px; color: #64748b; font-weight: 700; margin-top: 6px; text-transform: uppercase; letter-spacing: 0.05em; }
+            .section-title { font-size: 11px; font-weight: 900; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 12px; margin-top: 30px; }
+            table { width: 100%; border-collapse: collapse; background: white; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; margin-bottom: 20px; }
+            th { background: #f8fafc; padding: 12px 16px; text-align: left; font-size: 11px; font-weight: 800; color: #475569; text-transform: uppercase; border-bottom: 1px solid #e2e8f0; }
+            th.right { text-align: right; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1 class="student-name">${student.name}</h1>
+              <div class="student-details">Team: ${student.team} &nbsp;|&nbsp; Category: ${student.category} &nbsp;|&nbsp; Chest No: ${student.chestNo}</div>
+            </div>
+            
+            ${stageEvents.length > 0 ? `
+              <div class="section-title">Stage Events (${stageEvents.length})</div>
+              <table>
+                <thead>
+                  <tr>
+                    <th style="width: 75%;">Event</th>
+                    <th style="width: 25%; text-align: right;" class="right">Star</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${stageEvents.map(getEventRow).join('')}
+                </tbody>
+              </table>
+            ` : ''}
+            
+            ${nonStageEvents.length > 0 ? `
+              <div class="section-title">Non-Stage Events (${nonStageEvents.length})</div>
+              <table>
+                <thead>
+                  <tr>
+                    <th style="width: 75%;">Event</th>
+                    <th style="width: 25%; text-align: right;" class="right">Star</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${nonStageEvents.map(getEventRow).join('')}
+                </tbody>
+              </table>
+            ` : ''}
+          </div>
+          <script>
+            window.onload = function() {
+              window.print();
+              setTimeout(function() { window.close(); }, 500);
+            }
+          </script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
   };
 
   const closeModal = () => { setIsRegOpen(false); setIsEditMode(false); setEditId(""); setFormData({ name: "", team: user?.team || "", category: "Protons", studentClass: "" }); setSelectedEvents([]); setRegSearchQuery(""); };
@@ -758,7 +856,11 @@ export default function TeamDashboard() {
               <div className="bg-slate-800 px-5 py-6 flex justify-between items-start text-white relative overflow-hidden">
                 <div className="relative z-10"><DialogTitle className="text-2xl font-black tracking-tight">{viewStudent.name}</DialogTitle><p className="text-slate-300 text-xs font-bold mt-1 uppercase tracking-wide opacity-80">{viewStudent.team} | {viewStudent.category} | {viewStudent.chestNo}</p></div>
                 
-                <div className="absolute top-0 right-0 p-4 opacity-10"><Trophy className="w-32 h-32 text-white" /></div><button onClick={() => setViewStudent(null)} className="absolute top-2 right-2 p-2 text-white/50 hover:text-white z-20"><X className="w-5 h-5" /></button>
+                <div className="absolute top-0 right-0 p-4 opacity-10"><Trophy className="w-32 h-32 text-white" /></div>
+                <div className="absolute top-2 right-2 flex items-center gap-1 z-20">
+                  <button onClick={() => handlePrintStudent(viewStudent)} className="p-2 text-white/50 hover:text-white transition-colors" title="Print Registered Events"><Printer className="w-5 h-5" /></button>
+                  <button onClick={() => setViewStudent(null)} className="p-2 text-white/50 hover:text-white transition-colors"><X className="w-5 h-5" /></button>
+                </div>
               </div>
               <div className="p-0 max-h-[60vh] overflow-y-auto bg-slate-50">
                 {viewStudent.registeredEvents?.length === 0 ? (
