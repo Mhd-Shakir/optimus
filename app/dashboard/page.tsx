@@ -359,7 +359,8 @@ export default function TeamDashboard() {
         })
         .map((re: any) => {
           const ev = events.find(e => e._id === re.eventId);
-          return ev?.name + (ev?.groupEvent ? " (Group)" : "") + (re.isStar ? " ★" : "");
+          const name = ev?.name ? ev.name.replace(/\s*&\s*$/, '').trim() : "Unknown";
+          return name + (ev?.groupEvent ? " (Group)" : "") + (re.isStar ? " ★" : "");
         }) || [];
 
       const nonStageList = student.registeredEvents
@@ -369,34 +370,32 @@ export default function TeamDashboard() {
         })
         .map((re: any) => {
           const ev = events.find(e => e._id === re.eventId);
-          return ev?.name + (ev?.groupEvent ? " (Group)" : "") + (re.isStar ? " ★" : "");
+          const name = ev?.name ? ev.name.replace(/\s*&\s*$/, '').trim() : "Unknown";
+          return name + (ev?.groupEvent ? " (Group)" : "") + (re.isStar ? " ★" : "");
         }) || [];
-
-      const allEventsText = [
-        stageList.length > 0 ? `Stage: ${stageList.join(", ")}` : "",
-        nonStageList.length > 0 ? `Non-Stage: ${nonStageList.join(", ")}` : ""
-      ].filter(Boolean).join("\n\n");
 
       return [
         student.name,
         student.chestNo || "N/A",
         `${student.category} (${student.studentClass || "N/A"})`,
-        allEventsText || "None"
+        stageList.join(", ") || "None",
+        nonStageList.join(", ") || "None"
       ];
     });
 
     autoTable(doc, {
       startY: 30,
-      head: [["Name", "Chest No", "Category (Class)", "Registered Events"]],
+      head: [["Name", "Chest No", "Category (Class)", "Stage Events", "Non-Stage Events"]],
       body: tableRows,
       theme: "grid",
       headStyles: { fillColor: [5, 150, 105], textColor: [255, 255, 255], fontStyle: "bold" },
-      styles: { fontSize: 8, cellPadding: 4, textColor: [0, 0, 0], valign: 'middle' },
+      styles: { fontSize: 8, cellPadding: 3, textColor: [0, 0, 0], valign: 'top' },
       columnStyles: {
-        0: { cellWidth: 45, fontStyle: 'bold' },
-        1: { cellWidth: 20 },
-        2: { cellWidth: 35 },
-        3: { cellWidth: 'auto' }
+        0: { cellWidth: 35, fontStyle: 'bold' },
+        1: { cellWidth: 15 },
+        2: { cellWidth: 25 },
+        3: { cellWidth: 45 },
+        4: { cellWidth: 'auto' }
       },
       alternateRowStyles: { fillColor: [250, 250, 250] },
     });
@@ -416,7 +415,8 @@ export default function TeamDashboard() {
         })
         .map((re: any) => {
           const ev = events.find(e => e._id === re.eventId);
-          return ev?.name + (ev?.groupEvent ? " (Group)" : "") + (re.isStar ? " ★" : "");
+          const name = ev?.name ? ev.name.replace(/\s*&\s*$/, '').trim() : "Unknown";
+          return name + (ev?.groupEvent ? " (Group)" : "") + (re.isStar ? " ★" : "");
         }) || [];
 
       const nonStageList = student.registeredEvents
@@ -426,7 +426,8 @@ export default function TeamDashboard() {
         })
         .map((re: any) => {
           const ev = events.find(e => e._id === re.eventId);
-          return ev?.name + (ev?.groupEvent ? " (Group)" : "") + (re.isStar ? " ★" : "");
+          const name = ev?.name ? ev.name.replace(/\s*&\s*$/, '').trim() : "Unknown";
+          return name + (ev?.groupEvent ? " (Group)" : "") + (re.isStar ? " ★" : "");
         }) || [];
 
       const eventsContent = `
@@ -518,10 +519,11 @@ export default function TeamDashboard() {
     const getEventItem = (e: any) => {
       const original = events.find(ev => ev._id === e.eventId);
       const isGrp = original?.groupEvent === true;
+      const cleanName = original?.name ? original.name.replace(/\s*&\s*$/, '').trim() : "Unknown Event";
       return `
         <div class="event-item">
           <span class="event-name">
-            ${original?.name || "Unknown Event"}
+            ${cleanName}
             ${isGrp ? '<span class="group-badge">Group</span>' : ''}
           </span>
           <span class="event-star">${e.isStar ? '★' : ''}</span>
