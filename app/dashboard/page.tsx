@@ -6,7 +6,7 @@ import { useState, useEffect } from "react";
 import axios from "axios";
 import {
   LayoutDashboard, ClipboardList, LogOut, Plus, Loader2, Mic, PenTool,
-  CheckCircle2, X, Star, Users, Trash2, Pencil, Lock, User, Send, Search, ArrowLeft, Trophy, Download, Printer
+  CheckCircle2, X, Star, Users, Trash2, Pencil, Lock, User, Send, Search, ArrowLeft, Trophy, Download, Printer, BookOpen
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -53,6 +53,8 @@ export default function TeamDashboard() {
   const [editGroupEventId, setEditGroupEventId] = useState("");
   const [groupNo, setGroupNo] = useState<number>(1);
   const [originalGroupNo, setOriginalGroupNo] = useState<number>(1);
+  const [eventSearchQuery, setEventSearchQuery] = useState("");
+  const [eventFilterCategory, setEventFilterCategory] = useState("All");
 
   // ✅ UPDATED POINTS CALCULATION - Matches Admin Results Logic
   const getGradePoints = (grade: string, isGroup: boolean) => {
@@ -738,6 +740,7 @@ export default function TeamDashboard() {
           <button onClick={() => setActiveView("dashboard")} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-semibold transition-all ${activeView === "dashboard" ? "bg-emerald-600 text-white shadow-md shadow-emerald-200" : "text-slate-500 hover:bg-slate-50"}`}><LayoutDashboard className="w-5 h-5" /> Dashboard</button>
           {isSystemRegOpen && <button onClick={() => { setIsEditMode(false); setIsRegOpen(true); }} className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-semibold text-slate-500 hover:bg-slate-50"><ClipboardList className="w-5 h-5" /> Registration</button>}
           <button onClick={() => setActiveView("group")} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-semibold transition-all ${activeView === "group" ? "bg-emerald-600 text-white shadow-md shadow-emerald-200" : "text-slate-500 hover:bg-slate-50"}`}><Users className="w-5 h-5" /> Group</button>
+          <button onClick={() => setActiveView("events")} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-semibold transition-all ${activeView === "events" ? "bg-emerald-600 text-white shadow-md shadow-emerald-200" : "text-slate-500 hover:bg-slate-50"}`}><BookOpen className="w-5 h-5" /> Events</button>
         </nav>
         <div className="p-4 border-t border-slate-100"><button onClick={() => { logout(); router.push("/login"); }} className="flex items-center gap-3 px-4 py-3 text-red-500 font-bold text-sm"><LogOut className="w-5 h-5" /> Logout</button></div>
       </aside>
@@ -1014,6 +1017,129 @@ export default function TeamDashboard() {
                 </div>
               </div>
 
+            </div>
+          )}
+
+          {activeView === "events" && (
+            <div className="max-w-6xl mx-auto mt-4">
+              <div className="flex flex-col items-center justify-center text-center space-y-3 mb-8">
+                <div className="w-16 h-16 rounded-2xl flex items-center justify-center bg-teal-600 text-white shadow-lg shadow-teal-200">
+                  <BookOpen className="w-8 h-8" />
+                </div>
+                <div>
+                  <h2 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tighter uppercase">Events Directory</h2>
+                  <p className="text-slate-400 font-bold text-xs uppercase tracking-widest mt-1">See which students are registered for each event</p>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden mb-10">
+                <div className="p-4 border-b border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="relative w-full sm:w-72">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <Input 
+                      placeholder="Search events..." 
+                      className="pl-9 h-9 text-xs bg-white border-slate-200" 
+                      value={eventSearchQuery} 
+                      onChange={(e) => setEventSearchQuery(e.target.value)} 
+                    />
+                  </div>
+                  <div className="flex items-center gap-2 overflow-x-auto no-scrollbar max-w-full">
+                    <div className="flex p-1 bg-slate-200/50 rounded-lg overflow-x-auto no-scrollbar">
+                      {['All', 'Protons', 'Nexus', 'Cosmos', 'General-A', 'General-B'].map((cat) => (
+                        <button 
+                          key={cat} 
+                          onClick={() => setEventFilterCategory(cat)} 
+                          className={`px-4 py-1.5 text-xs font-bold rounded-md transition-all whitespace-nowrap ${eventFilterCategory === cat ? "bg-white text-teal-600 shadow-sm" : "text-slate-500 hover:text-teal-600"}`}
+                        >
+                          {cat}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="divide-y divide-slate-100">
+                  {(() => {
+                    const filteredEvents = events.filter(e => {
+                      if (eventFilterCategory !== "All" && e.category !== eventFilterCategory) return false;
+                      if (eventSearchQuery && !e.name.toLowerCase().includes(eventSearchQuery.toLowerCase())) return false;
+                      return true;
+                    }).sort((a, b) => a.name.localeCompare(b.name));
+
+                    if (filteredEvents.length === 0) {
+                      return <div className="p-12 text-center text-slate-400 text-sm">No events found.</div>;
+                    }
+
+                    return filteredEvents.map(event => {
+                      const cleanEventName = event.name.replace(/\s*&\s*$/, '').trim();
+                      const isGrp = event.groupEvent === true || normalizeString(event.name) === "histoart" || normalizeString(event.name) === "dictionarymaking" || normalizeString(event.name) === "swarafdebate" || normalizeString(event.name) === "swarfdebate";
+
+                      const registeredStudents = students.filter(s => 
+                        s.registeredEvents?.some((re: any) => re.eventId === event._id)
+                      );
+
+                      const groupNumbers = Array.from(new Set(registeredStudents.map(s => {
+                        const reg = s.registeredEvents.find((re: any) => re.eventId === event._id);
+                        return reg?.groupNo || 1;
+                      }))).sort((a, b) => a - b);
+
+                      return (
+                        <div key={event._id} className="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-slate-50/50 transition-colors">
+                          <div className="space-y-1.5 md:max-w-[40%]">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-bold text-slate-800 text-sm">{cleanEventName}</span>
+                              {isGrp && <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200 text-[9px] font-bold px-1.5 uppercase">Group</Badge>}
+                              <Badge variant="outline" className="text-[9px] font-bold px-1.5 uppercase text-slate-500 bg-slate-50">{event.type}</Badge>
+                            </div>
+                            <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+                              Category: {event.category} &nbsp;|&nbsp; Team Limit: {event.teamLimit || (isGrp ? "N/A" : 3)}
+                            </div>
+                          </div>
+
+                          <div className="flex-1 md:pl-6">
+                            {registeredStudents.length === 0 ? (
+                              <span className="text-xs text-slate-300 italic">No registrations from your team yet</span>
+                            ) : isGrp ? (
+                              <div className="space-y-2">
+                                {groupNumbers.map(gNo => {
+                                  const groupMembers = registeredStudents.filter(s => {
+                                    const reg = s.registeredEvents.find((re: any) => re.eventId === event._id);
+                                    return (reg?.groupNo || 1) === gNo;
+                                  });
+                                  return (
+                                    <div key={gNo} className="flex items-start gap-2 text-xs">
+                                      <span className="font-black text-slate-500 text-[10px] uppercase shrink-0 mt-0.5">Group {gNo}:</span>
+                                      <div className="flex flex-wrap gap-1">
+                                        {groupMembers.map(s => (
+                                          <Badge key={s._id} variant="secondary" className="bg-slate-100 text-slate-700 hover:bg-slate-100 border-none px-2 py-0.5 text-[10px] font-medium">
+                                            {s.name} <span className="text-slate-400 font-normal ml-0.5">({s.studentClass})</span>
+                                          </Badge>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            ) : (
+                              <div className="flex flex-wrap gap-1">
+                                {registeredStudents.map(s => {
+                                  const reg = s.registeredEvents.find((re: any) => re.eventId === event._id);
+                                  return (
+                                    <Badge key={s._id} className="bg-emerald-50 text-emerald-700 hover:bg-emerald-50 border-emerald-100 px-2 py-0.5 text-[10px] font-medium flex items-center gap-1">
+                                      {s.name} <span className="text-emerald-400 font-normal">({s.studentClass})</span>
+                                      {reg?.isStar && <Star className="w-2.5 h-2.5 fill-current text-yellow-500" />}
+                                    </Badge>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    });
+                  })()}
+                </div>
+              </div>
             </div>
           )}
 
