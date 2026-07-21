@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { ToastAction } from "@/components/ui/toast";
 import { Badge } from "@/components/ui/badge";
+import { DeleteConfirmModal } from "@/components/DeleteConfirmModal";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 // ✅ HELPER: Normalize strings
@@ -58,6 +59,9 @@ export default function AdminRegistrations() {
   const [isEditMode, setIsEditMode] = useState(false);
   const [editId, setEditId] = useState("");
   const [submitting, setSubmitting] = useState(false);
+
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [studentToDelete, setStudentToDelete] = useState<{ id: string, name: string } | null>(null);
 
   // Form Data
   const [formData, setFormData] = useState({ name: "", team: "Ignis", category: "Protons", studentClass: "" });
@@ -112,24 +116,22 @@ export default function AdminRegistrations() {
   };
 
   const handleDelete = (id: string, studentName?: string) => {
-    toast({
-      title: "Confirm Deletion",
-      description: `Delete "${studentName || 'this student'}"? This will permanently remove the student and ALL their registered events. This cannot be undone.`,
-      variant: "destructive",
-      action: (
-        <ToastAction altText="Delete" onClick={async () => {
-          try {
-              await axios.post("/api/student/delete", { id });
-              toast({ title: "Deleted", description: "Student removed successfully" });
-              fetchData();
-          } catch (error) {
-              toast({ variant: "destructive", title: "Error", description: "Failed to delete" });
-          }
-        }}>
-          Delete
-        </ToastAction>
-      )
-    });
+    setStudentToDelete({ id, name: studentName || '' });
+    setDeleteModalOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!studentToDelete) return;
+    try {
+        await axios.post("/api/student/delete", { id: studentToDelete.id });
+        toast({ title: "Deleted", description: "Student removed successfully" });
+        fetchData();
+    } catch (error) {
+        toast({ variant: "destructive", title: "Error", description: "Failed to delete" });
+    } finally {
+        setDeleteModalOpen(false);
+        setStudentToDelete(null);
+    }
   };
 
   // ✅ SYNCED LOGIC: Matches Team Dashboard Rules exactly
@@ -639,6 +641,12 @@ export default function AdminRegistrations() {
               </form>
           </DialogContent>
       </Dialog>
+      <DeleteConfirmModal 
+        isOpen={deleteModalOpen} 
+        onClose={() => setDeleteModalOpen(false)} 
+        onConfirm={confirmDelete}
+        studentName={studentToDelete?.name}
+      />
     </div>
   );
 }

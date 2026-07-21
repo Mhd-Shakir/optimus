@@ -11,6 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Plus, Trash2, Search, Loader2 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { ToastAction } from "@/components/ui/toast"
+import { DeleteConfirmModal } from "@/components/DeleteConfirmModal"
 
 type Student = {
   _id: string;
@@ -38,6 +39,9 @@ export default function StudentsPage() {
   const [formData, setFormData] = useState({
     name: "", admissionNo: "", chestNo: "", team: "", category: "", studentClass: ""
   })
+  
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [studentToDelete, setStudentToDelete] = useState<{ id: string, name: string } | null>(null);
 
   // 1. Fetch Students
   useEffect(() => {
@@ -77,24 +81,22 @@ export default function StudentsPage() {
 
   // 3. Delete Student
   const handleDelete = (id: string, studentName?: string) => {
-    toast({
-      title: "Confirm Deletion",
-      description: `Delete "${studentName || 'this student'}"? This will permanently remove the student and ALL their registered events. This cannot be undone.`,
-      variant: "destructive",
-      action: (
-        <ToastAction altText="Delete" onClick={async () => {
-          try {
-            await axios.post('/api/student/delete', { id });
-            toast({ title: "Deleted", description: "Student removed." });
-            fetchStudents(); 
-          } catch (error) {
-            toast({ variant: "destructive", title: "Error", description: "Delete failed." });
-          }
-        }}>
-          Delete
-        </ToastAction>
-      )
-    });
+    setStudentToDelete({ id, name: studentName || '' });
+    setDeleteModalOpen(true);
+  }
+
+  const confirmDelete = async () => {
+    if (!studentToDelete) return;
+    try {
+      await axios.post('/api/student/delete', { id: studentToDelete.id });
+      toast({ title: "Deleted", description: "Student removed." });
+      fetchStudents(); 
+    } catch (error) {
+      toast({ variant: "destructive", title: "Error", description: "Delete failed." });
+    } finally {
+      setDeleteModalOpen(false);
+      setStudentToDelete(null);
+    }
   }
 
   // Filter Logic
@@ -288,6 +290,12 @@ export default function StudentsPage() {
             </Table>
           </div>
         </div>
+      <DeleteConfirmModal 
+        isOpen={deleteModalOpen} 
+        onClose={() => setDeleteModalOpen(false)} 
+        onConfirm={confirmDelete}
+        studentName={studentToDelete?.name}
+      />
     </div>
   )
 }

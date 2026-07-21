@@ -15,6 +15,7 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { ToastAction } from "@/components/ui/toast";
 import { Badge } from "@/components/ui/badge";
+import { DeleteConfirmModal } from "@/components/DeleteConfirmModal";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 const normalizeString = (str: string) => str ? str.toLowerCase().replace(/[^a-z0-9]/g, "") : "";
@@ -40,8 +41,8 @@ export default function TeamDashboard() {
   const [isSystemRegOpen, setIsSystemRegOpen] = useState(true);
   const [regSearchQuery, setRegSearchQuery] = useState("");
 
-
-
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [studentToDelete, setStudentToDelete] = useState<{ id: string, name: string } | null>(null);
   const [formData, setFormData] = useState({ name: "", team: "", category: "Protons", studentClass: "" });
   const [selectedEvents, setSelectedEvents] = useState<any[]>([]);
   const [groupParticipants, setGroupParticipants] = useState<string[]>([]);
@@ -656,25 +657,24 @@ export default function TeamDashboard() {
   const closeModal = () => { setIsRegOpen(false); setIsEditMode(false); setEditId(""); setFormData({ name: "", team: user?.team || "", category: "Protons", studentClass: "" }); setSelectedEvents([]); setRegSearchQuery(""); };
   const handleDelete = (e: any, id: string, studentName?: string) => { 
     if (e) e.stopPropagation(); 
-    toast({
-      title: "Confirm Deletion",
-      description: `Delete "${studentName || 'this student'}"? This will permanently remove the student and ALL their registered events. This cannot be undone.`,
-      variant: "destructive",
-      action: (
-        <ToastAction altText="Delete" onClick={async () => {
-          try {
-            await axios.post('/api/student/delete', { id });
-            toast({ title: "Student Deleted", description: "The student has been successfully removed." });
-            fetchData();
-          } catch (error) {
-            toast({ variant: "destructive", title: "Error", description: "Failed to delete student." });
-          }
-        }}>
-          Delete
-        </ToastAction>
-      )
-    });
+    setStudentToDelete({ id, name: studentName || '' });
+    setDeleteModalOpen(true);
   };
+  
+  const confirmDelete = async () => {
+    if (!studentToDelete) return;
+    try {
+      await axios.post('/api/student/delete', { id: studentToDelete.id });
+      toast({ title: "Student Deleted", description: "The student has been successfully removed." });
+      fetchData();
+    } catch (error) {
+      toast({ variant: "destructive", title: "Error", description: "Failed to delete student." });
+    } finally {
+      setDeleteModalOpen(false);
+      setStudentToDelete(null);
+    }
+  };
+
   const handleRegister = async (e: any) => { e.preventDefault(); if (!formData.name) return toast({ variant: "destructive", title: "Missing Field", description: "Name is required." }); if (!formData.studentClass) return toast({ variant: "destructive", title: "Missing Field", description: "Class is required." }); setSubmitting(true); try { await axios.post(isEditMode ? "/api/student/update" : "/api/student/register", { ...formData, id: editId, chestNo: Math.floor(1000 + Math.random() * 9000).toString(), selectedEvents }); toast({ title: "Success" }); closeModal(); fetchData(); } catch (err: any) { toast({ variant: "destructive", title: "Error", description: err.response?.data?.error }); } finally { setSubmitting(false); } };
 
   const handleGroupEdit = (group: any) => {
@@ -1307,6 +1307,12 @@ export default function TeamDashboard() {
           </button>
         </div>
       </div>
+      <DeleteConfirmModal 
+        isOpen={deleteModalOpen} 
+        onClose={() => setDeleteModalOpen(false)} 
+        onConfirm={confirmDelete}
+        studentName={studentToDelete?.name}
+      />
     </div>
   );
 }
