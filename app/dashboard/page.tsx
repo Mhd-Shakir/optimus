@@ -654,16 +654,26 @@ export default function TeamDashboard() {
   };
 
   const closeModal = () => { setIsRegOpen(false); setIsEditMode(false); setEditId(""); setFormData({ name: "", team: user?.team || "", category: "Protons", studentClass: "" }); setSelectedEvents([]); setRegSearchQuery(""); };
-  const handleDelete = async (e: any, id: string, studentName?: string) => { 
-    e.stopPropagation(); 
-    if (!window.confirm(`Delete "${studentName || 'this student'}"?\n\nThis will permanently remove the student and ALL their registered events. This cannot be undone.`)) return;
-    try {
-      await axios.post('/api/student/delete', { id });
-      toast({ title: "Student Deleted", description: "The student has been successfully removed." });
-      fetchData();
-    } catch (error) {
-      toast({ variant: "destructive", title: "Error", description: "Failed to delete student." });
-    }
+  const handleDelete = (e: any, id: string, studentName?: string) => { 
+    if (e) e.stopPropagation(); 
+    toast({
+      title: "Confirm Deletion",
+      description: `Delete "${studentName || 'this student'}"? This will permanently remove the student and ALL their registered events. This cannot be undone.`,
+      variant: "destructive",
+      action: (
+        <ToastAction altText="Delete" onClick={async () => {
+          try {
+            await axios.post('/api/student/delete', { id });
+            toast({ title: "Student Deleted", description: "The student has been successfully removed." });
+            fetchData();
+          } catch (error) {
+            toast({ variant: "destructive", title: "Error", description: "Failed to delete student." });
+          }
+        }}>
+          Delete
+        </ToastAction>
+      )
+    });
   };
   const handleRegister = async (e: any) => { e.preventDefault(); if (!formData.name) return toast({ variant: "destructive", title: "Missing Field", description: "Name is required." }); if (!formData.studentClass) return toast({ variant: "destructive", title: "Missing Field", description: "Class is required." }); setSubmitting(true); try { await axios.post(isEditMode ? "/api/student/update" : "/api/student/register", { ...formData, id: editId, chestNo: Math.floor(1000 + Math.random() * 9000).toString(), selectedEvents }); toast({ title: "Success" }); closeModal(); fetchData(); } catch (err: any) { toast({ variant: "destructive", title: "Error", description: err.response?.data?.error }); } finally { setSubmitting(false); } };
 

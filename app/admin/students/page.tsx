@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Plus, Trash2, Search, Loader2 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { ToastAction } from "@/components/ui/toast"
 
 type Student = {
   _id: string;
@@ -75,15 +76,25 @@ export default function StudentsPage() {
   }
 
   // 3. Delete Student
-  const handleDelete = async (id: string, studentName?: string) => {
-    if (!window.confirm(`Delete "${studentName || 'this student'}"?\n\nThis will permanently remove the student and ALL their registered events. This cannot be undone.`)) return;
-    try {
-      await axios.post('/api/student/delete', { id });
-      toast({ title: "Deleted", description: "Student removed." });
-      fetchStudents(); 
-    } catch (error) {
-      toast({ variant: "destructive", title: "Error", description: "Delete failed." });
-    }
+  const handleDelete = (id: string, studentName?: string) => {
+    toast({
+      title: "Confirm Deletion",
+      description: `Delete "${studentName || 'this student'}"? This will permanently remove the student and ALL their registered events. This cannot be undone.`,
+      variant: "destructive",
+      action: (
+        <ToastAction altText="Delete" onClick={async () => {
+          try {
+            await axios.post('/api/student/delete', { id });
+            toast({ title: "Deleted", description: "Student removed." });
+            fetchStudents(); 
+          } catch (error) {
+            toast({ variant: "destructive", title: "Error", description: "Delete failed." });
+          }
+        }}>
+          Delete
+        </ToastAction>
+      )
+    });
   }
 
   // Filter Logic

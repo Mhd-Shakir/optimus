@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
+import { ToastAction } from "@/components/ui/toast";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
@@ -110,15 +111,25 @@ export default function AdminRegistrations() {
     setIsModalOpen(true);
   };
 
-  const handleDelete = async (id: string, studentName?: string) => {
-    if (!window.confirm(`Delete "${studentName || 'this student'}"?\n\nThis will permanently remove the student and ALL their registered events. This cannot be undone.`)) return;
-    try {
-        await axios.post("/api/student/delete", { id });
-        toast({ title: "Deleted", description: "Student removed successfully" });
-        fetchData();
-    } catch (error) {
-        toast({ variant: "destructive", title: "Error", description: "Failed to delete" });
-    }
+  const handleDelete = (id: string, studentName?: string) => {
+    toast({
+      title: "Confirm Deletion",
+      description: `Delete "${studentName || 'this student'}"? This will permanently remove the student and ALL their registered events. This cannot be undone.`,
+      variant: "destructive",
+      action: (
+        <ToastAction altText="Delete" onClick={async () => {
+          try {
+              await axios.post("/api/student/delete", { id });
+              toast({ title: "Deleted", description: "Student removed successfully" });
+              fetchData();
+          } catch (error) {
+              toast({ variant: "destructive", title: "Error", description: "Failed to delete" });
+          }
+        }}>
+          Delete
+        </ToastAction>
+      )
+    });
   };
 
   // ✅ SYNCED LOGIC: Matches Team Dashboard Rules exactly
