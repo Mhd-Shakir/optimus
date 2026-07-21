@@ -23,16 +23,25 @@ const mapStudent = (dbStudent: any, registrations: any[] = []) => ({
 export async function GET() {
   const { data: students, error: studentError } = await supabaseAdmin
     .from('students')
-    .select('*, registrations(*)')
+    .select('*')
     .order('created_at', { ascending: false });
 
   if (studentError) {
     return NextResponse.json({ error: studentError.message }, { status: 500 });
   }
 
+  const { data: registrations, error: regError } = await supabaseAdmin
+    .from('registrations')
+    .select('*');
+
+  if (regError) {
+    return NextResponse.json({ error: regError.message }, { status: 500 });
+  }
+
   // Map students and attach their registrations
   const mappedStudents = students.map((s: any) => {
-    return mapStudent(s, s.registrations || []);
+    const studentRegistrations = registrations.filter((r: any) => r.student_id === s.id);
+    return mapStudent(s, studentRegistrations);
   });
 
   return NextResponse.json(mappedStudents);
