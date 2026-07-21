@@ -75,7 +75,8 @@ export default function StudentsPage() {
   }
 
   // 3. Delete Student
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (id: string, studentName?: string) => {
+    if (!window.confirm(`Delete "${studentName || 'this student'}"?\n\nThis will permanently remove the student and ALL their registered events. This cannot be undone.`)) return;
     try {
       await axios.post('/api/student/delete', { id });
       toast({ title: "Deleted", description: "Student removed." });
@@ -265,7 +266,7 @@ export default function StudentsPage() {
                       </TableCell>
                       <TableCell className="font-semibold text-slate-500">{student.studentClass}</TableCell>
                       <TableCell className="text-right">
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:bg-red-50" onClick={() => handleDelete(student._id)}>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:bg-red-50" onClick={() => handleDelete(student._id, student.name)}>
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </TableCell>

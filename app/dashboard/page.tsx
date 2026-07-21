@@ -654,8 +654,9 @@ export default function TeamDashboard() {
   };
 
   const closeModal = () => { setIsRegOpen(false); setIsEditMode(false); setEditId(""); setFormData({ name: "", team: user?.team || "", category: "Protons", studentClass: "" }); setSelectedEvents([]); setRegSearchQuery(""); };
-  const handleDelete = async (e: any, id: string) => { 
+  const handleDelete = async (e: any, id: string, studentName?: string) => { 
     e.stopPropagation(); 
+    if (!window.confirm(`Delete "${studentName || 'this student'}"?\n\nThis will permanently remove the student and ALL their registered events. This cannot be undone.`)) return;
     try {
       await axios.post('/api/student/delete', { id });
       toast({ title: "Student Deleted", description: "The student has been successfully removed." });
@@ -785,7 +786,7 @@ export default function TeamDashboard() {
                       <td className="p-4 font-bold text-slate-700">{student.name}</td>
                       <td className="p-4"><span className="font-mono text-xs text-slate-500 bg-slate-100 px-2 py-1 rounded">{student.chestNo || "N/A"}</span></td>
                       <td className="p-4"><div className="flex flex-wrap gap-1">{student.registeredEvents?.length > 0 ? <span className="text-xs font-bold text-slate-600 bg-slate-100 px-2 py-1 rounded-md">{student.registeredEvents.length} Items</span> : <span className="text-xs text-slate-300">None</span>}{student.registeredEvents?.some((e: any) => e.isStar) && <Badge className="bg-yellow-100 text-yellow-700 border-yellow-200 text-[10px] px-1.5">{student.registeredEvents.filter((e: any) => e.isStar).length} ★</Badge>}</div></td>
-                      <td className="p-4 text-right"><div className="flex justify-end gap-2"><Button size="icon" variant="ghost" className="h-8 w-8 text-slate-300 hover:text-blue-500" onClick={(e) => handleEdit(e, student)} title="Edit"><Pencil className="w-4 h-4" /></Button><Button size="icon" variant="ghost" className="h-8 w-8 text-slate-300 hover:text-emerald-600" onClick={(e) => { e.stopPropagation(); handlePrintStudent(student); }} title="Print"><Printer className="w-4 h-4" /></Button><Button size="icon" variant="ghost" className="h-8 w-8 text-slate-300 hover:text-red-500" onClick={(e) => handleDelete(e, student._id)} title="Delete"><Trash2 className="w-4 h-4" /></Button></div></td>
+                      <td className="p-4 text-right"><div className="flex justify-end gap-2"><Button size="icon" variant="ghost" className="h-8 w-8 text-slate-300 hover:text-blue-500" onClick={(e) => handleEdit(e, student)} title="Edit"><Pencil className="w-4 h-4" /></Button><Button size="icon" variant="ghost" className="h-8 w-8 text-slate-300 hover:text-emerald-600" onClick={(e) => { e.stopPropagation(); handlePrintStudent(student); }} title="Print"><Printer className="w-4 h-4" /></Button><Button size="icon" variant="ghost" className="h-8 w-8 text-slate-300 hover:text-red-500" onClick={(e) => handleDelete(e, student._id, student.name)} title="Delete"><Trash2 className="w-4 h-4" /></Button></div></td>
                     </TableRow>
                   ))}
                 </TableBody>

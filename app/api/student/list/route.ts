@@ -30,17 +30,20 @@ export async function GET() {
     return NextResponse.json({ error: studentError.message }, { status: 500 });
   }
 
-  const { data: registrations, error: regError } = await supabaseAdmin
+  const { data: registrations, error: regError, count: regCount } = await supabaseAdmin
     .from('registrations')
-    .select('*');
+    .select('*', { count: 'exact' })
+    .limit(100000);
 
   if (regError) {
     return NextResponse.json({ error: regError.message }, { status: 500 });
   }
 
+  console.log(`[student/list] students: ${students?.length}, registrations fetched: ${registrations?.length}, total in DB: ${regCount}`);
+
   // Map students and attach their registrations
-  const mappedStudents = students.map((s: any) => {
-    const studentRegistrations = registrations.filter((r: any) => r.student_id === s.id);
+  const mappedStudents = (students || []).map((s: any) => {
+    const studentRegistrations = (registrations || []).filter((r: any) => r.student_id === s.id);
     return mapStudent(s, studentRegistrations);
   });
 

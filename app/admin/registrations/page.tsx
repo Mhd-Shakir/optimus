@@ -110,7 +110,8 @@ export default function AdminRegistrations() {
     setIsModalOpen(true);
   };
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (id: string, studentName?: string) => {
+    if (!window.confirm(`Delete "${studentName || 'this student'}"?\n\nThis will permanently remove the student and ALL their registered events. This cannot be undone.`)) return;
     try {
         await axios.post("/api/student/delete", { id });
         toast({ title: "Deleted", description: "Student removed successfully" });
@@ -451,7 +452,7 @@ export default function AdminRegistrations() {
                             <TableCell className="text-right">
                                 <div className="flex justify-end gap-2">
                                     <Button size="icon" variant="ghost" onClick={() => handleEdit(student)}><Pencil className="w-4 h-4 text-slate-500" /></Button>
-                                    <Button size="icon" variant="ghost" onClick={() => handleDelete(student._id)}><Trash2 className="w-4 h-4 text-red-500" /></Button>
+                                    <Button size="icon" variant="ghost" onClick={() => handleDelete(student._id, student.name)}><Trash2 className="w-4 h-4 text-red-500" /></Button>
                                 </div>
                             </TableCell>
                         </TableRow>
