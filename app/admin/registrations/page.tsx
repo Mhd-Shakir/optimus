@@ -106,7 +106,8 @@ export default function AdminRegistrations() {
             type: original?.type || "Stage",
             category: original?.category || "",
             groupEvent: original?.groupEvent || false,
-            teamLimit: original?.teamLimit
+            teamLimit: original?.teamLimit,
+            groupNo: ev.groupNo
         };
     });
 

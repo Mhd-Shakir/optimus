@@ -52,7 +52,8 @@ export async function POST(req: Request) {
         student_id: id,
         event_id: ev.eventId,
         is_star: ev.isStar || false,
-        status: 'registered'
+        status: 'registered',
+        group_no: ev.groupNo || 1
       }));
       await supabaseAdmin.from('registrations').insert(newRegistrations);
     }

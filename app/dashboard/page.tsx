@@ -257,7 +257,28 @@ export default function TeamDashboard() {
 
 
 
-  const handleEdit = (e: any, s: any) => { e.stopPropagation(); if (!isSystemRegOpen) return toast({ variant: "destructive", title: "Closed", description: "Registration closed." }); setEditId(s._id); setFormData({ name: s.name, team: s.team, category: s.category, studentClass: s.studentClass || "" }); const mapped = s.registeredEvents.map((ev: any) => { const orig = events.find(x => x._id === ev.eventId); return { eventId: ev.eventId, name: ev.name || orig?.name, type: orig?.type || "Stage", isStar: ev.isStar, category: orig?.category || "", groupEvent: orig?.groupEvent || false, teamLimit: orig?.teamLimit } }); setSelectedEvents(mapped); setIsEditMode(true); setIsRegOpen(true); };
+  const handleEdit = (e: any, s: any) => { 
+    e.stopPropagation(); 
+    if (!isSystemRegOpen) return toast({ variant: "destructive", title: "Closed", description: "Registration closed." }); 
+    setEditId(s._id); 
+    setFormData({ name: s.name, team: s.team, category: s.category, studentClass: s.studentClass || "" }); 
+    const mapped = s.registeredEvents.map((ev: any) => { 
+      const orig = events.find(x => x._id === ev.eventId); 
+      return { 
+        eventId: ev.eventId, 
+        name: ev.name || orig?.name, 
+        type: orig?.type || "Stage", 
+        isStar: ev.isStar, 
+        category: orig?.category || "", 
+        groupEvent: orig?.groupEvent || false, 
+        teamLimit: orig?.teamLimit,
+        groupNo: ev.groupNo 
+      } 
+    }); 
+    setSelectedEvents(mapped); 
+    setIsEditMode(true); 
+    setIsRegOpen(true); 
+  };
 
   const toggleEvent = (event: any) => {
     const exists = selectedEvents.find(e => e.eventId === event._id);
