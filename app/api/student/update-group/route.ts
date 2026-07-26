@@ -11,56 +11,7 @@ export async function POST(req: Request) {
     if (!team) return NextResponse.json({ error: "Team is required" }, { status: 400 });
     const resolvedStudentIds = studentIds || [];
 
-    // 1. Check if global registration is open
-    const { data: settings } = await supabaseAdmin
-      .from('settings')
-      .select('registration_open')
-      .limit(1)
-      .single();
-
-    if (settings && settings.registration_open === false) {
-      return NextResponse.json(
-        { error: "Registration is currently CLOSED by Admin." }, 
-        { status: 403 }
-      );
-    }
-
-    // 2. Fetch category from the event table
-    const { data: eventData, error: eventError } = await supabaseAdmin
-      .from('events')
-      .select('category')
-      .eq('id', eventId)
-      .single();
-
-    if (eventError || !eventData) {
-      return NextResponse.json({ error: "Event not found" }, { status: 404 });
-    }
-
-    const category = eventData.category;
-
-    // Dynamic category-based auto close logic
-    if (category) {
-      const CATEGORY_IDS: Record<string, number> = {
-        Cosmos: 2,
-        Nexus: 3,
-        Protons: 4,
-        'General-A': 5,
-        'General-B': 6
-      };
-      
-      const catId = CATEGORY_IDS[category];
-      if (catId) {
-        const { data: catSettings } = await supabaseAdmin
-          .from('settings')
-          .select('registration_open')
-          .eq('id', catId)
-          .single();
-          
-        if (catSettings && catSettings.registration_open === false) {
-          return NextResponse.json({ error: `Group Registration for ${category} is currently CLOSED.` }, { status: 403 });
-        }
-      }
-    }
+    // Removed registration open checks to allow editing existing groups even if new registrations are closed.
 
     // 3. Fetch all student IDs of this team
     const { data: teamStudents, error: studentError } = await supabaseAdmin

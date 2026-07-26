@@ -7,7 +7,7 @@ export async function POST(req: Request) {
     const { data: settings } = await supabaseAdmin
       .from('settings')
       .select('registration_open')
-      .limit(1)
+      .eq('id', 1)
       .single();
 
     if (settings && settings.registration_open === false) {

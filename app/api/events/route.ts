@@ -27,14 +27,59 @@ const mapEvent = (dbEvent: any) => ({
 
 export async function GET() {
   try {
-    const { data: events, error } = await supabaseAdmin
+    const { data: events, error: eventsError } = await supabaseAdmin
       .from('events')
       .select('*')
       .order('created_at', { ascending: false });
 
-    if (error) throw error;
+    if (eventsError) throw eventsError;
 
-    return NextResponse.json(events.map(mapEvent));
+    // Fetch all registrations that have a position OR a code letter
+    const { data: registrations, error: regError } = await supabaseAdmin
+      .from('registrations')
+      .select('*, students(chest_no, name)')
+      .or('position.not.is.null,code_letter.not.is.null');
+
+    if (regError) throw regError;
+
+    const mappedEvents = events.map((dbEvent: any) => {
+      const eventRegs = registrations.filter((r: any) => r.event_id === dbEvent.id);
+      
+      const hasCodeLetters = eventRegs.some((r: any) => r.code_letter !== null && r.code_letter !== "");
+
+      const formatWinner = (reg: any) => ({
+        studentId: reg.student_id,
+        chestNo: reg.students?.chest_no || "",
+        name: reg.students?.name || "",
+        codeLetter: reg.code_letter || "",
+        mark: reg.mark || 0,
+        grade: reg.grade || ""
+      });
+
+      const first = eventRegs.filter((r: any) => r.position === 'first').map(formatWinner);
+      const second = eventRegs.filter((r: any) => r.position === 'second').map(formatWinner);
+      const third = eventRegs.filter((r: any) => r.position === 'third').map(formatWinner);
+      const others = eventRegs.filter((r: any) => r.position === 'other').map(formatWinner);
+
+      return {
+        _id: dbEvent.id,
+        name: dbEvent.name,
+        category: dbEvent.category,
+        type: dbEvent.type,
+        status: dbEvent.status,
+        groupEvent: dbEvent.is_group_event,
+        hasCodeLetters: hasCodeLetters,
+        teamPoints: {
+          "Ignis": dbEvent.team_points_auris,
+          "Ventus": dbEvent.team_points_libras
+        },
+        teamLimit: dbEvent.team_limit,
+        createdAt: dbEvent.created_at,
+        results: { first, second, third, others }
+      };
+    });
+
+    return NextResponse.json(mappedEvents);
   } catch (error: any) {
     console.error("Fetch Events Error:", error);
     return NextResponse.json({ error: "Failed to fetch events", details: error.message }, { status: 500 });

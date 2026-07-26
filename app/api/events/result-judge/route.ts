@@ -19,45 +19,68 @@ export async function POST(req: Request) {
     const individualPointExceptions = ["speechtranslation", "dictionarymaking", "swarafdebate", "swarfdebate"];
     const useGroupPoints = isGroupEvent && !individualPointExceptions.includes(eventName);
 
+    // Fetch all registrations for this event to map Code Letters to Student IDs
+    const { data: registrations } = await supabaseAdmin.from('registrations')
+      .select('student_id, code_letter, group_no')
+      .eq('event_id', eventId);
+
     const { data: students } = await supabaseAdmin.from('students').select('id, team');
-    const studentMap = new Map();
-    students?.forEach((s: any) => studentMap.set(s.id, s.team));
+    const studentTeamMap = new Map();
+    students?.forEach((s: any) => studentTeamMap.set(s.id, s.team));
 
     const teamPoints: any = { "Ignis": 0, "Ventus": 0 };
     const registrationUpdates: any[] = [];
 
-    const processWinners = (winnerArray: any[], position: string) => {
-      if (Array.isArray(winnerArray)) {
-        winnerArray.forEach((winner: any) => {
-          if (winner.studentId && winner.mark !== undefined) {
-            const mark = Number(winner.mark);
-            const { grade, points } = calculateGradeAndPoints(mark, useGroupPoints);
-            
-            const team = studentMap.get(winner.studentId);
-            if (team && teamPoints[team] !== undefined) teamPoints[team] += points;
-
-            registrationUpdates.push({
-              student_id: winner.studentId,
-              event_id: eventId,
-              position: position,
-              grade: grade,
-              mark: mark
-            });
-          }
-        });
-      }
+    const getStudentsByCode = (code: string) => {
+        if (!code) return [];
+        return (registrations || []).filter(r => r.code_letter === code).map(r => r.student_id);
     };
 
-    processWinners(results.first, 'first');
-    processWinners(results.second, 'second');
-    processWinners(results.third, 'third');
-    processWinners(results.others, 'other');
+    // Sort results descending by mark
+    const sortedResults = [...results].sort((a, b) => b.mark - a.mark);
 
-    // Clear existing results for this event
+    // Group by mark to handle ties
+    let currentRank = 1;
+    let previousMark = -1;
+
+    sortedResults.forEach((winner, index) => {
+      const mark = Number(winner.mark);
+      if (mark === 0) return; // Skip 0 marks just in case
+
+      if (previousMark !== -1 && mark < previousMark) {
+         currentRank++;
+      }
+      previousMark = mark;
+
+      let position = 'other';
+      if (currentRank === 1) position = 'first';
+      else if (currentRank === 2) position = 'second';
+      else if (currentRank === 3) position = 'third';
+
+      const { grade, points } = calculateGradeAndPoints(mark, useGroupPoints);
+      
+      const studentIds = getStudentsByCode(winner.codeLetter);
+      
+      studentIds.forEach(studentId => {
+          const team = studentTeamMap.get(studentId);
+          if (team && teamPoints[team] !== undefined) teamPoints[team] += points;
+
+          registrationUpdates.push({
+            student_id: studentId,
+            event_id: eventId,
+            position: position,
+            grade: grade,
+            mark: mark
+          });
+      });
+    });
+
+    // First clear existing results for this event
     await supabaseAdmin.from('registrations')
       .update({ position: null, grade: null, mark: null })
       .eq('event_id', eventId);
 
+    // Apply new updates
     for (const update of registrationUpdates) {
       await supabaseAdmin.from('registrations')
         .update({ position: update.position, grade: update.grade, mark: update.mark })
@@ -75,38 +98,10 @@ export async function POST(req: Request) {
       .single();
 
     if (updateError) throw updateError;
-    return NextResponse.json({ message: "Result Updated", event: updatedEvent });
+    return NextResponse.json({ message: "Result Updated via Judge", event: updatedEvent });
 
   } catch (error: any) {
     console.error("Error updating result:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
-}
-
-export async function DELETE(req: Request) {
-  try {
-    const { eventId } = await req.json();
-    if (!eventId) return NextResponse.json({ error: "Event ID is missing" }, { status: 400 });
-
-    await supabaseAdmin.from('registrations')
-      .update({ position: null, grade: null, mark: null, code_letter: null })
-      .eq('event_id', eventId);
-
-    const { data: updatedEvent, error } = await supabaseAdmin.from('events')
-      .update({
-        status: "upcoming",
-        team_points_auris: 0,
-        team_points_libras: 0
-      })
-      .eq('id', eventId)
-      .select()
-      .single();
-
-    if (error) throw error;
-    return NextResponse.json({ message: "Result Deleted", event: updatedEvent });
-
-  } catch (error: any) {
-    console.error("Error deleting result:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

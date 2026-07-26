@@ -59,6 +59,8 @@ export default function AdminRegistrations() {
   const [isEditMode, setIsEditMode] = useState(false);
   const [editId, setEditId] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  
+  const [settingCaptainId, setSettingCaptainId] = useState<string | null>(null);
 
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [studentToDelete, setStudentToDelete] = useState<{ id: string, name: string } | null>(null);
@@ -90,6 +92,19 @@ export default function AdminRegistrations() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSetCaptain = async (eventId: string, team: string, groupNo: number, captainStudentId: string) => {
+      try {
+          setSettingCaptainId(`${eventId}-${groupNo}`);
+          await axios.post("/api/events/set-captain", { eventId, team, groupNo, captainStudentId });
+          toast({ title: "Captain Set", description: "The captain has been successfully designated." });
+          fetchData(); // Refresh to get updated is_captain status
+      } catch (error: any) {
+          toast({ variant: "destructive", title: "Error", description: error.response?.data?.error || "Failed to set captain" });
+      } finally {
+          setSettingCaptainId(null);
+      }
   };
 
   const handleEdit = (student: any) => {
@@ -389,9 +404,20 @@ export default function AdminRegistrations() {
       .filter(e => e.groupEvent === true || normalizeString(e.name) === "histoart" || normalizeString(e.name) === "dictionarymaking" || normalizeString(e.name) === "swarafdebate" || normalizeString(e.name) === "swarfdebate")
       .flatMap(event => {
           const teams = ["Ignis", "Ventus"];
-          return teams.map(team => {
-              const participants = students.filter(s => s.team === team && s.registeredEvents?.some((re: any) => re.eventId === event._id));
-              return { event, team, participants };
+          return teams.flatMap(team => {
+              const registeredStudents = students.filter(s => s.team === team && s.registeredEvents?.some((re: any) => re.eventId === event._id));
+              const groupNos = Array.from(new Set(registeredStudents.map(s => {
+                  const re = s.registeredEvents.find((r: any) => r.eventId === event._id);
+                  return re?.groupNo || 1;
+              })));
+              
+              return groupNos.map(gNo => {
+                  const participants = registeredStudents.filter(s => {
+                      const re = s.registeredEvents.find((r: any) => r.eventId === event._id);
+                      return (re?.groupNo || 1) === gNo;
+                  });
+                  return { event, team, groupNo: gNo, participants };
+              });
           });
       })
       .filter(g => g.participants.length > 0)
@@ -480,12 +506,13 @@ export default function AdminRegistrations() {
                         <TableHead>Event</TableHead>
                         <TableHead>Team</TableHead>
                         <TableHead>Category</TableHead>
-                        <TableHead>Participants</TableHead>
+                        <TableHead>Group No</TableHead>
+                        <TableHead>Participants & Captain</TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
-                    {loading ? <TableRow><TableCell colSpan={4} className="h-24 text-center"><Loader2 className="animate-spin mx-auto"/></TableCell></TableRow> : 
-                     groupRegistrations.length === 0 ? <TableRow><TableCell colSpan={4} className="h-24 text-center text-slate-500">No groups found.</TableCell></TableRow> :
+                    {loading ? <TableRow><TableCell colSpan={5} className="h-24 text-center"><Loader2 className="animate-spin mx-auto"/></TableCell></TableRow> : 
+                     groupRegistrations.length === 0 ? <TableRow><TableCell colSpan={5} className="h-24 text-center text-slate-500">No groups found.</TableCell></TableRow> :
                      groupRegistrations.map((group, idx) => (
                         <TableRow key={idx}>
                             <TableCell className="font-bold">{group.event.name}</TableCell>
@@ -495,11 +522,32 @@ export default function AdminRegistrations() {
                                 </Badge>
                             </TableCell>
                             <TableCell>{group.event.category}</TableCell>
+                            <TableCell className="font-bold text-slate-500">Group {group.groupNo}</TableCell>
                             <TableCell>
-                              <div className="flex flex-wrap gap-1">
-                                {group.participants.map((p: any) => (
-                                  <Badge key={p._id} variant="outline" className="text-[10px] bg-slate-50">{p.name}</Badge>
-                                ))}
+                              <div className="flex flex-col gap-2">
+                                <div className="flex flex-wrap gap-1">
+                                  {group.participants.map((p: any) => {
+                                      const isCaptain = p.registeredEvents.find((re: any) => re.eventId === group.event._id)?.isCaptain;
+                                      return (
+                                        <Badge key={p._id} variant="outline" className={`text-[10px] ${isCaptain ? 'bg-purple-100 text-purple-700 border-purple-200' : 'bg-slate-50'}`}>
+                                            {p.name} {isCaptain && "⭐ (Captain)"}
+                                        </Badge>
+                                      );
+                                  })}
+                                </div>
+                                <div className="flex items-center gap-2 mt-1">
+                                    <Select onValueChange={(val) => handleSetCaptain(group.event._id, group.team, group.groupNo, val)}>
+                                        <SelectTrigger className="w-[180px] h-7 text-xs bg-slate-50">
+                                            <SelectValue placeholder="Set Captain" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {group.participants.map((p: any) => (
+                                                <SelectItem key={p._id} value={p._id}>{p.name}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                    {settingCaptainId === `${group.event._id}-${group.groupNo}` && <Loader2 className="animate-spin w-4 h-4 text-purple-500" />}
+                                </div>
                               </div>
                             </TableCell>
                         </TableRow>

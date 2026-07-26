@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import axios from "axios"
-import { Users, Calendar, Trophy, ClipboardList, Star, PenTool, Lock, Unlock, Power, Settings, UserCog, ShieldCheck, Award } from "lucide-react"
+import { Users, Calendar, Trophy, ClipboardList, Star, PenTool, Lock, Unlock, Power, Settings, UserCog, ShieldCheck, Award, QrCode } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
+import { useRouter } from "next/navigation"
 
 // ✅ UPDATED POINTS SYSTEM - Matches results and team dashboard
 const INDIVIDUAL_POINTS: any = { "A+": 11, "A": 10, "B": 7, "C": 5 };
@@ -79,6 +80,7 @@ function ChampionCard({ title, student, icon: Icon, subTitle }: any) {
 
 // --- MAIN DASHBOARD PAGE ---
 export default function AdminDashboard() {
+  const router = useRouter()
   const [stats, setStats] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   
@@ -213,7 +215,7 @@ export default function AdminDashboard() {
         </div>
 
         {/* --- CONTROL PANEL --- */}
-        <div className="flex flex-wrap gap-3 w-full md:w-auto">
+        <div className="flex flex-wrap gap-4 md:gap-6 w-full md:w-auto">
             
             {/* 1. Registration Toggle */}
             <div className="bg-white p-2 pr-4 rounded-xl border shadow-sm flex items-center gap-4 flex-1 md:flex-none min-w-[200px]">
@@ -240,7 +242,7 @@ export default function AdminDashboard() {
             {/* 2. Team Settings Button */}
             <Button 
                 onClick={() => setIsTeamModalOpen(true)}
-                className="h-auto bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 gap-2 shadow-sm rounded-xl px-4"
+                className="h-auto bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 gap-3 shadow-sm rounded-xl px-5 py-3"
             >
                 <Users className="w-5 h-5 text-blue-500" />
                 <div className="text-left hidden sm:block">
@@ -252,7 +254,7 @@ export default function AdminDashboard() {
             {/* 3. Admin Settings Button */}
             <Button 
                 onClick={() => setIsCredModalOpen(true)}
-                className="h-auto bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 gap-2 shadow-sm rounded-xl px-4"
+                className="h-auto bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 gap-3 shadow-sm rounded-xl px-5 py-3"
             >
                 <Settings className="w-5 h-5 text-slate-600" />
                 <div className="text-left hidden sm:block">

@@ -8,10 +8,13 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Plus, Trash2, Search, Loader2 } from "lucide-react"
+import { Plus, Trash2, Search, Loader2, QrCode, Download, FileSpreadsheet } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { ToastAction } from "@/components/ui/toast"
 import { DeleteConfirmModal } from "@/components/DeleteConfirmModal"
+import QRCode from "qrcode"
+import ExcelJS from "exceljs"
+import { useRouter } from "next/navigation"
 
 type Student = {
   _id: string;
@@ -25,6 +28,7 @@ type Student = {
 
 export default function StudentsPage() {
   const { toast } = useToast()
+  const router = useRouter()
   
   // State
   const [students, setStudents] = useState<Student[]>([])
@@ -42,6 +46,23 @@ export default function StudentsPage() {
   
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [studentToDelete, setStudentToDelete] = useState<{ id: string, name: string } | null>(null);
+
+  const [qrModalOpen, setQrModalOpen] = useState(false);
+  const [selectedStudentForQr, setSelectedStudentForQr] = useState<Student | null>(null);
+  const [qrDataUrl, setQrDataUrl] = useState<string>("");
+
+  const handleViewQr = async (student: Student) => {
+    setSelectedStudentForQr(student);
+    const origin = typeof window !== 'undefined' ? window.location.origin : '';
+    const url = `${origin}/student/${student.chestNo}`;
+    try {
+      const dataUrl = await QRCode.toDataURL(url, { margin: 1, width: 200 });
+      setQrDataUrl(dataUrl);
+      setQrModalOpen(true);
+    } catch (err) {
+      console.error("Failed to generate QR code", err);
+    }
+  }
 
   // 1. Fetch Students
   useEffect(() => {
@@ -109,6 +130,83 @@ export default function StudentsPage() {
     return matchSearch && matchTeam && matchCategory && matchClass
   })
 
+  // Export Excel Logic
+  const handleExportExcel = async () => {
+    try {
+      const workbook = new ExcelJS.Workbook();
+      const title = teamFilter === "All" ? "All Students" : `Team ${teamFilter}`;
+      const sheet = workbook.addWorksheet(title);
+
+      sheet.columns = [
+        { header: 'SI', key: 'si', width: 5 },
+        { header: 'Chest No', key: 'chestNo', width: 15 },
+        { header: 'Name', key: 'name', width: 30 },
+        { header: 'Team', key: 'team', width: 15 },
+        { header: 'Category', key: 'category', width: 15 },
+        { header: 'Class', key: 'studentClass', width: 15 },
+        { header: 'QR Code', key: 'qr', width: 25 }
+      ];
+
+      // Generate URLs and add rows
+      const origin = typeof window !== 'undefined' ? window.location.origin : '';
+      
+      for (let i = 0; i < filteredStudents.length; i++) {
+        const s = filteredStudents[i];
+        const rowIndex = i + 2; // +1 for 0-index, +1 because row 1 is headers
+
+        sheet.addRow({
+          si: i + 1,
+          chestNo: s.chestNo,
+          name: s.name,
+          team: s.team,
+          category: s.category,
+          studentClass: s.studentClass,
+        });
+
+        // Increase row height so the image fits nicely
+        sheet.getRow(rowIndex).height = 100;
+
+        // Generate QR Code base64
+        const url = `${origin}/student/${s.chestNo}`;
+        const qrDataUrl = await QRCode.toDataURL(url, { margin: 1, width: 150 });
+        
+        // Strip out the base64 header
+        const base64Data = qrDataUrl.split(',')[1];
+        
+        const imageId = workbook.addImage({
+          base64: base64Data,
+          extension: 'png',
+        });
+
+        sheet.addImage(imageId, {
+          tl: { col: 6, row: rowIndex - 1 }, // Column index is 0-based: col 6 is 'QR Code'. Row index is also 0-based
+          ext: { width: 100, height: 100 }
+        });
+        
+        // Center align cells
+        sheet.getRow(rowIndex).alignment = { vertical: 'middle', horizontal: 'center' };
+      }
+
+      // Header styling
+      sheet.getRow(1).font = { bold: true };
+      sheet.getRow(1).alignment = { vertical: 'middle', horizontal: 'center' };
+
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const urlObject = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = urlObject;
+      a.download = `${title.replace(/\s+/g, '_')}_QR_List.xlsx`;
+      a.click();
+      window.URL.revokeObjectURL(urlObject);
+      
+      toast({ title: "Success", description: "Excel sheet downloaded successfully!" });
+    } catch (error) {
+      console.error("Failed to export Excel", error);
+      toast({ variant: "destructive", title: "Error", description: "Failed to generate Excel file." });
+    }
+  }
+
   return (
     <div className="space-y-6 p-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -117,9 +215,13 @@ export default function StudentsPage() {
           <p className="text-muted-foreground mt-1">Manage participant registrations</p>
         </div>
 
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-            <Button className="bg-slate-900 text-white">
+        <div className="flex gap-2 items-center">
+            <Button variant="outline" onClick={handleExportExcel} className="bg-white border-slate-200 text-slate-700 shadow-sm">
+                <FileSpreadsheet className="h-4 w-4 mr-2 text-green-600" /> Export Excel
+            </Button>
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                <DialogTrigger asChild>
+                <Button className="bg-slate-100 text-slate-900 border border-slate-200 shadow-sm hover:bg-slate-200">
                 <Plus className="h-4 w-4 mr-2" /> Add Student
             </Button>
             </DialogTrigger>
@@ -185,6 +287,7 @@ export default function StudentsPage() {
             </form>
             </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       <div className="bg-white rounded-xl border p-4 shadow-sm">
@@ -279,6 +382,9 @@ export default function StudentsPage() {
                       </TableCell>
                       <TableCell className="font-semibold text-slate-500">{student.studentClass}</TableCell>
                       <TableCell className="text-right">
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-500 hover:bg-blue-50 mr-2" onClick={() => handleViewQr(student)}>
+                          <QrCode className="h-4 w-4" />
+                        </Button>
                         <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:bg-red-50" onClick={() => handleDelete(student._id, student.name)}>
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -296,6 +402,25 @@ export default function StudentsPage() {
         onConfirm={confirmDelete}
         studentName={studentToDelete?.name}
       />
+
+      <Dialog open={qrModalOpen} onOpenChange={setQrModalOpen}>
+        <DialogContent className="sm:max-w-md flex flex-col items-center justify-center text-center">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-black uppercase tracking-tighter">{selectedStudentForQr?.name}</DialogTitle>
+          </DialogHeader>
+          <div className="py-6 flex flex-col items-center w-full">
+            <div className="flex gap-2 mb-4">
+              <span className="text-xs font-bold bg-slate-100 text-slate-600 px-2 py-0.5 rounded">Chest: {selectedStudentForQr?.chestNo}</span>
+              <span className="text-xs font-bold bg-slate-100 text-slate-600 px-2 py-0.5 rounded">Team: {selectedStudentForQr?.team}</span>
+            </div>
+            {qrDataUrl && <img src={qrDataUrl} alt="QR Code" className="w-48 h-48 border-4 border-slate-100 rounded-xl mb-2" />}
+            <p className="text-[10px] text-slate-400 mt-2 uppercase tracking-widest font-bold">Scan to view programs</p>
+          </div>
+          <div className="w-full">
+            <Button variant="outline" className="w-full font-bold" onClick={() => setQrModalOpen(false)}>Close</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

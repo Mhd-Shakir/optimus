@@ -700,9 +700,9 @@ export default function TeamDashboard() {
 
   const handleGroupEdit = (group: any) => {
     setIsGroupEditMode(true);
-    setEditGroupEventId(group.event._id);
+    setEditGroupEventId(group.event._id?.toString() || "");
     setGroupCategory(group.event.category);
-    setGroupEventId(group.event._id);
+    setGroupEventId(group.event._id?.toString() || "");
     setGroupNo(group.groupNo);
     setOriginalGroupNo(group.groupNo);
     setGroupParticipants(group.participants.map((p: any) => p._id));
@@ -834,7 +834,7 @@ export default function TeamDashboard() {
                   <Users className="w-8 h-8" />
                 </div>
                 <div>
-                  <h2 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tighter uppercase">{isGroupEditMode ? "Edit Group Registration" : "Group Registration"}</h2>
+                  <h2 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tighter uppercase">{isGroupEditMode ? "Edit Group Registration (FIXED)" : "Group Registration"}</h2>
                   <p className="text-slate-400 font-bold text-xs uppercase tracking-widest mt-1">{isGroupEditMode ? "Modify participant list for this group event" : "Register for Group Events"}</p>
                 </div>
               </div>
@@ -933,18 +933,24 @@ export default function TeamDashboard() {
                     
                     <div className="space-y-2">
                       <label className="text-xs font-black text-slate-400 uppercase tracking-wider">Category <span className="text-red-500">*</span></label>
-                      <Select disabled={isGroupEditMode} value={groupCategory} onValueChange={(val) => { setGroupCategory(val); setGroupParticipants([]); }}>
-                        <SelectTrigger className="h-10 text-sm">
-                          <SelectValue placeholder="Select Category" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Protons">Protons</SelectItem>
-                          <SelectItem value="Nexus">Nexus</SelectItem>
-                          <SelectItem value="Cosmos">Cosmos</SelectItem>
-                          <SelectItem value="General-A">General-A</SelectItem>
-                          <SelectItem value="General-B">General-B</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      {isGroupEditMode ? (
+                        <div className="h-10 px-3 flex items-center bg-slate-100 text-slate-600 text-sm font-bold rounded-lg border border-slate-200 cursor-not-allowed">
+                          {groupCategory}
+                        </div>
+                      ) : (
+                        <Select value={groupCategory} onValueChange={(val) => { setGroupCategory(val); setGroupParticipants([]); }}>
+                          <SelectTrigger className="h-10 text-sm">
+                            <SelectValue placeholder="Select Category" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Protons">Protons</SelectItem>
+                            <SelectItem value="Nexus">Nexus</SelectItem>
+                            <SelectItem value="Cosmos">Cosmos</SelectItem>
+                            <SelectItem value="General-A">General-A</SelectItem>
+                            <SelectItem value="General-B">General-B</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      )}
                     </div>
 
                     <div className="space-y-2">
@@ -966,19 +972,25 @@ export default function TeamDashboard() {
 
                   <div className="space-y-2">
                     <label className="text-xs font-black text-slate-400 uppercase tracking-wider">Event <span className="text-red-500">*</span></label>
-                    <Select disabled={isGroupEditMode} value={groupEventId} onValueChange={setGroupEventId}>
-                      <SelectTrigger className="h-10 text-sm">
-                        <SelectValue placeholder="Select Group Event" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {events.filter(e => 
-                          (e.groupEvent === true || normalizeString(e.name) === "histoart" || normalizeString(e.name) === "dictionarymaking" || normalizeString(e.name) === "swarafdebate" || normalizeString(e.name) === "swarfdebate") && 
-                          e.category === groupCategory
-                        ).map(e => (
-                          <SelectItem key={e._id} value={e._id}>{e.name} <span className="text-[10px] text-slate-400 ml-1">({e.category})</span></SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    {isGroupEditMode ? (
+                      <div className="h-10 px-3 flex items-center bg-slate-100 text-slate-600 text-sm font-bold rounded-lg border border-slate-200 cursor-not-allowed">
+                        {events.find(e => e._id?.toString() === groupEventId?.toString())?.name || "Loading..."}
+                      </div>
+                    ) : (
+                      <Select value={groupEventId?.toString()} onValueChange={setGroupEventId}>
+                        <SelectTrigger className="h-10 text-sm">
+                          <SelectValue placeholder="Select Group Event" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {events.filter(e => 
+                            (e.groupEvent === true || normalizeString(e.name) === "histoart" || normalizeString(e.name) === "dictionarymaking" || normalizeString(e.name) === "swarafdebate" || normalizeString(e.name) === "swarfdebate") && 
+                            e.category === groupCategory
+                          ).map(e => (
+                            <SelectItem key={e._id} value={e._id?.toString()}>{e.name} <span className="text-[10px] text-slate-400 ml-1">({e.category})</span></SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
                   </div>
 
                   <div className="pt-4 border-t border-slate-100 flex gap-3">

@@ -9,8 +9,19 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Search, Trophy, Medal, Loader2, Edit, Save, Trash2, Users, User, Plus, X, Printer, Eye } from "lucide-react"
+import { Search, Trophy, Medal, Loader2, Edit, Save, Trash2, Users, User, Plus, X, Printer, Eye, QrCode } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { useRouter } from "next/navigation"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 const normalizeString = (str: string) => {
     if (!str) return "";
@@ -19,6 +30,7 @@ const normalizeString = (str: string) => {
 
 export default function AdminResultsPage() {
     const { toast } = useToast()
+    const router = useRouter()
 
     const [events, setEvents] = useState<any[]>([])
     const [students, setStudents] = useState<any[]>([])
@@ -31,8 +43,16 @@ export default function AdminResultsPage() {
     const [editingEvent, setEditingEvent] = useState<any>(null)
     const [submitting, setSubmitting] = useState(false)
 
+    // Winners Modal State
+    const [winnersModalOpen, setWinnersModalOpen] = useState(false)
+    const [selectedWinnersEvent, setSelectedWinnersEvent] = useState<any>(null)
+
     // Print State
     const [printingEvent, setPrintingEvent] = useState<any>(null)
+
+    // Delete Modal State
+    const [deleteModalOpen, setDeleteModalOpen] = useState(false)
+    const [eventToDelete, setEventToDelete] = useState<any>(null)
 
     const [resultData, setResultData] = useState({
         first: [] as Array<{ studentId: string, grade: string, mark: string, codeLetter: string }>,
@@ -132,16 +152,6 @@ export default function AdminResultsPage() {
         setIsEditOpen(true)
     }
 
-    const handleDelete = async (eventId: string) => {
-        try {
-            await axios.delete('/api/events/result', { data: { eventId } });
-            toast({ title: "Deleted 🗑️", description: "Result removed successfully!" });
-            fetchData();
-        } catch (error: any) {
-            toast({ variant: "destructive", title: "Error", description: "Failed to delete result." });
-        }
-    }
-
     const handlePrint = (event: any) => {
         setPrintingEvent(event);
         setTimeout(() => {
@@ -171,6 +181,20 @@ export default function AdminResultsPage() {
         }
     }
 
+    const confirmDelete = async () => {
+        if (!eventToDelete) return;
+        try {
+            await axios.delete('/api/events/result', { data: { eventId: eventToDelete._id } });
+            toast({ title: "Deleted 🗑️", description: "Result removed successfully!" });
+            fetchData();
+        } catch (error: any) {
+            toast({ variant: "destructive", title: "Error", description: "Failed to delete result." });
+        } finally {
+            setDeleteModalOpen(false);
+            setEventToDelete(null);
+        }
+    }
+
     const getStudentName = (id: string) => {
         const s = students.find(std => std._id === id)
         return s ? `${s.name} (${s.team})` : "Unknown"
@@ -184,6 +208,11 @@ export default function AdminResultsPage() {
     const filteredEvents = events.filter(ev => {
         const matchSearch = ev.name.toLowerCase().includes(searchTerm.toLowerCase())
         if (!matchSearch) return false;
+
+        if (activeTab === "Published") return ev.status === "completed";
+        
+        // Hide completed events from all other tabs so they "move" to the Published tab
+        if (ev.status === "completed") return false;
 
         if (activeTab === "All") return true;
         return ev.category === activeTab;
@@ -269,7 +298,7 @@ export default function AdminResultsPage() {
         }));
     };
 
-    const tabs = ["All", "Protons", "Nexus", "Cosmos", "General-A", "General-B"];
+    const tabs = ["All", "Protons", "Nexus", "Cosmos", "General-A", "General-B", "Published"];
 
     return (
         <>
@@ -308,7 +337,7 @@ export default function AdminResultsPage() {
 
                 <Card>
                     <div className="overflow-x-auto w-full">
-                    <Table className="min-w-[800px]">
+                    <Table className="w-full">
                         <TableHeader>
                             <TableRow>
                                 <TableHead className="w-[50px]">SI</TableHead>
@@ -343,94 +372,46 @@ export default function AdminResultsPage() {
                                                 {ev.status === "completed" ? "Published" : "Pending"}
                                             </Badge>
                                         </TableCell>
-                                        <TableCell className="text-xs text-slate-500">
+                                        <TableCell className="text-center">
                                             {ev.status === "completed" ? (
-                                                <div className="space-y-1">
-                                                    {/* First Place - handle both array and single value */}
-                                                    {(() => {
-                                                        const firstData = Array.isArray(ev.results.first) ? ev.results.first :
-                                                            ev.results.first ? [{ studentId: ev.results.first, grade: ev.results.firstGrade, mark: ev.results.firstMark, codeLetter: ev.results.firstCodeLetter }] : [];
-                                                        return firstData.map((winner: any, idx: number) => (
-                                                            <div key={idx} className="flex items-center gap-1">
-                                                                <Trophy className="w-3 h-3 text-yellow-500" />
-                                                                1st{firstData.length > 1 ? `(${idx + 1})` : ''}: {getStudentName(winner.studentId || winner)}
-                                                                <span className="font-bold text-emerald-600">
-                                                                    ({winner.grade || ev.results.firstGrade}
-                                                                    {(winner.mark || ev.results.firstMark) ? `-${winner.mark || ev.results.firstMark}` : ''}
-                                                                    {(winner.codeLetter || ev.results.firstCodeLetter) ? ` | ${winner.codeLetter || ev.results.firstCodeLetter}` : ''})
-                                                                </span>
-                                                            </div>
-                                                        ));
-                                                    })()}
-
-                                                    {/* Second Place - handle both array and single value */}
-                                                    {(() => {
-                                                        const secondData = Array.isArray(ev.results.second) ? ev.results.second :
-                                                            ev.results.second ? [{ studentId: ev.results.second, grade: ev.results.secondGrade, mark: ev.results.secondMark, codeLetter: ev.results.secondCodeLetter }] : [];
-                                                        return secondData.map((winner: any, idx: number) => (
-                                                            <div key={idx} className="flex items-center gap-1">
-                                                                <Medal className="w-3 h-3 text-slate-400" />
-                                                                2nd{secondData.length > 1 ? `(${idx + 1})` : ''}: {getStudentName(winner.studentId || winner)}
-                                                                <span className="font-bold text-slate-600">
-                                                                    ({winner.grade || ev.results.secondGrade}
-                                                                    {(winner.mark || ev.results.secondMark) ? `-${winner.mark || ev.results.secondMark}` : ''}
-                                                                    {(winner.codeLetter || ev.results.secondCodeLetter) ? ` | ${winner.codeLetter || ev.results.secondCodeLetter}` : ''})
-                                                                </span>
-                                                            </div>
-                                                        ));
-                                                    })()}
-
-                                                    {/* Third Place - handle both array and single value */}
-                                                    {(() => {
-                                                        const thirdData = Array.isArray(ev.results.third) ? ev.results.third :
-                                                            ev.results.third ? [{ studentId: ev.results.third, grade: ev.results.thirdGrade, mark: ev.results.thirdMark, codeLetter: ev.results.thirdCodeLetter }] : [];
-                                                        return thirdData.map((winner: any, idx: number) => (
-                                                            <div key={idx} className="flex items-center gap-1">
-                                                                <Medal className="w-3 h-3 text-amber-600" />
-                                                                3rd{thirdData.length > 1 ? `(${idx + 1})` : ''}: {getStudentName(winner.studentId || winner)}
-                                                                <span className="font-bold text-amber-700">
-                                                                    ({winner.grade || ev.results.thirdGrade}
-                                                                    {(winner.mark || ev.results.thirdMark) ? `-${winner.mark || ev.results.thirdMark}` : ''}
-                                                                    {(winner.codeLetter || ev.results.thirdCodeLetter) ? ` | ${winner.codeLetter || ev.results.thirdCodeLetter}` : ''})
-                                                                </span>
-                                                            </div>
-                                                        ));
-                                                    })()}
-
-                                                    {ev.results.others && ev.results.others.length > 0 && (
-                                                        <div className="text-[10px] text-slate-400 mt-1 space-y-0.5">
-                                                            {ev.results.others.map((other: any, idx: number) => (
-                                                                <div key={idx}>
-                                                                    #{idx + 4}: {getStudentName(other.studentId)}
-                                                                    <span className="font-bold ml-1">
-                                                                        ({other.grade}
-                                                                        {other.mark ? `-${other.mark}` : ''}
-                                                                        {other.codeLetter ? ` | ${other.codeLetter}` : ''})
-                                                                    </span>
-                                                                </div>
-                                                            ))}
-                                                        </div>
-                                                    )}
-                                                </div>
+                                                <Button 
+                                                    variant="outline" 
+                                                    size="sm" 
+                                                    className="h-7 text-[11px] px-3 border-yellow-200 text-yellow-700 hover:bg-yellow-50"
+                                                    onClick={() => { setSelectedWinnersEvent(ev); setWinnersModalOpen(true); }}
+                                                >
+                                                    <Trophy className="w-3 h-3 mr-1 text-yellow-500" /> View Winners
+                                                </Button>
                                             ) : "-"}
                                         </TableCell>
                                         <TableCell className="text-right">
-                                            <div className="flex justify-end gap-2">
-                                                <Button size="sm" onClick={() => handleEdit(ev)} className="bg-slate-900 text-white hover:bg-slate-700">
-                                                    <Edit className="w-4 h-4 mr-2" /> {ev.status === "completed" ? "Edit" : "Add"}
+                                            <div className="flex justify-end gap-1.5 flex-wrap">
+                                                <Button size="sm" onClick={() => router.push(`/admin/results/code-letters/${ev._id}`)} variant="outline" className="h-8 text-[11px] px-2 border-indigo-200 text-indigo-700 bg-indigo-50 hover:bg-indigo-100">
+                                                    <QrCode className="w-3 h-3 mr-1" /> Codes
+                                                </Button>
+                                                <Button size="sm" onClick={() => handleEdit(ev)} className="h-8 text-[11px] px-2 bg-slate-900 text-white hover:bg-slate-700">
+                                                    <Edit className="w-3 h-3 mr-1" /> {ev.status === "completed" ? "Edit" : "Add"}
                                                 </Button>
                                                 {ev.status === "completed" && (
                                                     <>
                                                         <Button
                                                             size="sm"
                                                             variant="outline"
-                                                            onClick={() => handlePrint(ev)}
-                                                            className="border-blue-300 text-blue-700 hover:bg-blue-50"
+                                                            onClick={() => router.push(`/admin/evaluated-papers/${ev._id}`)}
+                                                            className="h-8 text-[11px] px-2 border-emerald-300 text-emerald-700 hover:bg-emerald-50"
                                                         >
-                                                            <Printer className="w-4 h-4 mr-2" /> Print
+                                                            <Eye className="w-3 h-3 mr-1" /> Sheet
                                                         </Button>
-                                                        <Button size="icon" variant="destructive" className="h-9 w-9 bg-red-100 text-red-600 hover:bg-red-200 shadow-none border-none" onClick={() => handleDelete(ev._id)}>
-                                                            <Trash2 className="w-4 h-4" />
+                                                        <Button
+                                                            size="sm"
+                                                            variant="outline"
+                                                            onClick={() => handlePrint(ev)}
+                                                            className="h-8 text-[11px] px-2 border-blue-300 text-blue-700 hover:bg-blue-50"
+                                                        >
+                                                            <Printer className="w-3 h-3 mr-1" /> Print
+                                                        </Button>
+                                                        <Button size="icon" variant="destructive" className="h-8 w-8 bg-red-100 text-red-600 hover:bg-red-200 shadow-none border-none" onClick={() => { setEventToDelete(ev); setDeleteModalOpen(true); }}>
+                                                            <Trash2 className="w-3 h-3" />
                                                         </Button>
                                                     </>
                                                 )}
@@ -443,6 +424,25 @@ export default function AdminResultsPage() {
                     </Table>
                     </div>
                 </Card>
+
+                <AlertDialog open={deleteModalOpen} onOpenChange={setDeleteModalOpen}>
+                    <AlertDialogContent className="bg-white">
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>Delete Result?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                Are you sure you want to delete the published result for <strong>{eventToDelete?.name}</strong>?
+                                <br/><br/>
+                                This will remove all winners, grades, marks, and code letter assignments for this event. This action cannot be undone.
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel onClick={() => setDeleteModalOpen(false)}>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={confirmDelete} className="bg-red-600 hover:bg-red-700 text-white">
+                                Delete Result
+                            </AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
 
                 <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
                     <DialogContent className="sm:max-w-5xl w-full max-h-[90vh] overflow-y-auto">
@@ -701,6 +701,89 @@ export default function AdminResultsPage() {
                     </DialogContent>
                 </Dialog>
             </div>
+
+            <Dialog open={winnersModalOpen} onOpenChange={setWinnersModalOpen}>
+                <DialogContent className="sm:max-w-md max-h-[85vh] overflow-y-auto">
+                    <DialogHeader>
+                        <DialogTitle>Winners: {selectedWinnersEvent?.name}</DialogTitle>
+                    </DialogHeader>
+                    {selectedWinnersEvent && (
+                        <div className="space-y-2 mt-2">
+                            {/* First Place */}
+                            {(() => {
+                                const firstData = Array.isArray(selectedWinnersEvent.results.first) ? selectedWinnersEvent.results.first :
+                                    selectedWinnersEvent.results.first ? [{ studentId: selectedWinnersEvent.results.first, grade: selectedWinnersEvent.results.firstGrade, mark: selectedWinnersEvent.results.firstMark, codeLetter: selectedWinnersEvent.results.firstCodeLetter }] : [];
+                                return firstData.map((winner: any, idx: number) => (
+                                    <div key={idx} className="flex items-center gap-2 p-2.5 bg-yellow-50 rounded-md border border-yellow-100 text-sm">
+                                        <Trophy className="w-4 h-4 text-yellow-500" />
+                                        <span className="font-bold text-yellow-900">1st{firstData.length > 1 ? `(${idx + 1})` : ''}:</span>
+                                        <span className="text-slate-700 flex-1">{getStudentName(winner.studentId || winner)}</span>
+                                        <span className="font-bold text-emerald-600">
+                                            ({winner.grade || selectedWinnersEvent.results.firstGrade}
+                                            {(winner.mark || selectedWinnersEvent.results.firstMark) ? `-${winner.mark || selectedWinnersEvent.results.firstMark}` : ''}
+                                            {(winner.codeLetter || selectedWinnersEvent.results.firstCodeLetter) ? ` | ${winner.codeLetter || selectedWinnersEvent.results.firstCodeLetter}` : ''})
+                                        </span>
+                                    </div>
+                                ));
+                            })()}
+
+                            {/* Second Place */}
+                            {(() => {
+                                const secondData = Array.isArray(selectedWinnersEvent.results.second) ? selectedWinnersEvent.results.second :
+                                    selectedWinnersEvent.results.second ? [{ studentId: selectedWinnersEvent.results.second, grade: selectedWinnersEvent.results.secondGrade, mark: selectedWinnersEvent.results.secondMark, codeLetter: selectedWinnersEvent.results.secondCodeLetter }] : [];
+                                return secondData.map((winner: any, idx: number) => (
+                                    <div key={idx} className="flex items-center gap-2 p-2.5 bg-slate-50 rounded-md border border-slate-200 text-sm">
+                                        <Medal className="w-4 h-4 text-slate-400" />
+                                        <span className="font-bold text-slate-700">2nd{secondData.length > 1 ? `(${idx + 1})` : ''}:</span>
+                                        <span className="text-slate-700 flex-1">{getStudentName(winner.studentId || winner)}</span>
+                                        <span className="font-bold text-slate-600">
+                                            ({winner.grade || selectedWinnersEvent.results.secondGrade}
+                                            {(winner.mark || selectedWinnersEvent.results.secondMark) ? `-${winner.mark || selectedWinnersEvent.results.secondMark}` : ''}
+                                            {(winner.codeLetter || selectedWinnersEvent.results.secondCodeLetter) ? ` | ${winner.codeLetter || selectedWinnersEvent.results.secondCodeLetter}` : ''})
+                                        </span>
+                                    </div>
+                                ));
+                            })()}
+
+                            {/* Third Place */}
+                            {(() => {
+                                const thirdData = Array.isArray(selectedWinnersEvent.results.third) ? selectedWinnersEvent.results.third :
+                                    selectedWinnersEvent.results.third ? [{ studentId: selectedWinnersEvent.results.third, grade: selectedWinnersEvent.results.thirdGrade, mark: selectedWinnersEvent.results.thirdMark, codeLetter: selectedWinnersEvent.results.thirdCodeLetter }] : [];
+                                return thirdData.map((winner: any, idx: number) => (
+                                    <div key={idx} className="flex items-center gap-2 p-2.5 bg-amber-50 rounded-md border border-amber-100 text-sm">
+                                        <Medal className="w-4 h-4 text-amber-600" />
+                                        <span className="font-bold text-amber-900">3rd{thirdData.length > 1 ? `(${idx + 1})` : ''}:</span>
+                                        <span className="text-slate-700 flex-1">{getStudentName(winner.studentId || winner)}</span>
+                                        <span className="font-bold text-amber-700">
+                                            ({winner.grade || selectedWinnersEvent.results.thirdGrade}
+                                            {(winner.mark || selectedWinnersEvent.results.thirdMark) ? `-${winner.mark || selectedWinnersEvent.results.thirdMark}` : ''}
+                                            {(winner.codeLetter || selectedWinnersEvent.results.thirdCodeLetter) ? ` | ${winner.codeLetter || selectedWinnersEvent.results.thirdCodeLetter}` : ''})
+                                        </span>
+                                    </div>
+                                ));
+                            })()}
+
+                            {/* Others */}
+                            {selectedWinnersEvent.results.others && selectedWinnersEvent.results.others.length > 0 && (
+                                <div className="pt-3 border-t space-y-1.5 mt-3">
+                                    <p className="text-xs font-semibold text-slate-400 uppercase mb-2">Other Participants</p>
+                                    {selectedWinnersEvent.results.others.map((other: any, idx: number) => (
+                                        <div key={idx} className="flex items-center gap-2 px-3 py-2 bg-gray-50 border border-gray-100 rounded-md text-sm">
+                                            <span className="font-medium text-slate-400 w-6">#{idx + 4}</span>
+                                            <span className="text-slate-700 flex-1">{getStudentName(other.studentId)}</span>
+                                            <span className="font-bold text-slate-600">
+                                                ({other.grade}
+                                                {other.mark ? `-${other.mark}` : ''}
+                                                {other.codeLetter ? ` | ${other.codeLetter}` : ''})
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </DialogContent>
+            </Dialog>
 
             {/* PRINTABLE RESULT SHEET (Visible only during print) */}
             {printingEvent && (
