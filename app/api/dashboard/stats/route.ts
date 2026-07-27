@@ -16,7 +16,7 @@ export async function GET() {
     try {
         const [{ data: students }, { data: events }, { data: allRegistrations }, { count: totalEventsCount }] = await Promise.all([
             supabaseAdmin.from('students').select('*'),
-            supabaseAdmin.from('events').select('*').eq('status', 'completed'),
+            supabaseAdmin.from('events').select('*').in('status', ['completed', 'announced']),
             supabaseAdmin.from('registrations').select('*'),
             supabaseAdmin.from('events').select('*', { count: 'exact', head: true })
         ]);
@@ -49,6 +49,8 @@ export async function GET() {
             return studentScores[id];
         };
 
+        const awardedGroupEventMarks = new Set<string>();
+
         // Aggregation
         allRegistrations?.forEach((reg: any) => {
             if (reg.mark === null || reg.mark === undefined) return; // Only process graded entries
@@ -62,25 +64,36 @@ export async function GET() {
             const eventName = normalizeString(event.name || "");
             const isGroupEvent = event.is_group_event === true || ["histoart", "dictionarymaking", "swarafdebate", "swarfdebate"].includes(eventName);
             const individualPointExceptions = ["speechtranslation", "dictionarymaking", "swarafdebate", "swarfdebate"];
-            const useGroupPoints = isGroupEvent && !individualPointExceptions.includes(eventName);
+            const useGroupScale = isGroupEvent && !individualPointExceptions.includes(eventName);
 
             const isStage = event.type === "Stage";
-            const { points } = calculateGradeAndPoints(reg.mark, useGroupPoints);
+            const { points } = calculateGradeAndPoints(reg.mark, useGroupScale);
 
             // Team Scores
-            if (student.team === "Ignis") aurisScore += points;
-            if (student.team === "Ventus") librasScore += points;
+            if (isGroupEvent) {
+                const key = `${reg.event_id}-${student.team}-${reg.mark}`;
+                if (!awardedGroupEventMarks.has(key)) {
+                    if (student.team === "Ignis") aurisScore += points;
+                    if (student.team === "Ventus") librasScore += points;
+                    awardedGroupEventMarks.add(key);
+                }
+            } else {
+                if (student.team === "Ignis") aurisScore += points;
+                if (student.team === "Ventus") librasScore += points;
+            }
 
-            // Individual Scores
-            const studentStats = initStudent(student.id);
-            if (studentStats) {
-                if (isStage) {
-                    studentStats.totalPoints += points;
-                    studentStats.stagePoints += points;
-                } else {
-                    if (reg.is_star) {
+            // Individual Scores - Only for Non-Group Events (Star/Pen of the Fest)
+            if (!isGroupEvent) {
+                const studentStats = initStudent(student.id);
+                if (studentStats) {
+                    if (isStage) {
                         studentStats.totalPoints += points;
-                        studentStats.nonStagePoints += points;
+                        studentStats.stagePoints += points;
+                    } else {
+                        if (reg.is_star) {
+                            studentStats.totalPoints += points;
+                            studentStats.nonStagePoints += points;
+                        }
                     }
                 }
             }

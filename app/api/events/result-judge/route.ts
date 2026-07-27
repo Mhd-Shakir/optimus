@@ -17,7 +17,7 @@ export async function POST(req: Request) {
     const eventName = normalizeString(event.name || "");
     const isGroupEvent = event.is_group_event === true || ["histoart", "dictionarymaking", "swarafdebate", "swarfdebate"].includes(eventName);
     const individualPointExceptions = ["speechtranslation", "dictionarymaking", "swarafdebate", "swarfdebate"];
-    const useGroupPoints = isGroupEvent && !individualPointExceptions.includes(eventName);
+    const useGroupScale = isGroupEvent && !individualPointExceptions.includes(eventName);
 
     // Fetch all registrations for this event to map Code Letters to Student IDs
     const { data: registrations } = await supabaseAdmin.from('registrations')
@@ -30,6 +30,7 @@ export async function POST(req: Request) {
 
     const teamPoints: any = { "Ignis": 0, "Ventus": 0 };
     const registrationUpdates: any[] = [];
+    const awardedCodeLetters = new Set<string>();
 
     const getStudentsByCode = (code: string) => {
         if (!code) return [];
@@ -57,14 +58,19 @@ export async function POST(req: Request) {
       else if (currentRank === 2) position = 'second';
       else if (currentRank === 3) position = 'third';
 
-      const { grade, points } = calculateGradeAndPoints(mark, useGroupPoints);
+      const { grade, points } = calculateGradeAndPoints(mark, useGroupScale);
       
       const studentIds = getStudentsByCode(winner.codeLetter);
       
+      if (!awardedCodeLetters.has(winner.codeLetter)) {
+          if (studentIds.length > 0) {
+              const team = studentTeamMap.get(studentIds[0]);
+              if (team && teamPoints[team] !== undefined) teamPoints[team] += points;
+          }
+          awardedCodeLetters.add(winner.codeLetter);
+      }
+      
       studentIds.forEach(studentId => {
-          const team = studentTeamMap.get(studentId);
-          if (team && teamPoints[team] !== undefined) teamPoints[team] += points;
-
           registrationUpdates.push({
             student_id: studentId,
             event_id: eventId,

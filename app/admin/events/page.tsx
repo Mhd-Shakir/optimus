@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogFooter } from "@/components/ui/dialog"
 import { Card, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Search, Loader2, Users, Eye, Calendar, RefreshCcw, Trash2, AlertTriangle, Code, Download, Printer } from "lucide-react"
+import { Search, Loader2, Users, Eye, Calendar, RefreshCcw, Trash2, AlertTriangle, Code, Download, Printer, CheckCircle2 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
@@ -367,7 +367,16 @@ export default function EventsPage() {
 
   const filteredEvents = events.filter((ev) => {
     const matchesType = ev.type === activeTypeTab
-    const matchesCategory = filterCategory === "All" || ev.category === filterCategory
+    
+    let matchesCategory = false;
+    if (filterCategory === "All") {
+        matchesCategory = true;
+    } else if (filterCategory === "Done") {
+        matchesCategory = ev.status === 'completed' || ev.status === 'announced';
+    } else {
+        matchesCategory = ev.category === filterCategory;
+    }
+    
     const matchesSearch = ev.name.toLowerCase().includes(searchQuery.toLowerCase())
     return matchesType && matchesCategory && matchesSearch
   })
@@ -486,6 +495,7 @@ export default function EventsPage() {
                 {categories.map(c => (
                     <Button key={c} variant={filterCategory === c ? "default" : "outline"} onClick={() => setFilterCategory(c)} size="sm" className="rounded-full">{c}</Button>
                 ))}
+                <Button variant={filterCategory === "Done" ? "default" : "outline"} onClick={() => setFilterCategory("Done")} size="sm" className={`rounded-full ${filterCategory !== 'Done' ? 'text-emerald-600 border-emerald-200 hover:bg-emerald-50 bg-emerald-50/50' : 'bg-emerald-600 hover:bg-emerald-700'}`}>Done ✓</Button>
             </div>
             
             {/* SEARCH AREA */}
@@ -511,7 +521,12 @@ export default function EventsPage() {
                     <Card key={event._id} className="hover:shadow-md transition-all cursor-pointer group border-slate-200 relative overflow-hidden" onClick={() => handleEventClick(event)}>
                         <CardHeader className="pb-3">
                             <div className="flex justify-between items-start gap-2">
-                                <CardTitle className="text-base font-bold group-hover:text-blue-600 transition-colors line-clamp-1 pr-6" title={event.name}>{event.name}</CardTitle>
+                                <CardTitle className="text-base font-bold group-hover:text-blue-600 transition-colors line-clamp-1 pr-6 flex items-center gap-2" title={event.name}>
+                                    {event.name}
+                                    {(event.status === 'completed' || event.status === 'announced') && (
+                                        <CheckCircle2 className="w-4 h-4 text-red-500 shrink-0" />
+                                    )}
+                                </CardTitle>
                                 <div className="absolute top-2 right-2 flex flex-col items-end gap-1">
                                     <Button variant="ghost" size="icon" className="h-6 w-6 text-slate-300 hover:text-red-600 hover:bg-red-50 rounded-full" onClick={(e) => handleDelete(e, event._id)}><Trash2 className="w-3.5 h-3.5" /></Button>
                                 </div>
@@ -563,15 +578,24 @@ export default function EventsPage() {
                     {selectedEvent && (!participantsMap[selectedEvent._id] || participantsMap[selectedEvent._id].length === 0) ? (
                         <div className="text-center py-12 text-slate-500 border border-dashed rounded-lg bg-slate-50">No students registered yet.</div>
                     ) : (
-                        selectedEvent && participantsMap[selectedEvent._id]?.map((student) => (
-                            <div key={student._id} onClick={() => handleStudentClick(student)} className="flex items-center justify-between p-3 rounded-lg border bg-white hover:bg-slate-50 cursor-pointer transition-all">
-                                <div className="flex items-center gap-3">
-                                    <div className={`w-9 h-9 rounded-full flex items-center justify-center font-bold text-xs shadow-sm ${student.team === 'Ignis' ? 'bg-yellow-100 text-yellow-700' : 'bg-blue-100 text-blue-700'}`}>{student.chestNo}</div>
-                                    <div><p className="font-semibold text-sm text-slate-900">{student.name}</p><p className="text-xs text-slate-500">{student.team} • {student.category}</p></div>
+                        selectedEvent && participantsMap[selectedEvent._id]?.map((student) => {
+                            const isCaptain = student.registeredEvents?.find((r: any) => r.eventId === selectedEvent._id)?.isCaptain;
+                            return (
+                                <div key={student._id} onClick={() => handleStudentClick(student)} className="flex items-center justify-between p-3 rounded-lg border bg-white hover:bg-slate-50 cursor-pointer transition-all">
+                                    <div className="flex items-center gap-3">
+                                        <div className={`w-9 h-9 rounded-full flex items-center justify-center font-bold text-xs shadow-sm ${student.team === 'Ignis' ? 'bg-yellow-100 text-yellow-700' : 'bg-blue-100 text-blue-700'}`}>{student.chestNo}</div>
+                                        <div>
+                                            <p className="font-semibold text-sm text-slate-900 flex items-center gap-2">
+                                                {student.name}
+                                                {isCaptain && <span className="text-[9px] bg-purple-100 text-purple-700 border border-purple-200 px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wide">⭐ Captain</span>}
+                                            </p>
+                                            <p className="text-xs text-slate-500">{student.team} • {student.category}</p>
+                                        </div>
+                                    </div>
+                                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-slate-400"><Eye className="w-4 h-4" /></Button>
                                 </div>
-                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-slate-400"><Eye className="w-4 h-4" /></Button>
-                            </div>
-                        ))
+                            )
+                        })
                     )}
                 </div>
             </ScrollArea>

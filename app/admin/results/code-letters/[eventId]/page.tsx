@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, use } from "react";
+import { useState, useEffect, use, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -21,6 +21,77 @@ const getCodeLetterByIndex = (index: number) => {
         index = Math.floor(index / 26) - 1;
     }
     return letter;
+};
+
+const ScratchCard = ({ codeLetter }: { codeLetter: string }) => {
+    const canvasRef = useRef<HTMLCanvasElement>(null);
+    const [isDrawing, setIsDrawing] = useState(false);
+    const [revealed, setRevealed] = useState(false);
+
+    useEffect(() => {
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+        const ctx = canvas.getContext("2d", { willReadFrequently: true });
+        if (!ctx) return;
+
+        ctx.fillStyle = "#cbd5e1"; 
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        ctx.font = "bold 10px sans-serif";
+        ctx.fillStyle = "#94a3b8"; 
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText("SCRATCH", canvas.width / 2, canvas.height / 2);
+    }, []);
+
+    const scratch = (e: any) => {
+        if (!isDrawing || revealed) return;
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return;
+
+        const rect = canvas.getBoundingClientRect();
+        const x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+        const y = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
+
+        ctx.globalCompositeOperation = "destination-out";
+        ctx.beginPath();
+        ctx.arc(x, y, 10, 0, Math.PI * 2);
+        ctx.fill();
+
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        let clearPixels = 0;
+        for (let i = 3; i < imageData.data.length; i += 4) {
+            if (imageData.data[i] === 0) clearPixels++;
+        }
+        if (clearPixels / (canvas.width * canvas.height) > 0.4) {
+            setRevealed(true);
+        }
+    };
+
+    return (
+        <div className="relative inline-block w-12 h-10 select-none overflow-hidden rounded shadow-sm">
+            <div className="absolute inset-0 flex items-center justify-center font-black text-lg bg-slate-900 text-white">
+                {codeLetter}
+            </div>
+            {!revealed && (
+                <canvas
+                    ref={canvasRef}
+                    width={48}
+                    height={40}
+                    className="absolute inset-0 z-10 cursor-crosshair touch-none"
+                    onMouseDown={() => setIsDrawing(true)}
+                    onMouseUp={() => setIsDrawing(false)}
+                    onMouseMove={scratch}
+                    onMouseLeave={() => setIsDrawing(false)}
+                    onTouchStart={() => setIsDrawing(true)}
+                    onTouchEnd={() => setIsDrawing(false)}
+                    onTouchMove={scratch}
+                />
+            )}
+        </div>
+    );
 };
 
 export default function CodeLettersPage({ params }: { params: Promise<{ eventId: string }> }) {
@@ -66,7 +137,6 @@ export default function CodeLettersPage({ params }: { params: Promise<{ eventId:
         };
 
         if (isGroup) {
-            // Group by team and group_no
             const groupsMap = new Map<string, any[]>();
             newRegistrations.forEach(reg => {
                 const team = reg.students?.team || "noteam";
@@ -76,28 +146,115 @@ export default function CodeLettersPage({ params }: { params: Promise<{ eventId:
                 groupsMap.get(groupKey)!.push(reg);
             });
 
-            const groups = Array.from(groupsMap.values());
-            const shuffledGroups = shuffleArray(groups);
+            const allGroups = Array.from(groupsMap.values());
+            const unassignedArrivedGroups = allGroups.filter(g => !g[0].code_letter && g.some(r => r.arrived));
+            const alreadyAssignedCount = allGroups.filter(g => g[0].code_letter).length;
+            
+            const validLetters = getAvailableLetters(alreadyAssignedCount + unassignedArrivedGroups.length);
+            const assignedLetters = allGroups.map(g => g[0].code_letter).filter(Boolean);
+            const availableLetters = validLetters.filter(l => !assignedLetters.includes(l));
+            
+            shuffleArray(availableLetters);
 
-            shuffledGroups.forEach((groupRegs, index) => {
-                const codeLetter = getCodeLetterByIndex(index);
+            unassignedArrivedGroups.forEach((groupRegs, index) => {
+                const codeLetter = availableLetters[index];
                 groupRegs.forEach(reg => {
                     reg.code_letter = codeLetter;
                 });
             });
-            
-            // Flatten back to array (though they were modified by reference)
+
         } else {
-            // Individual event
-            newRegistrations = shuffleArray(newRegistrations);
-            newRegistrations.forEach((reg, index) => {
-                reg.code_letter = getCodeLetterByIndex(index);
+            const unassignedArrived = newRegistrations.filter(r => !r.code_letter && r.arrived);
+            const alreadyAssignedCount = newRegistrations.filter(r => r.code_letter).length;
+            
+            const validLetters = getAvailableLetters(alreadyAssignedCount + unassignedArrived.length);
+            const assignedLetters = newRegistrations.map(r => r.code_letter).filter(Boolean);
+            const availableLetters = validLetters.filter(l => !assignedLetters.includes(l));
+            
+            shuffleArray(availableLetters);
+
+            unassignedArrived.forEach((reg, index) => {
+                reg.code_letter = availableLetters[index];
             });
         }
 
         setRegistrations([...newRegistrations]);
         setHasUnsavedChanges(true);
-        toast({ title: "Shuffled!", description: "Code letters have been randomly assigned. Click Save." });
+        toast({ title: "Shuffled!", description: "Code letters generated for arrived participants." });
+    };
+
+    const toggleArrived = (regId: string, isGroupEvent: boolean) => {
+        const newRegs = [...registrations];
+        const target = newRegs.find(r => r.id === regId);
+        if (!target) return;
+
+        if (isGroupEvent) {
+            const team = target.students?.team || "noteam";
+            const groupNo = target.group_no || "unassigned";
+            const newArrivedState = !target.arrived;
+            
+            newRegs.forEach(r => {
+                if ((r.students?.team || "noteam") === team && (r.group_no || "unassigned") === groupNo) {
+                    r.arrived = newArrivedState;
+                }
+            });
+        } else {
+            target.arrived = !target.arrived;
+        }
+        setRegistrations(newRegs);
+    };
+
+    const getAvailableLetters = (totalCount: number) => {
+        const allLetters = [];
+        for (let i = 0; i < totalCount; i++) {
+            allLetters.push(getCodeLetterByIndex(i));
+        }
+        return allLetters;
+    };
+
+    const handleScratch = (reg: any, isGroupEvent: boolean) => {
+        let totalEntities = registrations.length;
+        if (isGroupEvent) {
+             const groupsMap = new Map<string, any[]>();
+             registrations.forEach(r => {
+                 const key = `${r.students?.team}-${r.group_no}`;
+                 if (!groupsMap.has(key)) groupsMap.set(key, []);
+                 groupsMap.get(key)!.push(r);
+             });
+             totalEntities = groupsMap.size;
+        }
+
+        const validLetters = getAvailableLetters(totalEntities);
+        const assignedLetters = registrations.map(r => r.code_letter).filter(Boolean);
+        const availableLetters = validLetters.filter(l => !assignedLetters.includes(l));
+
+        if (availableLetters.length === 0) {
+            toast({ variant: "destructive", title: "Error", description: "No more letters available!" });
+            return;
+        }
+
+        const randomLetter = availableLetters[Math.floor(Math.random() * availableLetters.length)];
+
+        const newRegistrations = [...registrations];
+        if (isGroupEvent) {
+            const team = reg.students?.team || "noteam";
+            const groupNo = reg.group_no || "unassigned";
+            newRegistrations.forEach(r => {
+                if ((r.students?.team || "noteam") === team && (r.group_no || "unassigned") === groupNo) {
+                    r.code_letter = randomLetter;
+                    r.is_new_scratch = true;
+                }
+            });
+        } else {
+            const targetReg = newRegistrations.find(r => r.id === reg.id);
+            if (targetReg) {
+                targetReg.code_letter = randomLetter;
+                targetReg.is_new_scratch = true;
+            }
+        }
+
+        setRegistrations(newRegistrations);
+        setHasUnsavedChanges(true);
     };
 
     const handleSave = async () => {
@@ -146,9 +303,16 @@ export default function CodeLettersPage({ params }: { params: Promise<{ eventId:
                 </div>
 
                 <div className="flex gap-2">
-                    <Button onClick={handleShuffleAndGenerate} disabled={registrations.some(r => r.code_letter)} variant="outline" className="bg-white border-indigo-200 text-indigo-700 hover:bg-indigo-50 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed">
-                        <Shuffle className="w-4 h-4 mr-2" /> Shuffle & Generate
-                    </Button>
+                    {event.type === "Stage" && (
+                        <Button 
+                            onClick={handleShuffleAndGenerate} 
+                            disabled={!registrations.some(r => !r.code_letter && r.arrived)} 
+                            variant="outline" 
+                            className="bg-white border-indigo-200 text-indigo-700 hover:bg-indigo-50 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            <Shuffle className="w-4 h-4 mr-2" /> Shuffle & Generate
+                        </Button>
+                    )}
                     {(() => {
                         const isSaved = registrations.some(r => r.code_letter) && !hasUnsavedChanges;
                         return (
@@ -174,6 +338,7 @@ export default function CodeLettersPage({ params }: { params: Promise<{ eventId:
                                 <TableHead>Participant Name</TableHead>
                                 <TableHead>Team</TableHead>
                                 {event.is_group_event && <TableHead>Group</TableHead>}
+                                {event?.type === "Stage" && <TableHead className="text-center w-[120px]">Arrival</TableHead>}
                                 <TableHead className="text-right">Code Letter</TableHead>
                             </TableRow>
                         </TableHeader>
@@ -215,13 +380,36 @@ export default function CodeLettersPage({ params }: { params: Promise<{ eventId:
                                             </span>
                                         </TableCell>
                                         {event.is_group_event && <TableCell>{reg.group_no || "None"}</TableCell>}
+                                        {event?.type === "Stage" && (
+                                            <TableCell className="text-center">
+                                                <Button 
+                                                    size="sm" 
+                                                    variant={reg.arrived ? "default" : "outline"}
+                                                    className={`h-7 px-3 text-xs rounded-full ${reg.arrived ? 'bg-emerald-600 hover:bg-emerald-700' : 'text-slate-500 hover:bg-slate-100'}`}
+                                                    onClick={() => toggleArrived(reg.id, isGroupEvent)}
+                                                    disabled={!!reg.code_letter}
+                                                >
+                                                    {reg.arrived ? "Present" : "Mark Present"}
+                                                </Button>
+                                            </TableCell>
+                                        )}
                                         <TableCell className="text-right">
                                             {reg.code_letter ? (
-                                                <span className="inline-flex items-center justify-center w-8 h-8 rounded bg-slate-900 text-white font-black text-lg shadow-sm">
-                                                    {reg.code_letter}
-                                                </span>
+                                                reg.is_new_scratch ? (
+                                                    <ScratchCard codeLetter={reg.code_letter} />
+                                                ) : (
+                                                    <span className="inline-flex items-center justify-center w-12 h-10 rounded bg-slate-900 text-white font-black text-lg shadow-sm">
+                                                        {reg.code_letter}
+                                                    </span>
+                                                )
                                             ) : (
-                                                <span className="text-slate-300 italic text-sm">Unassigned</span>
+                                                event?.type === "Non-Stage" ? (
+                                                    <Button size="sm" onClick={() => handleScratch(reg, isGroupEvent)} className="bg-purple-600 hover:bg-purple-700 text-white shadow-sm text-xs h-10 w-24">
+                                                        Assign ✨
+                                                    </Button>
+                                                ) : (
+                                                    <span className="text-slate-300 italic text-sm">Unassigned</span>
+                                                )
                                             )}
                                         </TableCell>
                                     </TableRow>

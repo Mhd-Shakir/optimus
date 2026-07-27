@@ -17,7 +17,7 @@ export async function POST(req: Request) {
     const eventName = normalizeString(event.name || "");
     const isGroupEvent = event.is_group_event === true || ["histoart", "dictionarymaking", "swarafdebate", "swarfdebate"].includes(eventName);
     const individualPointExceptions = ["speechtranslation", "dictionarymaking", "swarafdebate", "swarfdebate"];
-    const useGroupPoints = isGroupEvent && !individualPointExceptions.includes(eventName);
+    const useGroupScale = isGroupEvent && !individualPointExceptions.includes(eventName);
 
     const { data: students } = await supabaseAdmin.from('students').select('id, team');
     const studentMap = new Map();
@@ -25,16 +25,27 @@ export async function POST(req: Request) {
 
     const teamPoints: any = { "Ignis": 0, "Ventus": 0 };
     const registrationUpdates: any[] = [];
+    const awardedTeamMarks = new Set<string>();
 
     const processWinners = (winnerArray: any[], position: string) => {
       if (Array.isArray(winnerArray)) {
         winnerArray.forEach((winner: any) => {
           if (winner.studentId && winner.mark !== undefined) {
             const mark = Number(winner.mark);
-            const { grade, points } = calculateGradeAndPoints(mark, useGroupPoints);
+            const { grade, points } = calculateGradeAndPoints(mark, useGroupScale);
             
             const team = studentMap.get(winner.studentId);
-            if (team && teamPoints[team] !== undefined) teamPoints[team] += points;
+            if (team) {
+                if (isGroupEvent) {
+                    const teamMarkKey = `${team}-${mark}`;
+                    if (!awardedTeamMarks.has(teamMarkKey)) {
+                        if (teamPoints[team] !== undefined) teamPoints[team] += points;
+                        awardedTeamMarks.add(teamMarkKey);
+                    }
+                } else {
+                    if (teamPoints[team] !== undefined) teamPoints[team] += points;
+                }
+            }
 
             registrationUpdates.push({
               student_id: winner.studentId,
