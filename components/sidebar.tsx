@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
-import { LayoutDashboard, Users, Calendar, LogOut, ClipboardList, Trophy, FileText, Menu, X, Mic2 } from "lucide-react"
+import { LayoutDashboard, Users, Calendar, LogOut, ClipboardList, Trophy, FileText, Menu, X, Mic2, UserCog } from "lucide-react"
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 

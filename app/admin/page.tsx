@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useRouter } from "next/navigation"
 
 // ✅ UPDATED POINTS SYSTEM - Matches results and team dashboard
@@ -97,6 +98,9 @@ export default function AdminDashboard() {
   const [isTeamModalOpen, setIsTeamModalOpen] = useState(false)
   const [teamCredData, setTeamCredData] = useState({ team: "", newUsername: "", newPassword: "" })
   const [updating, setUpdating] = useState(false)
+  
+  // Staff Credentials
+  const [staffCredData, setStaffCredData] = useState({ role: "", newUsername: "", newPassword: "" })
 
   const { toast } = useToast()
 
@@ -192,6 +196,24 @@ export default function AdminDashboard() {
         setTeamCredData({ team: "", newUsername: "", newPassword: "" })
     } catch (error: any) {
         toast({ variant: "destructive", title: "Failed", description: error.response?.data?.error || "Error updating team credentials" })
+    } finally {
+        setUpdating(false)
+    }
+  }
+
+  // Handle Staff Credentials Update
+  const handleUpdateStaffCreds = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!staffCredData.role) return toast({ variant: "destructive", title: "Select Role", description: "Please select a role first." })
+    
+    setUpdating(true)
+    try {
+        const res = await axios.post('/api/admin/change-staff-credentials', staffCredData)
+        toast({ title: "Success ✅", description: res.data.message })
+        setIsCredModalOpen(false)
+        setStaffCredData({ role: "", newUsername: "", newPassword: "" })
+    } catch (error: any) {
+        toast({ variant: "destructive", title: "Failed", description: error.response?.data?.error || "Error updating staff credentials" })
     } finally {
         setUpdating(false)
     }
@@ -401,60 +423,117 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* --- MODAL 1: ADMIN CREDENTIALS --- */}
+      {/* --- MODAL 1: ADMIN & STAFF CREDENTIALS --- */}
       <Dialog open={isCredModalOpen} onOpenChange={setIsCredModalOpen}>
         <DialogContent className="max-w-md">
             <DialogHeader>
-                <DialogTitle className="flex items-center gap-2"><ShieldCheck className="w-5 h-5 text-emerald-600"/> Change Admin Credentials</DialogTitle>
+                <DialogTitle className="flex items-center gap-2"><Settings className="w-5 h-5 text-emerald-600"/> Manage Access</DialogTitle>
             </DialogHeader>
-            <form onSubmit={handleUpdateCreds} className="space-y-4 py-2">
-                <div className="space-y-3 p-3 bg-slate-50 rounded border">
-                    <p className="text-xs font-bold text-slate-400 uppercase mb-2">Current Credentials</p>
-                    <div className="space-y-1">
-                        <Label>Current Username</Label>
-                        <Input 
-                            value={credData.currentUsername} 
-                            onChange={(e) => setCredData({...credData, currentUsername: e.target.value})} 
-                            required
-                        />
+
+            <Tabs defaultValue="admin" className="w-full">
+              <TabsList className="w-full grid grid-cols-2 mb-4">
+                <TabsTrigger value="admin">Admin Details</TabsTrigger>
+                <TabsTrigger value="staff">Staff Accounts</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="admin">
+                <form onSubmit={handleUpdateCreds} className="space-y-4 py-2">
+                    <div className="space-y-3 p-3 bg-slate-50 rounded border">
+                        <p className="text-xs font-bold text-slate-400 uppercase mb-2">Current Credentials</p>
+                        <div className="space-y-1">
+                            <Label>Current Username</Label>
+                            <Input 
+                                value={credData.currentUsername} 
+                                onChange={(e) => setCredData({...credData, currentUsername: e.target.value})} 
+                                required
+                            />
+                        </div>
+                        <div className="space-y-1">
+                            <Label>Old Password</Label>
+                            <Input 
+                                type="password"
+                                value={credData.oldPassword} 
+                                onChange={(e) => setCredData({...credData, oldPassword: e.target.value})} 
+                                required
+                            />
+                        </div>
                     </div>
-                    <div className="space-y-1">
-                        <Label>Old Password</Label>
-                        <Input 
-                            type="password"
-                            value={credData.oldPassword} 
-                            onChange={(e) => setCredData({...credData, oldPassword: e.target.value})} 
-                            required
-                        />
+                    <div className="space-y-3 p-3 bg-emerald-50 rounded border border-emerald-100">
+                        <p className="text-xs font-bold text-emerald-600 uppercase mb-2">New Credentials</p>
+                        <div className="space-y-1">
+                            <Label>New Username</Label>
+                            <Input 
+                                value={credData.newUsername} 
+                                onChange={(e) => setCredData({...credData, newUsername: e.target.value})} 
+                                required
+                            />
+                        </div>
+                        <div className="space-y-1">
+                            <Label>New Password</Label>
+                            <Input 
+                                type="password"
+                                value={credData.newPassword} 
+                                onChange={(e) => setCredData({...credData, newPassword: e.target.value})} 
+                                required
+                            />
+                        </div>
                     </div>
-                </div>
-                <div className="space-y-3 p-3 bg-emerald-50 rounded border border-emerald-100">
-                    <p className="text-xs font-bold text-emerald-600 uppercase mb-2">New Credentials</p>
-                    <div className="space-y-1">
-                        <Label>New Username</Label>
-                        <Input 
-                            value={credData.newUsername} 
-                            onChange={(e) => setCredData({...credData, newUsername: e.target.value})} 
-                            required
-                        />
+                    <DialogFooter>
+                        <Button type="button" variant="ghost" onClick={() => setIsCredModalOpen(false)}>Cancel</Button>
+                        <Button type="submit" className="bg-slate-900" disabled={updating}>
+                            {updating ? "Updating..." : "Update Admin Login"}
+                        </Button>
+                    </DialogFooter>
+                </form>
+              </TabsContent>
+
+              <TabsContent value="staff">
+                <form onSubmit={handleUpdateStaffCreds} className="space-y-4 py-2">
+                    <div className="space-y-2">
+                        <Label>Select Role</Label>
+                        <Select value={staffCredData.role} onValueChange={(val) => setStaffCredData({...staffCredData, role: val})}>
+                            <SelectTrigger><SelectValue placeholder="Choose a role" /></SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="announcer">Announcer</SelectItem>
+                                <SelectItem value="judge">Judge</SelectItem>
+                            </SelectContent>
+                        </Select>
                     </div>
-                    <div className="space-y-1">
-                        <Label>New Password</Label>
-                        <Input 
-                            type="password"
-                            value={credData.newPassword} 
-                            onChange={(e) => setCredData({...credData, newPassword: e.target.value})} 
-                            required
-                        />
+
+                    <div className="space-y-3 p-4 bg-emerald-50 rounded border border-emerald-100">
+                        <p className="text-xs font-bold text-emerald-600 uppercase mb-2 flex items-center gap-2">
+                            <ShieldCheck className="w-4 h-4" /> Set Credentials
+                        </p>
+                        <div className="space-y-1">
+                            <Label>Username</Label>
+                            <Input 
+                                placeholder="e.g. announcer1"
+                                value={staffCredData.newUsername} 
+                                onChange={(e) => setStaffCredData({...staffCredData, newUsername: e.target.value})} 
+                                required
+                            />
+                        </div>
+                        <div className="space-y-1">
+                            <Label>Password</Label>
+                            <Input 
+                                type="password"
+                                placeholder="••••••••"
+                                value={staffCredData.newPassword} 
+                                onChange={(e) => setStaffCredData({...staffCredData, newPassword: e.target.value})} 
+                                required
+                            />
+                        </div>
                     </div>
-                </div>
-                <DialogFooter>
-                    <Button type="button" variant="ghost" onClick={() => setIsCredModalOpen(false)}>Cancel</Button>
-                    <Button type="submit" className="bg-slate-900" disabled={updating}>
-                        {updating ? "Updating..." : "Update Admin Login"}
-                    </Button>
-                </DialogFooter>
-            </form>
+
+                    <DialogFooter>
+                        <Button type="button" variant="ghost" onClick={() => setIsCredModalOpen(false)}>Cancel</Button>
+                        <Button type="submit" className="bg-emerald-600 hover:bg-emerald-700 text-white" disabled={updating}>
+                            {updating ? "Saving..." : "Create / Update Account"}
+                        </Button>
+                    </DialogFooter>
+                </form>
+              </TabsContent>
+            </Tabs>
         </DialogContent>
       </Dialog>
 

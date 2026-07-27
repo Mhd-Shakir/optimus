@@ -6,9 +6,20 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Loader2, ArrowLeft, Save, FileSignature } from "lucide-react";
+import { ArrowLeft, Save, FileSignature, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import axios from "axios";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 export default function JudgeValuationSheet({ params }: { params: Promise<{ eventId: string }> }) {
     const { eventId } = use(params);
@@ -58,17 +69,16 @@ export default function JudgeValuationSheet({ params }: { params: Promise<{ even
     const handleSave = async () => {
         setSaving(true);
         try {
-            // Filter out empty entries
-            const validResults = valuationRows
-                .filter(row => row.codeLetter && row.mark)
-                .map(row => ({
-                    codeLetter: row.codeLetter,
-                    mark: parseInt(row.mark) || 0
-                }));
-
-            if (validResults.length === 0) {
-                throw new Error("Please enter marks for at least one participant.");
+            // Check if all fields are filled
+            const hasEmptyMarks = valuationRows.some(row => !row.mark || row.mark.trim() === "");
+            if (hasEmptyMarks) {
+                throw new Error("Please enter marks for all participants. All fields are mandatory.");
             }
+
+            const validResults = valuationRows.map(row => ({
+                codeLetter: row.codeLetter,
+                mark: parseInt(row.mark) || 0
+            }));
 
             const payload = {
                 eventId: event.id,
@@ -162,14 +172,31 @@ export default function JudgeValuationSheet({ params }: { params: Promise<{ even
                     </div>
 
                     <div className="p-6 bg-slate-50 border-t flex justify-end">
-                        <Button 
-                            onClick={handleSave} 
-                            disabled={saving || valuationRows.length === 0} 
-                            className="bg-slate-900 hover:bg-slate-800 text-white shadow-md text-lg px-8 py-6 h-auto transition-transform active:scale-95"
-                        >
-                            {saving ? <Loader2 className="w-5 h-5 mr-2 animate-spin" /> : <Save className="w-5 h-5 mr-2" />}
-                            Publish Results
-                        </Button>
+                        <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                                <Button 
+                                    disabled={saving || valuationRows.length === 0} 
+                                    className="bg-slate-900 hover:bg-slate-800 text-white shadow-md text-lg px-8 py-6 h-auto transition-transform active:scale-95"
+                                >
+                                    {saving ? <Loader2 className="w-5 h-5 mr-2 animate-spin" /> : <Save className="w-5 h-5 mr-2" />}
+                                    Publish Results
+                                </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent className="bg-white">
+                                <AlertDialogHeader>
+                                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                        This action will publish the marks to the main scoreboard and cannot be easily undone. Please double check all marks before confirming.
+                                    </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction onClick={handleSave} className="bg-slate-900 text-white hover:bg-slate-800">
+                                        Yes, Publish Results
+                                    </AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
                     </div>
                 </Card>
             </div>

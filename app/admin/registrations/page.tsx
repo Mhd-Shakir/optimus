@@ -327,6 +327,7 @@ export default function AdminRegistrations() {
                           const eventDetails = categoryEvents.find(ev => ev._id === re.eventId);
                           tableRows.push({
                               competition: eventDetails?.name || "Unknown Event",
+                              type: eventDetails?.type || "Unknown",
                               participant: student.name
                           });
                       }
@@ -336,19 +337,27 @@ export default function AdminRegistrations() {
               if (tableRows.length === 0) return;
 
               // Group by Competition and join participants
-              const groupedRows: { [key: string]: string[] } = {};
+              const groupedRows: { [key: string]: { type: string, participants: string[] } } = {};
               tableRows.forEach(row => {
                   if (!groupedRows[row.competition]) {
-                      groupedRows[row.competition] = [];
+                      groupedRows[row.competition] = { type: row.type, participants: [] };
                   }
-                  groupedRows[row.competition].push(row.participant);
+                  groupedRows[row.competition].participants.push(row.participant);
               });
               
-              // Sort competitions alphabetically
-              const sortedCompetitions = Object.keys(groupedRows).sort((a, b) => a.localeCompare(b));
+              // Sort competitions by Type (Stage first) then alphabetically
+              const sortedCompetitions = Object.keys(groupedRows).sort((a, b) => {
+                  const typeA = groupedRows[a].type;
+                  const typeB = groupedRows[b].type;
+                  
+                  if (typeA === "Stage" && typeB !== "Stage") return -1;
+                  if (typeB === "Stage" && typeA !== "Stage") return 1;
+                  
+                  return a.localeCompare(b);
+              });
               
-              const body = sortedCompetitions.map(comp => {
-                  return [comp, groupedRows[comp].join(", ")];
+              const body = sortedCompetitions.map((comp, index) => {
+                  return [index + 1, comp, groupedRows[comp].type, groupedRows[comp].participants.join(", ")];
               });
 
               if (body.length > 0) {
@@ -358,11 +367,17 @@ export default function AdminRegistrations() {
                   
                   autoTable(doc, {
                       startY: currentY + 4,
-                      head: [["Competition", "Participants"]],
+                      head: [["SI", "Competition", "Type", "Participants"]],
                       body: body,
                       theme: "grid",
                       headStyles: { fillColor: [240, 240, 240], textColor: [0, 0, 0], fontStyle: "bold" },
                       styles: { fontSize: 9, cellPadding: 3, textColor: [0, 0, 0] },
+                      columnStyles: {
+                          0: { cellWidth: 12, halign: 'center' },
+                          1: { cellWidth: 55 },
+                          2: { cellWidth: 25 },
+                          3: { cellWidth: 'auto' }
+                      },
                       margin: { left: 14, right: 14 }
                   });
                   

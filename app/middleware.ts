@@ -31,14 +31,19 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/unauthorized', request.url));
   }
 
+  // D. Protect Announcer Routes
+  if (path.startsWith('/announcer') && role !== 'announcer' && role !== 'super_admin') {
+    return NextResponse.redirect(new URL('/unauthorized', request.url));
+  }
+
   // 4. If all checks pass, allow the request
   return NextResponse.next();
 }
 
-// 5. Matcher: Only run middleware on these specific paths to save performance
 export const config = {
   matcher: [
     '/admin/:path*', 
-    '/team/:path*'
+    '/team/:path*',
+    '/announcer/:path*'
   ],
 };

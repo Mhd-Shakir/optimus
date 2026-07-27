@@ -209,10 +209,13 @@ export default function AdminResultsPage() {
         const matchSearch = ev.name.toLowerCase().includes(searchTerm.toLowerCase())
         if (!matchSearch) return false;
 
-        if (activeTab === "Published") return ev.status === "completed";
+        const isPublished = ev.status === "completed" || ev.status === "announced";
+
+        if (activeTab === "Published") return isPublished;
+        if (activeTab === "Shuffled") return ev.hasCodeLetters && !isPublished;
         
-        // Hide completed events from all other tabs so they "move" to the Published tab
-        if (ev.status === "completed") return false;
+        // Hide completed and announced events from all other tabs so they "move" to the Published tab
+        if (isPublished) return false;
 
         if (activeTab === "All") return true;
         return ev.category === activeTab;
@@ -298,7 +301,7 @@ export default function AdminResultsPage() {
         }));
     };
 
-    const tabs = ["All", "Protons", "Nexus", "Cosmos", "General-A", "General-B", "Published"];
+    const tabs = ["All", "Protons", "Nexus", "Cosmos", "General-A", "General-B", "Shuffled", "Published"];
 
     return (
         <>
@@ -368,12 +371,12 @@ export default function AdminResultsPage() {
                                             }
                                         </TableCell>
                                         <TableCell>
-                                            <Badge className={ev.status === "completed" ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-200" : "bg-yellow-100 text-yellow-700 hover:bg-yellow-200"}>
-                                                {ev.status === "completed" ? "Published" : "Pending"}
+                                            <Badge className={(ev.status === "completed" || ev.status === "announced") ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-200" : "bg-yellow-100 text-yellow-700 hover:bg-yellow-200"}>
+                                                {(ev.status === "completed" || ev.status === "announced") ? "Published" : "Pending"}
                                             </Badge>
                                         </TableCell>
                                         <TableCell className="text-center">
-                                            {ev.status === "completed" ? (
+                                            {(ev.status === "completed" || ev.status === "announced") ? (
                                                 <Button 
                                                     variant="outline" 
                                                     size="sm" 
@@ -390,9 +393,9 @@ export default function AdminResultsPage() {
                                                     <QrCode className="w-3 h-3 mr-1" /> Codes
                                                 </Button>
                                                 <Button size="sm" onClick={() => handleEdit(ev)} className="h-8 text-[11px] px-2 bg-slate-900 text-white hover:bg-slate-700">
-                                                    <Edit className="w-3 h-3 mr-1" /> {ev.status === "completed" ? "Edit" : "Add"}
+                                                    <Edit className="w-3 h-3 mr-1" /> {(ev.status === "completed" || ev.status === "announced") ? "Edit" : "Add"}
                                                 </Button>
-                                                {ev.status === "completed" && (
+                                                {(ev.status === "completed" || ev.status === "announced") && (
                                                     <>
                                                         <Button
                                                             size="sm"

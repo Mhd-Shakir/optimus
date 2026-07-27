@@ -42,9 +42,21 @@ export async function GET() {
 
     if (regError) throw regError;
 
+    // Fetch all registration IDs per event to check if they have any registrations and need shuffling
+    const { data: allRegs, error: allRegsError } = await supabaseAdmin
+      .from('registrations')
+      .select('event_id, code_letter');
+      
+    if (allRegsError) throw allRegsError;
+
     const mappedEvents = events.map((dbEvent: any) => {
       const eventRegs = registrations.filter((r: any) => r.event_id === dbEvent.id);
       
+      const allEventRegs = allRegs.filter((r: any) => r.event_id === dbEvent.id);
+      const hasAnyRegistrations = allEventRegs.length > 0;
+      const hasAnyCodeLetters = allEventRegs.some((r: any) => r.code_letter !== null && r.code_letter !== "");
+      const needsShuffle = hasAnyRegistrations && !hasAnyCodeLetters;
+
       const hasCodeLetters = eventRegs.some((r: any) => r.code_letter !== null && r.code_letter !== "");
 
       const formatWinner = (reg: any) => ({
@@ -69,6 +81,7 @@ export async function GET() {
         status: dbEvent.status,
         groupEvent: dbEvent.is_group_event,
         hasCodeLetters: hasCodeLetters,
+        needsShuffle: needsShuffle,
         teamPoints: {
           "Ignis": dbEvent.team_points_auris,
           "Ventus": dbEvent.team_points_libras

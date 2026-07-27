@@ -255,23 +255,43 @@ export default function EventsPage() {
     doc.setTextColor(100);
     doc.text(`Generated on: ${new Date().toLocaleDateString()} | Total Students: ${reportStudents.length}`, 14, 26);
 
-    const tableBody = reportStudents.map((s) => [
-        s.chestNo,
-        s.name,
-        s.team,
-        s.category,
-        s.registeredEvents.map(e => e.name).join(", ")
-    ]);
+    const tableBody = reportStudents.map((s) => {
+        const stageEvents = s.registeredEvents
+            .filter(re => {
+                const ev = events.find(e => e._id === re.eventId);
+                return ev?.type === "Stage";
+            })
+            .map(re => re.name)
+            .join(",\n");
+            
+        const nonStageEvents = s.registeredEvents
+            .filter(re => {
+                const ev = events.find(e => e._id === re.eventId);
+                return ev?.type === "Non-Stage";
+            })
+            .map(re => re.name)
+            .join(",\n");
+
+        return [
+            s.chestNo,
+            s.name,
+            s.team,
+            s.category,
+            stageEvents || "-",
+            nonStageEvents || "-"
+        ];
+    });
 
     autoTable(doc, {
         startY: 35,
-        head: [["Chest No", "Name", "Team", "Category", "Registered Events"]],
+        head: [["Chest No", "Name", "Team", "Category", "Stage Events", "Non-Stage Events"]],
         body: tableBody,
         theme: "grid",
         headStyles: { fillColor: [15, 23, 42] },
-        styles: { fontSize: 9, cellPadding: 2 },
+        styles: { fontSize: 8, cellPadding: 2, valign: 'top' },
         columnStyles: {
-            4: { cellWidth: 80 }
+            4: { cellWidth: 50 },
+            5: { cellWidth: 50 }
         }
     });
 
