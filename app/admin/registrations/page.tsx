@@ -291,7 +291,10 @@ export default function AdminRegistrations() {
           teams = [filterTeam];
       }
       
-      const categoryOrder = ["Protons", "Nexus", "Cosmos"];
+      const uniqueCategories = Array.from(new Set(events.map(e => e.category))).filter(Boolean) as string[];
+      const predefined = ["Protons", "Nexus", "Cosmos"];
+      const others = uniqueCategories.filter(c => !predefined.includes(c)).sort();
+      const categoryOrder = [...predefined, ...others];
       
       let isFirstPage = true;
 
@@ -310,37 +313,52 @@ export default function AdminRegistrations() {
           let currentY = 35;
 
           categoryOrder.forEach(category => {
-              // Get students for this team and category
-              const teamCategoryStudents = students.filter(s => s.team === team && s.category === category);
+              // Get all events for this category
+              const categoryEvents = events.filter(e => e.category === category);
+              if (categoryEvents.length === 0) return;
               
-              if (teamCategoryStudents.length === 0) return;
+              const categoryEventIds = categoryEvents.map(e => e._id);
 
-              // Build rows: Competition | Chest No | Participant
+              // Build rows for all students in this team participating in these events
               const tableRows: any[] = [];
-              teamCategoryStudents.forEach(student => {
+              students.filter(s => s.team === team).forEach(student => {
                   student.registeredEvents?.forEach((re: any) => {
-                      const eventDetails = events.find(ev => ev._id === re.eventId);
-                      tableRows.push({
-                          competition: eventDetails?.name || "Unknown Event",
-                          chestNo: student.chestNo,
-                          participant: student.name
-                      });
+                      if (categoryEventIds.includes(re.eventId)) {
+                          const eventDetails = categoryEvents.find(ev => ev._id === re.eventId);
+                          tableRows.push({
+                              competition: eventDetails?.name || "Unknown Event",
+                              participant: student.name
+                          });
+                      }
                   });
               });
 
-              // Sort by Competition name alphabetically
-              tableRows.sort((a, b) => a.competition.localeCompare(b.competition));
+              if (tableRows.length === 0) return;
+
+              // Group by Competition and join participants
+              const groupedRows: { [key: string]: string[] } = {};
+              tableRows.forEach(row => {
+                  if (!groupedRows[row.competition]) {
+                      groupedRows[row.competition] = [];
+                  }
+                  groupedRows[row.competition].push(row.participant);
+              });
               
-              const body = tableRows.map(row => [row.competition, row.chestNo, row.participant]);
+              // Sort competitions alphabetically
+              const sortedCompetitions = Object.keys(groupedRows).sort((a, b) => a.localeCompare(b));
+              
+              const body = sortedCompetitions.map(comp => {
+                  return [comp, groupedRows[comp].join(", ")];
+              });
 
               if (body.length > 0) {
                   doc.setFontSize(12);
                   doc.setFont("helvetica", "bold");
-                  doc.text(`${category} (${body.length})`, 14, currentY);
+                  doc.text(`${category} (${tableRows.length})`, 14, currentY);
                   
                   autoTable(doc, {
                       startY: currentY + 4,
-                      head: [["Competition", "Chest No", "Participant"]],
+                      head: [["Competition", "Participants"]],
                       body: body,
                       theme: "grid",
                       headStyles: { fillColor: [240, 240, 240], textColor: [0, 0, 0], fontStyle: "bold" },
