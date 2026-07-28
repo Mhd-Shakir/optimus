@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Loader2, ArrowLeft, Shuffle, Save, CheckCircle2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 
 const normalizeString = (str: string) => {
     if (!str) return "";
@@ -23,7 +24,14 @@ const getCodeLetterByIndex = (index: number) => {
     return letter;
 };
 
-const ScratchCard = ({ codeLetter }: { codeLetter: string }) => {
+const ScratchCard = ({ codeLetter, size = "small" }: { codeLetter: string, size?: "small" | "large" }) => {
+    const isLarge = size === "large";
+    const width = isLarge ? 192 : 48;
+    const height = isLarge ? 192 : 48;
+    const brushSize = isLarge ? 30 : 12;
+    const wrapperClass = isLarge ? "w-48 h-48 rounded-full" : "w-12 h-12 rounded-full";
+    const textClass = isLarge ? "text-6xl" : "text-lg";
+
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const [isDrawing, setIsDrawing] = useState(false);
     const [revealed, setRevealed] = useState(false);
@@ -34,15 +42,15 @@ const ScratchCard = ({ codeLetter }: { codeLetter: string }) => {
         const ctx = canvas.getContext("2d", { willReadFrequently: true });
         if (!ctx) return;
 
-        ctx.fillStyle = "#cbd5e1"; 
+        ctx.fillStyle = "#dcfce7"; 
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         
-        ctx.font = "bold 10px sans-serif";
-        ctx.fillStyle = "#94a3b8"; 
+        ctx.font = isLarge ? "bold 32px sans-serif" : "bold 10px sans-serif";
+        ctx.fillStyle = "#166534"; 
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
-        ctx.fillText("SCRATCH", canvas.width / 2, canvas.height / 2);
-    }, []);
+        ctx.fillText("Optimus", canvas.width / 2, canvas.height / 2);
+    }, [isLarge]);
 
     const scratch = (e: any) => {
         if (!isDrawing || revealed) return;
@@ -57,7 +65,7 @@ const ScratchCard = ({ codeLetter }: { codeLetter: string }) => {
 
         ctx.globalCompositeOperation = "destination-out";
         ctx.beginPath();
-        ctx.arc(x, y, 10, 0, Math.PI * 2);
+        ctx.arc(x, y, brushSize, 0, Math.PI * 2);
         ctx.fill();
 
         const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
@@ -71,15 +79,15 @@ const ScratchCard = ({ codeLetter }: { codeLetter: string }) => {
     };
 
     return (
-        <div className="relative inline-block w-12 h-10 select-none overflow-hidden rounded shadow-sm">
-            <div className="absolute inset-0 flex items-center justify-center font-black text-lg bg-slate-900 text-white">
+        <div className={`relative inline-block ${wrapperClass} select-none overflow-hidden shadow-sm`}>
+            <div className={`absolute inset-0 flex items-center justify-center font-black ${textClass} bg-green-800 text-white`}>
                 {codeLetter}
             </div>
             {!revealed && (
                 <canvas
                     ref={canvasRef}
-                    width={48}
-                    height={40}
+                    width={width}
+                    height={height}
                     className="absolute inset-0 z-10 cursor-crosshair touch-none"
                     onMouseDown={() => setIsDrawing(true)}
                     onMouseUp={() => setIsDrawing(false)}
@@ -103,6 +111,9 @@ export default function CodeLettersPage({ params }: { params: Promise<{ eventId:
     const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
     const [event, setEvent] = useState<any>(null);
     const [registrations, setRegistrations] = useState<any[]>([]);
+    const [scratchModalOpen, setScratchModalOpen] = useState(false);
+    const [scratchingReg, setScratchingReg] = useState<any>(null);
+    const [pendingRegistrations, setPendingRegistrations] = useState<any[] | null>(null);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -235,26 +246,39 @@ export default function CodeLettersPage({ params }: { params: Promise<{ eventId:
 
         const randomLetter = availableLetters[Math.floor(Math.random() * availableLetters.length)];
 
-        const newRegistrations = [...registrations];
+        const newRegistrations = registrations.map(r => ({ ...r }));
         if (isGroupEvent) {
             const team = reg.students?.team || "noteam";
             const groupNo = reg.group_no || "unassigned";
             newRegistrations.forEach(r => {
                 if ((r.students?.team || "noteam") === team && (r.group_no || "unassigned") === groupNo) {
                     r.code_letter = randomLetter;
-                    r.is_new_scratch = true;
                 }
             });
         } else {
             const targetReg = newRegistrations.find(r => r.id === reg.id);
             if (targetReg) {
                 targetReg.code_letter = randomLetter;
-                targetReg.is_new_scratch = true;
             }
         }
 
-        setRegistrations(newRegistrations);
-        setHasUnsavedChanges(true);
+        setPendingRegistrations(newRegistrations);
+        setScratchingReg({ ...reg, code_letter: randomLetter });
+        setScratchModalOpen(true);
+    };
+
+    const handleCloseModal = (open: boolean) => {
+        if (!open) {
+            if (pendingRegistrations) {
+                setRegistrations(pendingRegistrations);
+                setHasUnsavedChanges(true);
+                setPendingRegistrations(null);
+            }
+            setScratchModalOpen(false);
+            setTimeout(() => setScratchingReg(null), 200); // clear after animation
+        } else {
+            setScratchModalOpen(true);
+        }
     };
 
     const handleSave = async () => {
@@ -395,13 +419,9 @@ export default function CodeLettersPage({ params }: { params: Promise<{ eventId:
                                         )}
                                         <TableCell className="text-right">
                                             {reg.code_letter ? (
-                                                reg.is_new_scratch ? (
-                                                    <ScratchCard codeLetter={reg.code_letter} />
-                                                ) : (
-                                                    <span className="inline-flex items-center justify-center w-12 h-10 rounded bg-slate-900 text-white font-black text-lg shadow-sm">
-                                                        {reg.code_letter}
-                                                    </span>
-                                                )
+                                                <span className="inline-flex items-center justify-center w-12 h-10 rounded bg-slate-900 text-white font-black text-lg shadow-sm">
+                                                    {reg.code_letter}
+                                                </span>
                                             ) : (
                                                 event?.type === "Non-Stage" ? (
                                                     <Button size="sm" onClick={() => handleScratch(reg, isGroupEvent)} className="bg-purple-600 hover:bg-purple-700 text-white shadow-sm text-xs h-10 w-24">
@@ -419,6 +439,30 @@ export default function CodeLettersPage({ params }: { params: Promise<{ eventId:
                     </Table>
                 </div>
             </Card>
+
+            <Dialog open={scratchModalOpen} onOpenChange={handleCloseModal}>
+                <DialogContent className="sm:max-w-md flex flex-col items-center justify-center p-8 bg-slate-50 border-slate-200">
+                    <DialogHeader className="mb-4 w-full text-center">
+                        <DialogTitle className="text-2xl font-bold text-slate-800">Reveal Code Letter</DialogTitle>
+                        <DialogDescription className="text-slate-500">
+                            Scratch the area below to reveal the code letter for {scratchingReg?.students?.name || "Participant"}.
+                        </DialogDescription>
+                    </DialogHeader>
+                    
+                    {scratchingReg && scratchingReg.code_letter && (
+                        <div className="my-6">
+                            <ScratchCard size="large" codeLetter={scratchingReg.code_letter} />
+                        </div>
+                    )}
+                    
+                    <Button 
+                        onClick={() => handleCloseModal(false)} 
+                        className="mt-6 w-full bg-indigo-600 hover:bg-indigo-700 text-white"
+                    >
+                        Done
+                    </Button>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

@@ -104,7 +104,11 @@ export default function EventsPage() {
 
   // 🔥 NEW: PRINT EVENT PARTICIPANTS (WITHOUT CHEST NUMBER)
   const printEventParticipants = (event: Event) => {
-    const participants = participantsMap[event._id] || [];
+    let participants = participantsMap[event._id] || [];
+    
+    if (event.groupEvent) {
+        participants = participants.filter(student => student.registeredEvents?.find((r: any) => r.eventId === event._id)?.isCaptain);
+    }
     
     // Sort by name alphabetically
     participants.sort((a, b) => a.name.localeCompare(b.name));
@@ -516,7 +520,10 @@ export default function EventsPage() {
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {filteredEvents.map((event) => {
-                const participants = participantsMap[event._id] || []
+                let participants = participantsMap[event._id] || []
+                if (event.groupEvent) {
+                    participants = participants.filter(student => student.registeredEvents?.find((r: any) => r.eventId === event._id)?.isCaptain);
+                }
                 return (
                     <Card key={event._id} className="hover:shadow-md transition-all cursor-pointer group border-slate-200 relative overflow-hidden" onClick={() => handleEventClick(event)}>
                         <CardHeader className="pb-3">
@@ -549,56 +556,67 @@ export default function EventsPage() {
       {/* VIEW DIALOG WITH PDF BUTTON */}
       <Dialog open={isViewOpen} onOpenChange={setIsViewOpen}>
         <DialogContent className="max-w-2xl">
-            <DialogHeader className="flex flex-row items-center justify-between space-y-0 pb-2 border-b mb-2">
-                <div>
-                    <DialogTitle className="text-xl flex items-center gap-2">
-                        {selectedEvent?.name} <Badge variant="secondary">{selectedEvent?.category}</Badge>
-                    </DialogTitle>
-                    <p className="text-sm text-slate-500 mt-1">
-                        Total Registrations: {selectedEvent ? (participantsMap[selectedEvent._id]?.length || 0) : 0}
-                    </p>
-                </div>
-                {/* 🔥 PRINT BUTTON FOR INDIVIDUAL EVENT */}
-                {selectedEvent && (
-                    <Button 
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            printEventParticipants(selectedEvent);
-                        }}
-                        variant="outline"
-                        size="sm"
-                        className="bg-purple-50 border-purple-200 text-purple-700 hover:bg-purple-100"
-                    >
-                        <Printer className="w-4 h-4 mr-2" /> Print
-                    </Button>
-                )}
-            </DialogHeader>
-            <ScrollArea className="h-[60vh] pr-4">
-                <div className="space-y-2">
-                    {selectedEvent && (!participantsMap[selectedEvent._id] || participantsMap[selectedEvent._id].length === 0) ? (
-                        <div className="text-center py-12 text-slate-500 border border-dashed rounded-lg bg-slate-50">No students registered yet.</div>
-                    ) : (
-                        selectedEvent && participantsMap[selectedEvent._id]?.map((student) => {
-                            const isCaptain = student.registeredEvents?.find((r: any) => r.eventId === selectedEvent._id)?.isCaptain;
-                            return (
-                                <div key={student._id} onClick={() => handleStudentClick(student)} className="flex items-center justify-between p-3 rounded-lg border bg-white hover:bg-slate-50 cursor-pointer transition-all">
-                                    <div className="flex items-center gap-3">
-                                        <div className={`w-9 h-9 rounded-full flex items-center justify-center font-bold text-xs shadow-sm ${student.team === 'Ignis' ? 'bg-yellow-100 text-yellow-700' : 'bg-blue-100 text-blue-700'}`}>{student.chestNo}</div>
-                                        <div>
-                                            <p className="font-semibold text-sm text-slate-900 flex items-center gap-2">
-                                                {student.name}
-                                                {isCaptain && <span className="text-[9px] bg-purple-100 text-purple-700 border border-purple-200 px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wide">⭐ Captain</span>}
-                                            </p>
-                                            <p className="text-xs text-slate-500">{student.team} • {student.category}</p>
-                                        </div>
-                                    </div>
-                                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-slate-400"><Eye className="w-4 h-4" /></Button>
-                                </div>
-                            )
-                        })
-                    )}
-                </div>
-            </ScrollArea>
+            {(() => {
+                const eventParticipants = selectedEvent ? (participantsMap[selectedEvent._id] || []) : [];
+                const displayedParticipants = selectedEvent?.groupEvent 
+                    ? eventParticipants.filter(student => student.registeredEvents?.find((r: any) => r.eventId === selectedEvent._id)?.isCaptain)
+                    : eventParticipants;
+                
+                return (
+                    <>
+                        <DialogHeader className="flex flex-row items-center justify-between space-y-0 pb-2 border-b mb-2">
+                            <div>
+                                <DialogTitle className="text-xl flex items-center gap-2">
+                                    {selectedEvent?.name} <Badge variant="secondary">{selectedEvent?.category}</Badge>
+                                </DialogTitle>
+                                <p className="text-sm text-slate-500 mt-1">
+                                    Total Registrations: {displayedParticipants.length}
+                                </p>
+                            </div>
+                            {/* 🔥 PRINT BUTTON FOR INDIVIDUAL EVENT */}
+                            {selectedEvent && (
+                                <Button 
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        printEventParticipants(selectedEvent);
+                                    }}
+                                    variant="outline"
+                                    size="sm"
+                                    className="bg-purple-50 border-purple-200 text-purple-700 hover:bg-purple-100"
+                                >
+                                    <Printer className="w-4 h-4 mr-2" /> Print
+                                </Button>
+                            )}
+                        </DialogHeader>
+                        <ScrollArea className="h-[60vh] pr-4">
+                            <div className="space-y-2">
+                                {displayedParticipants.length === 0 ? (
+                                    <div className="text-center py-12 text-slate-500 border border-dashed rounded-lg bg-slate-50">No students registered yet.</div>
+                                ) : (
+                                    displayedParticipants.map((student) => {
+                                        const isCaptain = student.registeredEvents?.find((r: any) => r.eventId === selectedEvent?._id)?.isCaptain;
+                                        return (
+                                            <div key={student._id} onClick={() => handleStudentClick(student)} className="flex items-center justify-between p-3 rounded-lg border bg-white hover:bg-slate-50 cursor-pointer transition-all">
+                                                <div className="flex items-center gap-3">
+                                                    <div className={`w-9 h-9 rounded-full flex items-center justify-center font-bold text-xs shadow-sm ${student.team === 'Ignis' ? 'bg-yellow-100 text-yellow-700' : 'bg-blue-100 text-blue-700'}`}>{student.chestNo}</div>
+                                                    <div>
+                                                        <p className="font-semibold text-sm text-slate-900 flex items-center gap-2">
+                                                            {student.name}
+                                                            {isCaptain && <span className="text-[9px] bg-purple-100 text-purple-700 border border-purple-200 px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wide">⭐ Captain</span>}
+                                                        </p>
+                                                        <p className="text-xs text-slate-500">{student.team} • {student.category}</p>
+                                                    </div>
+                                                </div>
+                                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-slate-400"><Eye className="w-4 h-4" /></Button>
+                                            </div>
+                                        )
+                                    })
+                                )}
+                            </div>
+                        </ScrollArea>
+                    </>
+                );
+            })()}
         </DialogContent>
       </Dialog>
 

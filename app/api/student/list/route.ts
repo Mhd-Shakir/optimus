@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 
+export const dynamic = 'force-dynamic';
+
 const mapStudent = (dbStudent: any, registrations: any[] = []) => ({
   _id: dbStudent.id,
   name: dbStudent.name,
@@ -25,7 +27,8 @@ export async function GET() {
   const { data: students, error: studentError } = await supabaseAdmin
     .from('students')
     .select('*')
-    .order('created_at', { ascending: false });
+    .order('created_at', { ascending: false })
+    .limit(100000);
 
   if (studentError) {
     return NextResponse.json({ error: studentError.message }, { status: 500 });
