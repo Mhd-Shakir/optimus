@@ -35,6 +35,7 @@ export async function GET(req: Request) {
     const formatWinner = (reg: any) => ({
       studentId: reg.student_id,
       chestNo: reg.students?.chest_no || "",
+      codeLetter: reg.code_letter || "-",
       name: reg.students?.name || "",
       team: reg.students?.team || "Unknown",
       mark: reg.mark || 0,
