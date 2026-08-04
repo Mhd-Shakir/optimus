@@ -1,8 +1,23 @@
-import Link from "next/link";
-import Image from "next/image";
-import { HelpCircle, Calendar, Clock } from "lucide-react";
+"use client";
 
-export default function Home() {
+import { Calendar, Clock, ExternalLink } from "lucide-react";
+import { useState, useEffect } from "react";
+import Link from "next/link";
+
+export default function SchedulePage() {
+  const [dbEvents, setDbEvents] = useState<any[]>([]);
+
+  useEffect(() => {
+    fetch("/api/events")
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) {
+          setDbEvents(data);
+        }
+      })
+      .catch(console.error);
+  }, []);
+
   const scheduleData = [
     {
       day: "Thursday",
@@ -191,135 +206,84 @@ export default function Home() {
   ];
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white selection:bg-emerald-500/30 overflow-x-hidden">
-      
-      {/* Hero Section */}
-      <div className="relative min-h-[90vh] flex flex-col items-center justify-center p-6">
-        {/* Background Ambient Glows */}
-        <div className="absolute top-0 left-0 w-[600px] h-[600px] bg-emerald-600/10 rounded-full blur-[120px] -translate-x-1/2 -translate-y-1/2 pointer-events-none"></div>
-        <div className="absolute bottom-0 right-0 w-[600px] h-[600px] bg-purple-600/10 rounded-full blur-[120px] translate-x-1/2 translate-y-1/2 pointer-events-none"></div>
+    <div className="p-6 md:p-8 space-y-8 bg-slate-50 min-h-screen">
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight text-slate-900 flex items-center gap-3">
+          <Calendar className="h-8 w-8 text-blue-600" />
+          Event Schedule
+        </h1>
+        <p className="text-slate-500 mt-2">Manage and view the official Sahityotsav event timings.</p>
+      </div>
 
-        <div className="relative z-10 flex flex-col items-center text-center max-w-4xl w-full">
-          
-          {/* Question Mark Icon */}
-          <div className="relative group cursor-default mb-8">
-            <div className="absolute inset-0 bg-emerald-500/10 rounded-full blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
-            <HelpCircle className="w-32 h-32 md:w-48 md:h-48 text-emerald-500 drop-shadow-2xl transition-transform duration-700 ease-out group-hover:-translate-y-2 relative z-10" />
-          </div>
-          
-          {/* Text Section */}
-          <div className="space-y-3 max-w-lg mx-auto mb-10">
-             <h2 className="text-xs font-bold tracking-[0.2em] text-emerald-500 uppercase">Event Management Portal</h2>
-             
-             <p className="text-slate-400 text-lg md:text-xl leading-relaxed font-light">
-               The Official Arts Fest System for <br className="hidden md:block"/>
-               <span className="text-slate-100 font-medium">Darul Aman Integrated Islamic Academy</span>
-             </p>
-          </div>
+      <div className="space-y-12">
+        {scheduleData.map((dayData, idx) => (
+          <div key={idx} className="space-y-6">
+            <div className="border-b pb-3">
+              <h2 className="text-2xl font-bold text-slate-900">{dayData.day}</h2>
+              <p className="text-sm font-semibold text-blue-600 uppercase tracking-widest">{dayData.date}</p>
+            </div>
 
-          {/* Action Section */}
-          <div className="flex flex-col items-center gap-6 w-full mb-12">
-            <Link href="/login">
-              <button className="group relative px-10 py-4 bg-white hover:bg-emerald-50 text-slate-950 rounded-full font-bold text-lg transition-all duration-300 transform hover:-translate-y-1 shadow-[0_0_20px_rgba(255,255,255,0.1)] hover:shadow-[0_0_30px_rgba(16,185,129,0.3)] flex items-center gap-3 active:scale-95">
-                <span>Enter Portal</span>
-                <span className="group-hover:translate-x-1 transition-transform duration-300">→</span>
-              </button>
-            </Link>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {dayData.stages.map((stage, sIdx) => (
+                <div key={sIdx} className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                  <h3 className="text-lg font-bold text-slate-900 mb-6 flex items-center gap-2">
+                    <div className="w-1.5 h-6 bg-blue-600 rounded-full"></div>
+                    {stage.name}
+                  </h3>
+                  
+                  <div className="space-y-3">
+                    {stage.events.map((evt, eIdx) => {
+                      // Attempt to match event name in DB
+                      const matchedEvent = dbEvents.find(e => {
+                        const dbName = e.name.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').trim();
+                        const schedName = evt.name.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').trim();
+                        
+                        // Exact or partial match after removing punctuation
+                        if (dbName === schedName || dbName.includes(schedName) || schedName.includes(dbName)) return true;
+                        
+                        // Handle specific variations
+                        if (schedName.includes('handwriting english') && dbName.includes('hand writing eng')) return true;
+                        if (schedName.includes('hiflul muthoon') && dbName.includes('hiflul muthooa')) return true;
+                        if (schedName.includes('imla a') && dbName.includes('imla a')) return true;
+                        if (schedName.includes('essay writing mal') && (dbName === 'essay malayalam' || dbName === 'essay writing mal')) return true;
+                        if (schedName.includes('book ctriticism') && dbName.includes('book criticism')) return true; // Handling typo
+                        
+                        return false;
+                      });
 
-            {/* Glassy Badge */}
-            <div className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-slate-900/60 border border-slate-800 backdrop-blur-md text-[10px] font-bold text-slate-500 uppercase tracking-widest shadow-lg">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-              </span>
-              Restricted Access • Admins Only
+                      const EventCard = (
+                        <div className={`flex flex-col sm:flex-row justify-between sm:items-center p-3 rounded-lg border transition-colors gap-3 ${matchedEvent ? 'bg-slate-50 hover:bg-blue-50 border-slate-200 hover:border-blue-200 cursor-pointer group' : 'bg-slate-50 border-slate-100'}`}>
+                          <div className="flex-1">
+                            <p className={`font-semibold ${matchedEvent ? 'text-blue-700 group-hover:text-blue-800' : 'text-slate-800'} flex items-center gap-2`}>
+                              {evt.name}
+                              {matchedEvent && <ExternalLink className="w-3 h-3 opacity-50 group-hover:opacity-100" />}
+                            </p>
+                            <p className="text-xs font-bold text-slate-500 uppercase mt-0.5">{evt.category}</p>
+                          </div>
+                          <div className="shrink-0 flex items-center gap-1.5 bg-white px-3 py-1.5 rounded-md border border-slate-200 shadow-sm text-slate-700">
+                            <Clock className="w-4 h-4 text-blue-600" />
+                            <span className="text-xs font-bold whitespace-nowrap">{evt.time}</span>
+                          </div>
+                        </div>
+                      );
+
+                      return matchedEvent ? (
+                        <Link key={eIdx} href={`/admin/results/code-letters/${matchedEvent._id}`} className="block">
+                          {EventCard}
+                        </Link>
+                      ) : (
+                        <div key={eIdx}>
+                          {EventCard}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
-          
-          {/* Scroll Down Indicator */}
-          <a href="#schedule" className="animate-bounce mt-8 opacity-50 hover:opacity-100 transition-opacity flex flex-col items-center gap-2 cursor-pointer">
-            <span className="text-xs uppercase tracking-widest text-emerald-500 font-bold">View Schedule</span>
-            <div className="w-px h-12 bg-gradient-to-b from-emerald-500 to-transparent"></div>
-          </a>
-        </div>
+        ))}
       </div>
-
-      {/* Schedule Section */}
-      <div id="schedule" className="relative py-24 px-6 w-full border-t border-slate-800/50 bg-slate-950/50">
-        <div className="max-w-6xl mx-auto relative z-10">
-          <div className="text-center mb-20">
-            <h2 className="text-4xl md:text-5xl font-extrabold tracking-tight mb-4 flex items-center justify-center gap-3 text-white">
-              <Calendar className="w-10 h-10 md:w-12 md:h-12 text-emerald-500" />
-              Event Schedule
-            </h2>
-            <p className="text-slate-400 text-lg max-w-2xl mx-auto">
-              Complete timeline of Sahityotsav events across all stages. Keep track of timings and categories.
-            </p>
-          </div>
-
-          <div className="space-y-24">
-            {scheduleData.map((dayData, idx) => (
-              <div key={idx} className="relative">
-                {/* Day Header */}
-                <div className="flex flex-col items-center mb-12 relative">
-                  <div className="absolute inset-0 bg-emerald-500/5 blur-3xl rounded-full"></div>
-                  <h3 className="text-4xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-emerald-600 relative z-10">
-                    {dayData.day}
-                  </h3>
-                  <p className="text-sm md:text-base text-slate-400 font-bold tracking-[0.2em] uppercase mt-2 relative z-10">
-                    {dayData.date}
-                  </p>
-                </div>
-
-                {/* Stages Grid */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                  {dayData.stages.map((stage, sIdx) => (
-                    <div 
-                      key={sIdx} 
-                      className="bg-slate-900/40 border border-slate-800/80 rounded-3xl p-6 md:p-8 backdrop-blur-md hover:border-emerald-500/30 transition-colors duration-500 shadow-xl"
-                    >
-                      <h4 className="text-2xl font-bold text-white mb-8 flex items-center gap-3">
-                        <span className="w-1.5 h-8 bg-emerald-500 rounded-full shadow-[0_0_10px_rgba(16,185,129,0.5)]"></span>
-                        {stage.name}
-                      </h4>
-                      
-                      <div className="space-y-4">
-                        {stage.events.map((evt, eIdx) => (
-                          <div 
-                            key={eIdx} 
-                            className="group flex flex-col sm:flex-row justify-between items-start sm:items-center bg-slate-950/50 p-4 rounded-2xl border border-slate-800/50 hover:border-slate-700 transition-all duration-300 gap-4"
-                          >
-                            <div>
-                              <p className="font-bold text-slate-200 text-lg group-hover:text-emerald-400 transition-colors">
-                                {evt.name}
-                              </p>
-                              <p className="text-xs font-bold text-purple-400 mt-1 uppercase tracking-wider">
-                                {evt.category}
-                              </p>
-                            </div>
-                            <div className="shrink-0 flex items-center gap-2 bg-slate-900 px-4 py-2 rounded-xl border border-slate-800 text-slate-300">
-                              <Clock className="w-4 h-4 text-emerald-500" />
-                              <span className="text-sm font-semibold tracking-wide whitespace-nowrap">
-                                {evt.time}
-                              </span>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Footer */}
-      <footer className="py-8 text-center text-[10px] text-slate-600 font-medium uppercase tracking-widest bg-slate-950 border-t border-slate-900">
-        &copy; 2026 Optimus Software.
-      </footer>
-
     </div>
   );
 }
