@@ -3,7 +3,7 @@
 import { useEffect, useState, use } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { User, Trophy, Star, ShieldCheck } from "lucide-react";
+import { User, Trophy, Star, ShieldCheck, CheckCircle2 } from "lucide-react";
 
 export default function StudentPublicProfile({ params }: { params: Promise<{ chestNo: string }> }) {
   const resolvedParams = use(params);
@@ -67,7 +67,7 @@ export default function StudentPublicProfile({ params }: { params: Promise<{ che
           <div className="pt-16">
             <h1 className="text-2xl font-black text-slate-900 uppercase tracking-tighter">{student.name}</h1>
             <div className="flex flex-wrap gap-2 mt-3">
-              <Badge className="bg-slate-800 text-white font-bold text-xs">Chest: {student.chestNo}</Badge>
+              <Badge className="bg-slate-800 text-white font-bold text-xs">Chest: {student.chest_no}</Badge>
               <Badge className={student.team === 'Ignis' ? 'bg-amber-100 text-amber-700' : 'bg-violet-100 text-violet-700'}>
                 Team {student.team}
               </Badge>
@@ -96,11 +96,19 @@ export default function StudentPublicProfile({ params }: { params: Promise<{ che
                     </div>
                   )}
                   <h3 className="font-bold text-slate-800 text-sm pr-6 uppercase">{prog.eventName}</h3>
-                  <div className="flex gap-2 items-center text-[10px] uppercase font-bold tracking-wider">
-                    {prog.isGroupEvent ? (
-                      <span className="text-blue-500 bg-blue-50 px-2 py-0.5 rounded">Group Event</span>
-                    ) : (
-                      <span className="text-purple-500 bg-purple-50 px-2 py-0.5 rounded">Individual</span>
+                  <div className="flex gap-2 items-center mt-1">
+                    <div className="flex gap-2 items-center text-[10px] uppercase font-bold tracking-wider">
+                      {prog.isGroupEvent ? (
+                        <span className="text-blue-500 bg-blue-50 px-2 py-0.5 rounded">Group Event</span>
+                      ) : (
+                        <span className="text-purple-500 bg-purple-50 px-2 py-0.5 rounded">Individual</span>
+                      )}
+                    </div>
+                    {prog.code_letter && (
+                      <span className="flex items-center gap-1 text-[10px] text-emerald-600 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded uppercase font-bold tracking-wider">
+                        <CheckCircle2 className="w-3 h-3" />
+                        Finished
+                      </span>
                     )}
                   </div>
                 </div>

@@ -224,7 +224,31 @@ export default function SchedulePage() {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {dayData.stages.map((stage, sIdx) => (
+              {dayData.stages.map((stage, sIdx) => {
+                // Determine which events are visible (not yet having code letters)
+                const visibleEvents = stage.events.filter(evt => {
+                  const matchedEvent = dbEvents.find(e => {
+                    const dbName = e.name.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').trim();
+                    const schedName = evt.name.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').trim();
+                    
+                    if (dbName === schedName || dbName.includes(schedName) || schedName.includes(dbName)) return true;
+                    
+                    if (schedName.includes('handwriting english') && dbName.includes('hand writing eng')) return true;
+                    if (schedName.includes('hiflul muthoon') && dbName.includes('hiflul muthooa')) return true;
+                    if (schedName.includes('imla a') && dbName.includes('imla a')) return true;
+                    if (schedName.includes('essay writing mal') && (dbName === 'essay malayalam' || dbName === 'essay writing mal')) return true;
+                    if (schedName.includes('book ctriticism') && dbName.includes('book criticism')) return true; 
+                    
+                    return false;
+                  });
+                  // Hide if codes are already saved
+                  if (matchedEvent && matchedEvent.hasCodeLetters) return false;
+                  return true;
+                });
+
+                if (visibleEvents.length === 0) return null;
+
+                return (
                 <div key={sIdx} className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
                   <h3 className="text-lg font-bold text-slate-900 mb-6 flex items-center gap-2">
                     <div className="w-1.5 h-6 bg-blue-600 rounded-full"></div>
@@ -232,8 +256,8 @@ export default function SchedulePage() {
                   </h3>
                   
                   <div className="space-y-3">
-                    {stage.events.map((evt, eIdx) => {
-                      // Attempt to match event name in DB
+                    {visibleEvents.map((evt, eIdx) => {
+                      // Attempt to match event name in DB again for rendering
                       const matchedEvent = dbEvents.find(e => {
                         const dbName = e.name.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').trim();
                         const schedName = evt.name.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').trim();
@@ -279,7 +303,8 @@ export default function SchedulePage() {
                     })}
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         ))}

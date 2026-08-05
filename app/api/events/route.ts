@@ -15,6 +15,7 @@ const mapEvent = (dbEvent: any) => ({
     "Ventus": dbEvent.team_points_libras
   },
   teamLimit: dbEvent.team_limit,
+  judgeId: dbEvent.judge_id,
   createdAt: dbEvent.created_at,
   // Ensure we mock the results structure the frontend expects
   results: {
@@ -87,6 +88,7 @@ export async function GET() {
           "Ventus": dbEvent.team_points_libras
         },
         teamLimit: dbEvent.team_limit,
+        judgeId: dbEvent.judge_id,
         createdAt: dbEvent.created_at,
         results: { first, second, third, others }
       };
@@ -142,5 +144,29 @@ export async function DELETE(req: Request) {
     return NextResponse.json({ message: "Event deleted successfully" });
   } catch (error: any) {
     return NextResponse.json({ error: "Failed to delete event", details: error.message }, { status: 500 });
+  }
+}
+
+export async function PATCH(req: Request) {
+  try {
+    const body = await req.json();
+    const { id, judgeId } = body;
+
+    if (!id) {
+      return NextResponse.json({ error: "Event ID is required" }, { status: 400 });
+    }
+
+    const { data: updatedEvent, error } = await supabaseAdmin
+      .from('events')
+      .update({ judge_id: judgeId || null })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    return NextResponse.json({ message: "Event updated successfully", event: mapEvent(updatedEvent) });
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message || "Failed to update event" }, { status: 500 });
   }
 }

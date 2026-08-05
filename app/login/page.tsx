@@ -41,6 +41,8 @@ export default function LoginPage() {
         router.push("/admin"); 
       } else if (data.user.role === "announcer") {
         router.push("/announcer");
+      } else if (data.user.role === "judge") {
+        router.push("/judge");
       } else {
         router.push("/dashboard"); 
       }

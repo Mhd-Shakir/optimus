@@ -31,6 +31,7 @@ type Event = {
   status?: string
   groupEvent?: boolean 
   teamLimit?: number
+  judgeId?: string | null
 }
 
 const categories = ["Protons", "Nexus", "Cosmos", "General-A", "General-B"]
@@ -41,6 +42,7 @@ export default function EventsPage() {
   // Data State
   const [events, setEvents] = useState<Event[]>([])
   const [students, setStudents] = useState<Student[]>([])
+  const [judges, setJudges] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   
@@ -75,12 +77,14 @@ export default function EventsPage() {
       if (isRefresh) setRefreshing(true)
       else setLoading(true)
       
-      const [eventsRes, studentsRes] = await Promise.all([
+      const [eventsRes, studentsRes, usersRes] = await Promise.all([
         axios.get('/api/events'),
-        axios.get('/api/student/list')
+        axios.get('/api/student/list'),
+        axios.get('/api/users')
       ])
       setEvents(eventsRes.data)
       setStudents(studentsRes.data)
+      setJudges(usersRes.data.filter((u: any) => u.role === 'judge'))
     } catch (error) {
       toast({ variant: "destructive", title: "Error", description: "Failed to load data" })
     } finally {
@@ -541,6 +545,11 @@ export default function EventsPage() {
                             <div className="flex items-center gap-1 mt-1">
                                 <Badge variant="outline" className="text-[10px] shrink-0">{event.category}</Badge>
                                 {event.groupEvent && <Badge variant="secondary" className="text-[9px] bg-yellow-100 text-yellow-800 hover:bg-yellow-200">Group</Badge>}
+                                {event.judgeId && (
+                                    <Badge variant="secondary" className="text-[9px] bg-blue-100 text-blue-800">
+                                       Judge: {judges.find(j => j.id === event.judgeId)?.username || 'Assigned'}
+                                    </Badge>
+                                )}
                             </div>
                         </CardHeader>
                         <CardFooter className="pt-3 text-xs text-slate-500 border-t bg-slate-50/50 rounded-b-xl flex justify-between items-center">
@@ -588,6 +597,7 @@ export default function EventsPage() {
                                 </Button>
                             )}
                         </DialogHeader>
+
                         <ScrollArea className="h-[60vh] pr-4">
                             <div className="space-y-2">
                                 {displayedParticipants.length === 0 ? (

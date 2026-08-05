@@ -2,6 +2,7 @@
 
 import { useState, useEffect, use } from "react";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/app/context/AuthContext";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -25,6 +26,7 @@ export default function JudgeValuationSheet({ params }: { params: Promise<{ even
     const { eventId } = use(params);
     const router = useRouter();
     const { toast } = useToast();
+    const { user, loading: authLoading } = useAuth();
     
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -32,6 +34,12 @@ export default function JudgeValuationSheet({ params }: { params: Promise<{ even
     const [valuationRows, setValuationRows] = useState<{ codeLetter: string, mark: string }[]>([]);
 
     useEffect(() => {
+        if (authLoading) return;
+        if (!user || user.role !== 'judge') {
+            router.push('/login');
+            return;
+        }
+
         const fetchEventDetails = async () => {
             try {
                 // Fetch the event and all code letters
@@ -39,6 +47,12 @@ export default function JudgeValuationSheet({ params }: { params: Promise<{ even
                 const data = await res.json();
                 
                 if (data.error) throw new Error(data.error);
+
+                if (data.event.judgeId && data.event.judgeId !== user.id) {
+                    toast({ variant: "destructive", title: "Unauthorized", description: "You are not assigned to evaluate this event." });
+                    router.push('/judge');
+                    return;
+                }
 
                 setEvent(data.event);
                 
@@ -60,7 +74,7 @@ export default function JudgeValuationSheet({ params }: { params: Promise<{ even
         };
 
         fetchEventDetails();
-    }, [eventId]);
+    }, [eventId, user, authLoading, router]);
 
     const handleMarkChange = (index: number, mark: string) => {
         setValuationRows(prev => prev.map((row, i) => i === index ? { ...row, mark } : row));
@@ -96,7 +110,7 @@ export default function JudgeValuationSheet({ params }: { params: Promise<{ even
         }
     };
 
-    if (loading) {
+    if (loading || authLoading) {
         return <div className="min-h-screen flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-slate-400" /></div>;
     }
 

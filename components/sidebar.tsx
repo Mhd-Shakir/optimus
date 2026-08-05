@@ -10,12 +10,12 @@ import { Button } from "@/components/ui/button"
 const navItems = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin/students", label: "Students", icon: Users },
+  { href: "/admin/judges", label: "Judges", icon: UserCog },
+  { href: "/admin/announcers", label: "Announcers", icon: Mic2 },
   { href: "/admin/events", label: "Events", icon: Calendar },
   { href: "/admin/schedule", label: "Schedule", icon: Clock },
   { href: "/admin/registrations", label: "Registrations", icon: ClipboardList },
   { href: "/admin/results", label: "Results", icon: Trophy },
-  { href: "/admin/stage", label: "Stage", icon: Mic2 }, // ✅ Added Stage Link
-  { href: "/admin/judge-sheet", label: "Judge Sheet", icon: FileText },
 ]
 
 export function Sidebar() {

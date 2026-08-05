@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/app/context/AuthContext";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -11,10 +12,17 @@ import { useToast } from "@/hooks/use-toast";
 export default function JudgeDashboard() {
     const router = useRouter();
     const { toast } = useToast();
+    const { user, loading: authLoading } = useAuth();
     const [events, setEvents] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
+        if (authLoading) return;
+        if (!user || user.role !== 'judge') {
+            router.push('/login');
+            return;
+        }
+
         const fetchEvents = async () => {
             try {
                 const res = await fetch("/api/events");
@@ -27,8 +35,8 @@ export default function JudgeDashboard() {
                     eventsList = data.events;
                 }
                 
-                // Only show upcoming events that have code letters assigned
-                const upcomingEvents = eventsList.filter(e => e.status === "upcoming" && e.hasCodeLetters === true);
+                // Show all upcoming events assigned to this judge
+                const upcomingEvents = eventsList.filter(e => e.status === "upcoming" && e.judgeId === user.id);
                 setEvents(upcomingEvents);
             } catch (error) {
                 toast({ variant: "destructive", title: "Error", description: "Failed to load events." });
@@ -38,9 +46,9 @@ export default function JudgeDashboard() {
         };
         
         fetchEvents();
-    }, []);
+    }, [user, authLoading, router]);
 
-    if (loading) {
+    if (loading || authLoading) {
         return <div className="min-h-screen flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-slate-400" /></div>;
     }
 
