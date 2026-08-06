@@ -56,14 +56,19 @@ export default function JudgeValuationSheet({ params }: { params: Promise<{ even
 
                 setEvent(data.event);
                 
-                // Extract unique code letters (ignore empty/null)
-                const codes = new Set<string>();
+                // Extract unique code letters and their marks
+                const rowsMap = new Map();
                 (data.registrations || []).forEach((reg: any) => {
-                    if (reg.code_letter) codes.add(reg.code_letter);
+                    if (reg.code_letter) {
+                        rowsMap.set(reg.code_letter, reg.mark || "");
+                    }
                 });
                 
                 // Create a row for each assigned code letter
-                const initialRows = Array.from(codes).sort().map(code => ({ codeLetter: code, mark: "" }));
+                const initialRows = Array.from(rowsMap.keys()).sort().map(code => ({ 
+                    codeLetter: code, 
+                    mark: rowsMap.get(code)?.toString() || "" 
+                }));
                 setValuationRows(initialRows);
                 
             } catch (error: any) {
@@ -171,10 +176,11 @@ export default function JudgeValuationSheet({ params }: { params: Promise<{ even
                                                 <div className="px-4 py-1 h-full flex items-center justify-center">
                                                     <Input 
                                                         type="number" 
-                                                        placeholder="Enter marks..." 
+                                                        placeholder={event.status === "completed" ? "-" : "Enter marks..."}
                                                         value={row.mark} 
                                                         onChange={(e) => handleMarkChange(idx, e.target.value)} 
-                                                        className="w-full text-center font-bold text-lg border-none shadow-none focus-visible:ring-0 placeholder:text-slate-300 placeholder:font-normal h-full bg-transparent" 
+                                                        disabled={event.status === "completed"}
+                                                        className="w-full text-center font-bold text-lg border-none shadow-none focus-visible:ring-0 placeholder:text-slate-300 placeholder:font-normal h-full bg-transparent disabled:opacity-100 disabled:text-slate-700" 
                                                     />
                                                 </div>
                                             </TableCell>
@@ -185,33 +191,35 @@ export default function JudgeValuationSheet({ params }: { params: Promise<{ even
                         </Table>
                     </div>
 
-                    <div className="p-6 bg-slate-50 border-t flex justify-end">
-                        <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                                <Button 
-                                    disabled={saving || valuationRows.length === 0} 
-                                    className="bg-slate-900 hover:bg-slate-800 text-white shadow-md text-lg px-8 py-6 h-auto transition-transform active:scale-95"
-                                >
-                                    {saving ? <Loader2 className="w-5 h-5 mr-2 animate-spin" /> : <Save className="w-5 h-5 mr-2" />}
-                                    Publish Results
-                                </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent className="bg-white">
-                                <AlertDialogHeader>
-                                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                        This action will publish the marks to the main scoreboard and cannot be easily undone. Please double check all marks before confirming.
-                                    </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                    <AlertDialogAction onClick={handleSave} className="bg-slate-900 text-white hover:bg-slate-800">
-                                        Yes, Publish Results
-                                    </AlertDialogAction>
-                                </AlertDialogFooter>
-                            </AlertDialogContent>
-                        </AlertDialog>
-                    </div>
+                    {event.status !== "completed" && (
+                        <div className="p-6 bg-slate-50 border-t flex justify-end">
+                            <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                    <Button 
+                                        disabled={saving || valuationRows.length === 0} 
+                                        className="bg-slate-900 hover:bg-slate-800 text-white shadow-md text-lg px-8 py-6 h-auto transition-transform active:scale-95"
+                                    >
+                                        {saving ? <Loader2 className="w-5 h-5 mr-2 animate-spin" /> : <Save className="w-5 h-5 mr-2" />}
+                                        Publish Results
+                                    </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent className="bg-white">
+                                    <AlertDialogHeader>
+                                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                            This action will publish the marks to the main scoreboard and cannot be easily undone. Please double check all marks before confirming.
+                                        </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                        <AlertDialogAction onClick={handleSave} className="bg-slate-900 text-white hover:bg-slate-800">
+                                            Yes, Publish Results
+                                        </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                </AlertDialogContent>
+                            </AlertDialog>
+                        </div>
+                    )}
                 </Card>
             </div>
         </div>
