@@ -14,15 +14,20 @@ export async function PATCH(req: Request) {
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(newPassword, salt);
 
-    const { error } = await supabaseAdmin
+    const { data, error } = await supabaseAdmin
       .from('users')
       .update({ password: hashedPassword })
-      .eq('id', id);
+      .eq('id', id)
+      .select();
 
     if (error) throw error;
+    if (!data || data.length === 0) {
+      return NextResponse.json({ error: "User not found or ID mismatched" }, { status: 404 });
+    }
 
     return NextResponse.json({ message: "Password updated successfully" });
   } catch (error: any) {
+    console.error("Password reset error:", error);
     return NextResponse.json({ error: "Failed to reset password" }, { status: 500 });
   }
 }
