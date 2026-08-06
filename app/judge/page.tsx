@@ -35,9 +35,9 @@ export default function JudgeDashboard() {
                     eventsList = data.events;
                 }
                 
-                // Show all upcoming events assigned to this judge
-                const upcomingEvents = eventsList.filter(e => e.status === "upcoming" && e.judgeId === user.id);
-                setEvents(upcomingEvents);
+                // Show all non-stage events assigned to this judge (both upcoming and completed)
+                const assignedNonStageEvents = eventsList.filter(e => e.type === "Non-Stage" && e.judgeId === user.id);
+                setEvents(assignedNonStageEvents);
             } catch (error) {
                 toast({ variant: "destructive", title: "Error", description: "Failed to load events." });
             } finally {

@@ -45,7 +45,6 @@ export default function JudgesPage() {
   const [assigning, setAssigning] = useState(false);
   const [eventSearch, setEventSearch] = useState("");
   const [eventCategoryFilter, setEventCategoryFilter] = useState("All");
-  const [eventTypeFilter, setEventTypeFilter] = useState("All");
 
   // View Judge State
   const [viewJudge, setViewJudge] = useState<Judge | null>(null);
@@ -128,7 +127,6 @@ export default function JudgesPage() {
     setAssignedEvents(assigned);
     setEventSearch("");
     setEventCategoryFilter("All");
-    setEventTypeFilter("All");
     setIsAssignDialogOpen(true);
   }
 
@@ -198,10 +196,12 @@ export default function JudgesPage() {
   )
 
   const filteredEvents = events.filter((ev) => {
+    // Only show Non-Stage events for assignment
+    if (ev.type !== "Non-Stage") return false;
+
     const matchSearch = ev.name.toLowerCase().includes(eventSearch.toLowerCase()) || ev.category.toLowerCase().includes(eventSearch.toLowerCase());
     const matchCat = eventCategoryFilter === "All" || ev.category === eventCategoryFilter;
-    const matchType = eventTypeFilter === "All" || ev.type === eventTypeFilter;
-    return matchSearch && matchCat && matchType;
+    return matchSearch && matchCat;
   })
 
   return (
@@ -377,16 +377,6 @@ export default function JudgesPage() {
                     <SelectItem value="Cosmos">Cosmos</SelectItem>
                     <SelectItem value="General-A">General-A</SelectItem>
                     <SelectItem value="General-B">General-B</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="w-[120px] shrink-0">
-                <Select value={eventTypeFilter} onValueChange={setEventTypeFilter}>
-                  <SelectTrigger><SelectValue placeholder="Type" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="All">All Types</SelectItem>
-                    <SelectItem value="Stage">Stage</SelectItem>
-                    <SelectItem value="Non-Stage">Non-Stage</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
