@@ -64,6 +64,42 @@ export default function StudentsPage() {
     }
   }
 
+  const [isDownloadingZips, setIsDownloadingZips] = useState(false);
+
+  const handleDownloadAllPNGs = async () => {
+    setIsDownloadingZips(true);
+    toast({ title: "Generating ZIP...", description: "Please wait while we generate all QR codes." });
+    
+    try {
+      const JSZip = (await import('jszip')).default;
+      const zip = new JSZip();
+      
+      const origin = typeof window !== 'undefined' ? window.location.origin : '';
+      
+      for (const student of filteredStudents) {
+        const url = `${origin}/student/${student.chestNo}`;
+        const dataUrl = await QRCode.toDataURL(url, { margin: 1, width: 400 });
+        const base64Data = dataUrl.split(',')[1];
+        zip.file(`${student.chestNo}_${student.name}.png`, base64Data, { base64: true });
+      }
+      
+      const blob = await zip.generateAsync({ type: "blob" });
+      const urlObject = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = urlObject;
+      a.download = "Optimus_Student_QRCodes.zip";
+      a.click();
+      window.URL.revokeObjectURL(urlObject);
+      
+      toast({ title: "Success!", description: "QR Codes downloaded successfully." });
+    } catch (err) {
+      console.error(err);
+      toast({ variant: "destructive", title: "Error", description: "Failed to create ZIP." });
+    } finally {
+      setIsDownloadingZips(false);
+    }
+  }
+
   // 1. Fetch Students
   useEffect(() => {
     fetchStudents()
@@ -216,6 +252,9 @@ export default function StudentsPage() {
         </div>
 
         <div className="flex gap-2 items-center">
+            <Button variant="outline" onClick={handleDownloadAllPNGs} className="bg-white border-slate-200 text-slate-700 shadow-sm" disabled={isDownloadingZips}>
+                {isDownloadingZips ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2 text-blue-600" />} Download All PNGs
+            </Button>
             <Button variant="outline" onClick={handleExportExcel} className="bg-white border-slate-200 text-slate-700 shadow-sm">
                 <FileSpreadsheet className="h-4 w-4 mr-2 text-green-600" /> Export Excel
             </Button>

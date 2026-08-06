@@ -61,6 +61,14 @@ export default function AdminQRPage() {
     }
   };
 
+  const handleDownloadSingleQR = (dataUrl: string, filename: string) => {
+    if (!dataUrl) return;
+    const link = document.createElement("a");
+    link.href = dataUrl;
+    link.download = `${filename}_QRCode.png`;
+    link.click();
+  };
+
   const filteredStudents = selectedTeam === "All" ? students : students.filter(s => s.team === selectedTeam);
 
   const handleExportPDF = () => {
@@ -223,7 +231,17 @@ export default function AdminQRPage() {
                       </span>
                     </div>
                     {qrCodes[student.chestNo] && (
-                      <img src={qrCodes[student.chestNo]} alt={`QR for ${student.name}`} className="w-full h-auto max-w-[150px] border border-slate-100 rounded-lg" />
+                      <div className="flex flex-col items-center w-full">
+                        <img src={qrCodes[student.chestNo]} alt={`QR for ${student.name}`} className="w-full h-auto max-w-[150px] border border-slate-100 rounded-lg" />
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="mt-2 text-xs font-bold text-blue-600 hover:text-blue-700 hover:bg-blue-50 w-full print:hidden"
+                          onClick={() => handleDownloadSingleQR(qrCodes[student.chestNo], `${student.chestNo}_${student.name}`)}
+                        >
+                          <Download className="h-3 w-3 mr-1" /> PNG
+                        </Button>
+                      </div>
                     )}
                     <p className="text-[9px] text-slate-400 mt-2 text-center uppercase tracking-widest font-bold">Scan to view programs</p>
                   </Card>
@@ -236,7 +254,16 @@ export default function AdminQRPage() {
                     <h3 className={`font-black text-4xl uppercase tracking-tighter ${team === "Ignis" ? "text-amber-600" : "text-violet-600"}`}>{team} TEAM</h3>
                     <p className="text-sm text-slate-500 font-bold uppercase tracking-widest mb-6 mt-1">Complete Roster & Programs</p>
                     {teamQrCodes[team] && (
-                      <img src={teamQrCodes[team]} alt={`QR for ${team}`} className="w-full h-auto max-w-[300px] border-4 border-slate-100 rounded-2xl" />
+                      <div className="flex flex-col items-center w-full">
+                        <img src={teamQrCodes[team]} alt={`QR for ${team}`} className="w-full h-auto max-w-[300px] border-4 border-slate-100 rounded-2xl" />
+                        <Button 
+                          variant="outline" 
+                          className="mt-4 font-bold text-purple-600 border-purple-200 hover:bg-purple-50 print:hidden"
+                          onClick={() => handleDownloadSingleQR(teamQrCodes[team], `${team}_Team`)}
+                        >
+                          <Download className="h-4 w-4 mr-2" /> Download PNG
+                        </Button>
+                      </div>
                     )}
                   </Card>
                 ))}
