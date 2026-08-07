@@ -4,6 +4,58 @@ import { Calendar, Clock, ExternalLink } from "lucide-react";
 import { useState, useEffect } from "react";
 import Link from "next/link";
 
+const findBestEventMatch = (evt: any, dbEvents: any[]) => {
+  let bestMatch = null;
+  let highestScore = 0;
+
+  const normalizeCategory = (cat: string) => {
+    if (!cat) return "";
+    let c = cat.toUpperCase().replace(/[^A-Z]/g, '');
+    c = c.replace('CATA', 'A').replace('CATB', 'B').replace('GENARAL', 'GENERAL');
+    return c;
+  };
+  
+  const schedCat = normalizeCategory(evt.category);
+  const schedName = evt.name.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+  for (const e of dbEvents) {
+    const dbCat = normalizeCategory(e.category);
+    const dbName = e.name.toLowerCase().replace(/[^a-z0-9]/g, '');
+    
+    let score = 0;
+    
+    if (dbCat === schedCat) {
+      score += 50;
+    }
+
+    if (dbName === schedName) {
+      score += 100;
+    } else if (dbName.includes(schedName) || schedName.includes(dbName)) {
+      score += 40;
+    } else {
+      if (schedName.includes('handwritingenglish') && dbName.includes('handwritingeng')) score += 100;
+      if (schedName.includes('hiflulmuthoon') && dbName.includes('hiflulmuthooa')) score += 100;
+      if (schedName.includes('hiflulquran') && dbName.includes('hifzulquran')) score += 100;
+      if (schedName.includes('imlaa') && dbName.includes('imlaa')) score += 100;
+      if (schedName.includes('essaywritingmal') && (dbName === 'essaymalayalam' || dbName === 'essaywritingmal')) score += 100;
+      if (schedName.includes('bookctriticism') && dbName.includes('bookcriticism')) score += 100;
+      if (schedName.includes('nahvseminar') && dbName.includes('nahvuseminar')) score += 100;
+    }
+
+    if (score > highestScore) {
+      highestScore = score;
+      bestMatch = e;
+    }
+  }
+
+  // Only return if name matched at least partially (score >= 40). 
+  // A score of exactly 50 means only category matched, which is not enough.
+  if (highestScore >= 40 && highestScore !== 50) {
+    return bestMatch;
+  }
+  return null;
+};
+
 export default function SchedulePage() {
   const [dbEvents, setDbEvents] = useState<any[]>([]);
 
@@ -52,7 +104,7 @@ export default function SchedulePage() {
       date: "07 August 2026",
       stages: [
         {
-          name: "STAGE-04 (HS1)",
+          name: "STAGE-04",
           events: [
             { name: "Translation English", category: "NEXUS", time: "6:15-6:45 am" },
             { name: "Dictionary Making", category: "NEXUS", time: "6:45-7:15 am" },
@@ -60,7 +112,7 @@ export default function SchedulePage() {
           ]
         },
         {
-          name: "STAGE-05 (HS2)",
+          name: "STAGE-05",
           events: [
             { name: "Bulletin", category: "COSMOS", time: "6:15-6:30 am" },
             { name: "Essay Arabic", category: "COSMOS", time: "6:30-7:00 am" },
@@ -86,7 +138,7 @@ export default function SchedulePage() {
       date: "08 August 2026",
       stages: [
         {
-          name: "STAGE-05 (HS2)",
+          name: "STAGE-05",
           events: [
             { name: "Story Writing Malayalam", category: "COSMOS", time: "10:00-10:30 pm" },
             { name: "Story Writing English", category: "COSMOS", time: "10:30-11:00 pm" }
@@ -99,7 +151,7 @@ export default function SchedulePage() {
       date: "09 August 2026",
       stages: [
         {
-          name: "STAGE-04 (HS1)",
+          name: "STAGE-04",
           events: [
             { name: "Masala Test", category: "NEXUS", time: "6:15-6:45 am" },
             { name: "Editing Malayalam", category: "NEXUS", time: "6:45-7:00 am" },
@@ -119,7 +171,7 @@ export default function SchedulePage() {
           ]
         },
         {
-          name: "STAGE-05 (8 CLASS)",
+          name: "STAGE-05",
           events: [
             { name: "Story Writing Malayalam", category: "PROTONS", time: "6:15-6:45 am" },
             { name: "Poem Writing English", category: "PROTONS", time: "6:45-7:15 am" },
@@ -139,7 +191,7 @@ export default function SchedulePage() {
           ]
         },
         {
-          name: "STAGE-06 (BS1)",
+          name: "STAGE-06",
           events: [
             { name: "Book Review English", category: 'COSMOS', time: '6:15-6:45 am' },
             { name: "Essay English", category: 'COSMOS', time: '6:45-7:15 am' },
@@ -227,20 +279,7 @@ export default function SchedulePage() {
               {dayData.stages.map((stage, sIdx) => {
                 // Determine which events are visible (not yet having code letters)
                 const visibleEvents = stage.events.filter(evt => {
-                  const matchedEvent = dbEvents.find(e => {
-                    const dbName = e.name.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').trim();
-                    const schedName = evt.name.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').trim();
-                    
-                    if (dbName === schedName || dbName.includes(schedName) || schedName.includes(dbName)) return true;
-                    
-                    if (schedName.includes('handwriting english') && dbName.includes('hand writing eng')) return true;
-                    if (schedName.includes('hiflul muthoon') && dbName.includes('hiflul muthooa')) return true;
-                    if (schedName.includes('imla a') && dbName.includes('imla a')) return true;
-                    if (schedName.includes('essay writing mal') && (dbName === 'essay malayalam' || dbName === 'essay writing mal')) return true;
-                    if (schedName.includes('book ctriticism') && dbName.includes('book criticism')) return true; 
-                    
-                    return false;
-                  });
+                  const matchedEvent = findBestEventMatch(evt, dbEvents);
                   // Hide if codes are already saved
                   if (matchedEvent && matchedEvent.hasCodeLetters) return false;
                   return true;
@@ -258,22 +297,7 @@ export default function SchedulePage() {
                   <div className="space-y-3">
                     {visibleEvents.map((evt, eIdx) => {
                       // Attempt to match event name in DB again for rendering
-                      const matchedEvent = dbEvents.find(e => {
-                        const dbName = e.name.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').trim();
-                        const schedName = evt.name.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').trim();
-                        
-                        // Exact or partial match after removing punctuation
-                        if (dbName === schedName || dbName.includes(schedName) || schedName.includes(dbName)) return true;
-                        
-                        // Handle specific variations
-                        if (schedName.includes('handwriting english') && dbName.includes('hand writing eng')) return true;
-                        if (schedName.includes('hiflul muthoon') && dbName.includes('hiflul muthooa')) return true;
-                        if (schedName.includes('imla a') && dbName.includes('imla a')) return true;
-                        if (schedName.includes('essay writing mal') && (dbName === 'essay malayalam' || dbName === 'essay writing mal')) return true;
-                        if (schedName.includes('book ctriticism') && dbName.includes('book criticism')) return true; // Handling typo
-                        
-                        return false;
-                      });
+                      const matchedEvent = findBestEventMatch(evt, dbEvents);
 
                       const EventCard = (
                         <div className={`flex flex-col sm:flex-row justify-between sm:items-center p-3 rounded-lg border transition-colors gap-3 ${matchedEvent ? 'bg-slate-50 hover:bg-blue-50 border-slate-200 hover:border-blue-200 cursor-pointer group' : 'bg-slate-50 border-slate-100'}`}>

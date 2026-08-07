@@ -1,0 +1,670 @@
+[
+  {
+    "name": "Speech English",
+    "category": "Protons"
+  },
+  {
+    "name": "Story Telling",
+    "category": "Protons"
+  },
+  {
+    "name": "Madh Song",
+    "category": "Protons"
+  },
+  {
+    "name": "Mappilappattu",
+    "category": "Protons"
+  },
+  {
+    "name": "Malayalam Poem Recitation",
+    "category": "Protons"
+  },
+  {
+    "name": "Arabic Recitation Poem",
+    "category": "Protons"
+  },
+  {
+    "name": "Bhakthi Ganam",
+    "category": "Protons"
+  },
+  {
+    "name": "Urdu Poem Recitation",
+    "category": "Protons"
+  },
+  {
+    "name": "Qiraath",
+    "category": "Protons"
+  },
+  {
+    "name": "Essay Malayalam",
+    "category": "Protons"
+  },
+  {
+    "name": "Essay English",
+    "category": "Protons"
+  },
+  {
+    "name": "Story Writing Mal",
+    "category": "Protons"
+  },
+  {
+    "name": "Story Writing Eng",
+    "category": "Protons"
+  },
+  {
+    "name": "Poem Writing Mal",
+    "category": "Protons"
+  },
+  {
+    "name": "Poem Writing Eng",
+    "category": "Protons"
+  },
+  {
+    "name": "Caption Writing",
+    "category": "Protons"
+  },
+  {
+    "name": "Spelling Bee",
+    "category": "Protons"
+  },
+  {
+    "name": "Book Test",
+    "category": "Protons"
+  },
+  {
+    "name": "Pencil Drawing",
+    "category": "Protons"
+  },
+  {
+    "name": "Water Colour",
+    "category": "Protons"
+  },
+  {
+    "name": "Language Game",
+    "category": "Protons"
+  },
+  {
+    "name": "Handwriting (Eng)",
+    "category": "Protons"
+  },
+  {
+    "name": "Imlaau",
+    "category": "Protons"
+  },
+  {
+    "name": "Qaida Exposission",
+    "category": "Protons"
+  },
+  {
+    "name": "Quiz",
+    "category": "Protons"
+  },
+  {
+    "name": "Pathakalari",
+    "category": "Protons"
+  },
+  {
+    "name": "Hifzul Quran",
+    "category": "Protons"
+  },
+  {
+    "name": "Group Song",
+    "category": "General-A"
+  },
+  {
+    "name": "Nasheeda",
+    "category": "General-A"
+  },
+  {
+    "name": "Qawali",
+    "category": "General-A"
+  },
+  {
+    "name": "Viplava Ganam",
+    "category": "General-A"
+  },
+  {
+    "name": "Spot Magazine",
+    "category": "General-A"
+  },
+  {
+    "name": "Swarf Test (8)",
+    "category": "General-A"
+  },
+  {
+    "name": "Nahvu Test (9,10)",
+    "category": "General-A"
+  },
+  {
+    "name": "Swarf Test (9,10)",
+    "category": "General-A"
+  },
+  {
+    "name": "Nahvu Seminar",
+    "category": "General-A"
+  },
+  {
+    "name": "Speech Malayalam",
+    "category": "Nexus"
+  },
+  {
+    "name": "Speech English",
+    "category": "Nexus"
+  },
+  {
+    "name": "Speech Arabic",
+    "category": "Nexus"
+  },
+  {
+    "name": "Mappilapattu",
+    "category": "Nexus"
+  },
+  {
+    "name": "Madh Song",
+    "category": "Nexus"
+  },
+  {
+    "name": "Arabic Song Recitation",
+    "category": "Nexus"
+  },
+  {
+    "name": "Malayalam Poem Recitation",
+    "category": "Nexus"
+  },
+  {
+    "name": "Hamdu Urdu",
+    "category": "Nexus"
+  },
+  {
+    "name": "Essay Malayalam",
+    "category": "Nexus"
+  },
+  {
+    "name": "Essay English",
+    "category": "Nexus"
+  },
+  {
+    "name": "Essay Arabic",
+    "category": "Nexus"
+  },
+  {
+    "name": "Poem Writing Malayalam",
+    "category": "Nexus"
+  },
+  {
+    "name": "Poem Writing English",
+    "category": "Nexus"
+  },
+  {
+    "name": "Story Writing Malayalam",
+    "category": "Nexus"
+  },
+  {
+    "name": "Story Writing English",
+    "category": "Nexus"
+  },
+  {
+    "name": "Translation Malayalam",
+    "category": "Nexus"
+  },
+  {
+    "name": "Translation English",
+    "category": "Nexus"
+  },
+  {
+    "name": "Translation Arabic",
+    "category": "Nexus"
+  },
+  {
+    "name": "Masala Test",
+    "category": "Nexus"
+  },
+  {
+    "name": "Slogan Writing",
+    "category": "Nexus"
+  },
+  {
+    "name": "Editing Malayalam",
+    "category": "Nexus"
+  },
+  {
+    "name": "Arabic Vocabulary Test",
+    "category": "Nexus"
+  },
+  {
+    "name": "Caption Writing",
+    "category": "Nexus"
+  },
+  {
+    "name": "Book Test",
+    "category": "Nexus"
+  },
+  {
+    "name": "Quiz",
+    "category": "Nexus"
+  },
+  {
+    "name": "Review Malayalam",
+    "category": "Nexus"
+  },
+  {
+    "name": "Pencil Drawing",
+    "category": "Nexus"
+  },
+  {
+    "name": "Water Colour",
+    "category": "Nexus"
+  },
+  {
+    "name": "Qira'ath",
+    "category": "Nexus"
+  },
+  {
+    "name": "Hiflul Quran",
+    "category": "Nexus"
+  },
+  {
+    "name": "Azan",
+    "category": "Nexus"
+  },
+  {
+    "name": "Ma'ashira",
+    "category": "Nexus"
+  },
+  {
+    "name": "Dictionary Making",
+    "category": "Nexus"
+  },
+  {
+    "name": "Speech Malayalam",
+    "category": "Protons"
+  },
+  {
+    "name": "Spelling Bee",
+    "category": "Nexus"
+  },
+  {
+    "name": "Word's Worth",
+    "category": "Nexus"
+  },
+  {
+    "name": "Swarf Debate (+1, +2, BS1)",
+    "category": "Nexus"
+  },
+  {
+    "name": "Nahu Test (+2,BS1)",
+    "category": "Nexus"
+  },
+  {
+    "name": "Imla'a (+1, +2)",
+    "category": "Nexus"
+  },
+  {
+    "name": "Qira'athul Ibara (+2, BS1)",
+    "category": "Nexus"
+  },
+  {
+    "name": "Paper Presentation (+1,+2)",
+    "category": "Nexus"
+  },
+  {
+    "name": "Speech Urdu",
+    "category": "Cosmos"
+  },
+  {
+    "name": "Arabic Song Recitation",
+    "category": "Cosmos"
+  },
+  {
+    "name": "Malayalam Poem Recitation",
+    "category": "Cosmos"
+  },
+  {
+    "name": "Ashaya Samarthanam",
+    "category": "Cosmos"
+  },
+  {
+    "name": "Quran Prabhashanam",
+    "category": "Cosmos"
+  },
+  {
+    "name": "Poem Writing Arabic",
+    "category": "Cosmos"
+  },
+  {
+    "name": "Story Writing Malayalam",
+    "category": "Cosmos"
+  },
+  {
+    "name": "Story Writing English",
+    "category": "Cosmos"
+  },
+  {
+    "name": "Story Writing Arabic",
+    "category": "Cosmos"
+  },
+  {
+    "name": "Translation Malayalam",
+    "category": "Cosmos"
+  },
+  {
+    "name": "Translation English",
+    "category": "Cosmos"
+  },
+  {
+    "name": "Translation Arabic",
+    "category": "Cosmos"
+  },
+  {
+    "name": "Madh Song Writing",
+    "category": "Cosmos"
+  },
+  {
+    "name": "Review Malayalam",
+    "category": "Cosmos"
+  },
+  {
+    "name": "Bulletin",
+    "category": "Cosmos"
+  },
+  {
+    "name": "Editing Malayalam",
+    "category": "Cosmos"
+  },
+  {
+    "name": "Survey Tool",
+    "category": "Cosmos"
+  },
+  {
+    "name": "Social Tweet",
+    "category": "Cosmos"
+  },
+  {
+    "name": "Feature Writing",
+    "category": "Cosmos"
+  },
+  {
+    "name": "Caption Writing",
+    "category": "Cosmos"
+  },
+  {
+    "name": "Ihrab Writing",
+    "category": "Cosmos"
+  },
+  {
+    "name": "Book Test",
+    "category": "Cosmos"
+  },
+  {
+    "name": "Mudhravakya Rachana",
+    "category": "Cosmos"
+  },
+  {
+    "name": "E-Poster",
+    "category": "Cosmos"
+  },
+  {
+    "name": "Qira'athi",
+    "category": "Cosmos"
+  },
+  {
+    "name": "Ma'ashira",
+    "category": "Cosmos"
+  },
+  {
+    "name": "Hikaya",
+    "category": "Cosmos"
+  },
+  {
+    "name": "Thadrees",
+    "category": "Cosmos"
+  },
+  {
+    "name": "Vlog Making",
+    "category": "Cosmos"
+  },
+  {
+    "name": "Poem Lecturing ENG",
+    "category": "Cosmos"
+  },
+  {
+    "name": "Thajriba",
+    "category": "Cosmos"
+  },
+  {
+    "name": "Alfiya Test",
+    "category": "Cosmos"
+  },
+  {
+    "name": "Spoken Translation Arabic",
+    "category": "Cosmos"
+  },
+  {
+    "name": "Spoken Translation English",
+    "category": "Cosmos"
+  },
+  {
+    "name": "Quiz",
+    "category": "Cosmos"
+  },
+  {
+    "name": "Book Review English",
+    "category": "Cosmos"
+  },
+  {
+    "name": "Book Criticism Arabic",
+    "category": "Cosmos"
+  },
+  {
+    "name": "Book Writing Arabic",
+    "category": "Cosmos"
+  },
+  {
+    "name": "Qira'athul Ibara",
+    "category": "Cosmos"
+  },
+  {
+    "name": "Balaga Test",
+    "category": "Cosmos"
+  },
+  {
+    "name": "Hiflul Muthoon",
+    "category": "Cosmos"
+  },
+  {
+    "name": "Sharhul Muthoon",
+    "category": "Cosmos"
+  },
+  {
+    "name": "Documentary Presentation",
+    "category": "Cosmos"
+  },
+  {
+    "name": "Paper Presentation (ENG)",
+    "category": "Cosmos"
+  },
+  {
+    "name": "News Writing (English)",
+    "category": "Cosmos"
+  },
+  {
+    "name": "Mala Recitation",
+    "category": "General-B"
+  },
+  {
+    "name": "Speech Malayalam",
+    "category": "Cosmos"
+  },
+  {
+    "name": "Hand Writing ENG (+1, +2)",
+    "category": "Nexus"
+  },
+  {
+    "name": "Speech English",
+    "category": "Cosmos"
+  },
+  {
+    "name": "Madh Song",
+    "category": "Cosmos"
+  },
+  {
+    "name": "Hamd Urdu",
+    "category": "Cosmos"
+  },
+  {
+    "name": "Speech Arabic",
+    "category": "Cosmos"
+  },
+  {
+    "name": "Qawali",
+    "category": "General-B"
+  },
+  {
+    "name": "Qaseeda",
+    "category": "General-B"
+  },
+  {
+    "name": "Mappilapattu",
+    "category": "Cosmos"
+  },
+  {
+    "name": "Poem Lecturing MAL",
+    "category": "Cosmos"
+  },
+  {
+    "name": "Essay Malayalam",
+    "category": "Cosmos"
+  },
+  {
+    "name": "Essay Arabic",
+    "category": "Cosmos"
+  },
+  {
+    "name": "Moulid Recitation",
+    "category": "General-B"
+  },
+  {
+    "name": "Nasheeda",
+    "category": "General-B"
+  },
+  {
+    "name": "Viplava Ganam",
+    "category": "General-B"
+  },
+  {
+    "name": "Bhakthiganam",
+    "category": "General-B"
+  },
+  {
+    "name": "Nahthe Shareef",
+    "category": "General-B"
+  },
+  {
+    "name": "Theme Song",
+    "category": "General-B"
+  },
+  {
+    "name": "Seera Parayanam",
+    "category": "General-B"
+  },
+  {
+    "name": "News Reading Malayalam",
+    "category": "General-B"
+  },
+  {
+    "name": "News Reading English",
+    "category": "General-B"
+  },
+  {
+    "name": "Mappilapatt Rachana",
+    "category": "General-B"
+  },
+  {
+    "name": "Viplava Ganam Rachana",
+    "category": "General-B"
+  },
+  {
+    "name": "Arabic Calligraphy",
+    "category": "General-B"
+  },
+  {
+    "name": "Logo Design",
+    "category": "General-B"
+  },
+  {
+    "name": "Risala Quiz",
+    "category": "General-B"
+  },
+  {
+    "name": "Chumarazhuth",
+    "category": "General-B"
+  },
+  {
+    "name": "Spot Magazine",
+    "category": "General-B"
+  },
+  {
+    "name": "Nahv Seminar",
+    "category": "General-B"
+  },
+  {
+    "name": "Isthikshaf",
+    "category": "General-B"
+  },
+  {
+    "name": "Hadees Recitation",
+    "category": "General-B"
+  },
+  {
+    "name": "Mushaara",
+    "category": "General-B"
+  },
+  {
+    "name": "Statud Video Making",
+    "category": "General-B"
+  },
+  {
+    "name": "Collage",
+    "category": "General-B"
+  },
+  {
+    "name": "Poster Designing",
+    "category": "General-B"
+  },
+  {
+    "name": "Typing English",
+    "category": "General-B"
+  },
+  {
+    "name": "Podcast Competition",
+    "category": "General-B"
+  },
+  {
+    "name": "Group Song",
+    "category": "General-B"
+  },
+  {
+    "name": "AI Generating",
+    "category": "General-B"
+  },
+  {
+    "name": "Essay English",
+    "category": "Cosmos"
+  },
+  {
+    "name": "Hiflul Muthooa (+1, +2)",
+    "category": "Nexus"
+  },
+  {
+    "name": "Essay Urdu",
+    "category": "Cosmos"
+  },
+  {
+    "name": "Poem Writing Malayalam",
+    "category": "Cosmos"
+  },
+  {
+    "name": "Poem Writing English",
+    "category": "Cosmos"
+  }
+]
