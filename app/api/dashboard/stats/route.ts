@@ -102,8 +102,8 @@ export async function GET() {
         // Champions calculation
         const allStudentsWithScores = Object.values(studentScores);
         const getChampions = (list: any[]) => {
-            const star = [...list].sort((a: any, b: any) => b.stagePoints - a.stagePoints)[0] || null;
-            const pen = [...list].sort((a: any, b: any) => b.nonStagePoints - a.nonStagePoints)[0] || null;
+            const star = [...list].filter(s => s.stagePoints > 0).sort((a: any, b: any) => b.stagePoints - a.stagePoints)[0] || null;
+            const pen = [...list].filter(s => s.nonStagePoints > 0).sort((a: any, b: any) => b.nonStagePoints - a.nonStagePoints)[0] || null;
             return { star, pen };
         };
 
@@ -127,9 +127,9 @@ export async function GET() {
                 "Ventus": librasScore
             },
             champions: {
-                alpha,
-                beta,
-                omega,
+                protons: alpha,
+                nexus: beta,
+                cosmos: omega,
                 star: globalChampions.star,
                 pen: globalChampions.pen
             },
