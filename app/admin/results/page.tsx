@@ -38,6 +38,8 @@ export default function AdminResultsPage() {
     const [searchTerm, setSearchTerm] = useState("")
 
     const [activeTab, setActiveTab] = useState("All")
+    const [statusFilter, setStatusFilter] = useState("All")
+    const [typeFilter, setTypeFilter] = useState("All")
 
     const [isEditOpen, setIsEditOpen] = useState(false)
     const [editingEvent, setEditingEvent] = useState<any>(null)
@@ -210,15 +212,21 @@ export default function AdminResultsPage() {
         if (!matchSearch) return false;
 
         const isPublished = ev.status === "completed" || ev.status === "announced";
+        const isShuffled = ev.hasCodeLetters && !isPublished;
+        const isPending = !isShuffled && !isPublished;
 
-        if (activeTab === "Published") return isPublished;
-        if (activeTab === "Shuffled") return ev.hasCodeLetters && !isPublished;
-        
-        // Hide completed and announced events from all other tabs so they "move" to the Published tab
-        if (isPublished) return false;
+        // Apply Status Filter
+        if (statusFilter === "Published" && !isPublished) return false;
+        if (statusFilter === "Shuffled" && !isShuffled) return false;
+        if (statusFilter === "Pending" && !isPending) return false;
 
-        if (activeTab === "All") return true;
-        return ev.category === activeTab;
+        // Apply Type Filter
+        if (typeFilter !== "All" && ev.type !== typeFilter) return false;
+
+        // Apply Category Filter
+        if (activeTab !== "All" && ev.category !== activeTab) return false;
+
+        return true;
     })
 
     const registeredStudents = students.filter(student =>
@@ -301,7 +309,7 @@ export default function AdminResultsPage() {
         }));
     };
 
-    const tabs = ["All", "Protons", "Nexus", "Cosmos", "General-A", "General-B", "Shuffled", "Published"];
+    const tabs = ["All", "Protons", "Nexus", "Cosmos", "General-A", "General-B"];
 
     return (
         <>
@@ -315,10 +323,37 @@ export default function AdminResultsPage() {
                 </div>
 
                 <div className="space-y-4">
-                    <div className="bg-white p-4 rounded-xl border shadow-sm">
-                        <div className="relative">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                            <Input placeholder="Search Event..." className="pl-9 bg-slate-50 border-slate-200" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+                    <div className="flex flex-col md:flex-row gap-4">
+                        <div className="bg-white p-4 rounded-xl border shadow-sm flex-1">
+                            <div className="relative">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                                <Input placeholder="Search Event..." className="pl-9 bg-slate-50 border-slate-200" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+                            </div>
+                        </div>
+                        <div className="bg-white p-4 rounded-xl border shadow-sm w-full md:w-[250px]">
+                            <Select value={statusFilter} onValueChange={setStatusFilter}>
+                                <SelectTrigger className="w-full bg-slate-50 border-slate-200 text-slate-600 font-medium">
+                                    <SelectValue placeholder="Filter by Status" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="All">All Statuses</SelectItem>
+                                    <SelectItem value="Pending">Pending (Not Shuffled)</SelectItem>
+                                    <SelectItem value="Shuffled">Shuffled (Waiting for Result)</SelectItem>
+                                    <SelectItem value="Published">Result Published</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="bg-white p-4 rounded-xl border shadow-sm w-full md:w-[200px]">
+                            <Select value={typeFilter} onValueChange={setTypeFilter}>
+                                <SelectTrigger className="w-full bg-slate-50 border-slate-200 text-slate-600 font-medium">
+                                    <SelectValue placeholder="Event Type" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="All">All Types</SelectItem>
+                                    <SelectItem value="Stage">Stage</SelectItem>
+                                    <SelectItem value="Non-Stage">Non-Stage</SelectItem>
+                                </SelectContent>
+                            </Select>
                         </div>
                     </div>
 

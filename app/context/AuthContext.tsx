@@ -27,11 +27,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // 1. പേജ് റിഫ്രഷ് ചെയ്താലും യൂസർ ലോഗൗട്ട് ആവാതിരിക്കാൻ
   useEffect(() => {
-    const savedUser = localStorage.getItem("optimus_user");
-    if (savedUser) {
-      try {
+    try {
+      const savedUser = localStorage.getItem("optimus_user");
+      if (savedUser) {
         let parsedUser = JSON.parse(savedUser);
-        // Automatic migration of legacy team names without requiring re-login
         if (parsedUser.team === "Auris" || parsedUser.team === "Team A") {
             parsedUser.team = "Ignis";
             localStorage.setItem("optimus_user", JSON.stringify(parsedUser));
@@ -40,27 +39,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             localStorage.setItem("optimus_user", JSON.stringify(parsedUser));
         }
         setUser(parsedUser);
-      } catch (e) {
-        console.error("Failed to parse user from local storage");
       }
+    } catch (e) {
+      console.error("Failed to parse user from local storage", e);
     }
     setIsLoading(false);
   }, []);
 
-  // 2. Login Function
   const login = (data: any) => {
-    // API-യിൽ നിന്ന് വരുന്ന ഡാറ്റയിൽ നിന്ന് 'user' ഒബ്ജക്റ്റ് എടുക്കുന്നു
     const userToSave = data.user || data; 
-    
     setUser(userToSave);
-    // യൂസറെ LocalStorage-ൽ സേവ് ചെയ്യുന്നു
-    localStorage.setItem("optimus_user", JSON.stringify(userToSave));
+    try {
+      localStorage.setItem("optimus_user", JSON.stringify(userToSave));
+    } catch (e) {
+      console.warn("Could not save to localStorage", e);
+    }
   };
 
   // 3. Logout Function
   const logout = async () => {
     setUser(null);
-    localStorage.removeItem("optimus_user");
+    try {
+      localStorage.removeItem("optimus_user");
+    } catch (e) {
+      console.warn("Could not remove from localStorage", e);
+    }
     
     try {
       // Backend-ൽ കുക്കി ക്ലിയർ ചെയ്യാൻ

@@ -33,16 +33,24 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [isLoaded, setIsLoaded] = useState(false)
 
   useEffect(() => {
-    const saved = localStorage.getItem("optimus-data")
-    if (saved) {
-      setState(JSON.parse(saved))
+    try {
+      const saved = localStorage.getItem("optimus-data")
+      if (saved) {
+        setState(JSON.parse(saved))
+      }
+    } catch (e) {
+      console.warn("localStorage not accessible", e)
     }
     setIsLoaded(true)
   }, [])
 
   useEffect(() => {
     if (isLoaded) {
-      localStorage.setItem("optimus-data", JSON.stringify(state))
+      try {
+        localStorage.setItem("optimus-data", JSON.stringify(state))
+      } catch (e) {
+        console.warn("localStorage not accessible", e)
+      }
     }
   }, [state, isLoaded])
 
