@@ -11,7 +11,7 @@ export default function AnnouncerDashboard() {
   const [history, setHistory] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [activeTab, setActiveTab] = useState<"events" | "points">("events");
+  const [activeTab, setActiveTab] = useState<"events" | "announced" | "points">("events");
   const router = useRouter();
 
   useEffect(() => {
@@ -47,10 +47,19 @@ export default function AnnouncerDashboard() {
     }
   };
 
-  const filteredEvents = events.filter((e) => 
-    e.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    e.category.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredEvents = events.filter((e) => {
+    const matchesSearch = e.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                          e.category.toLowerCase().includes(searchTerm.toLowerCase());
+    if (!matchesSearch) return false;
+
+    if (activeTab === "events") {
+      return e.status !== "announced";
+    }
+    if (activeTab === "announced") {
+      return e.status === "announced";
+    }
+    return true;
+  });
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -66,7 +75,17 @@ export default function AnnouncerDashboard() {
                 : "text-slate-400 hover:text-slate-600"
             }`}
           >
-            Events
+            New Results
+          </button>
+          <button
+            onClick={() => setActiveTab("announced")}
+            className={`pb-4 text-sm font-bold uppercase tracking-widest transition-all ${
+              activeTab === "announced" 
+                ? "text-emerald-600 border-b-2 border-emerald-600" 
+                : "text-slate-400 hover:text-slate-600"
+            }`}
+          >
+            Announced
           </button>
           <button
             onClick={() => setActiveTab("points")}
@@ -153,13 +172,19 @@ export default function AnnouncerDashboard() {
         </div>
       )}
 
-      {activeTab === "events" && (
+      {(activeTab === "events" || activeTab === "announced") && (
         <div className="space-y-6 animate-in fade-in duration-300">
           {/* Header section */}
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div>
-              <h1 className="text-3xl font-black text-slate-900 tracking-tight">Ready to Announce</h1>
-              <p className="text-slate-500 mt-1">Select an event below to open the presentation screen.</p>
+              <h1 className="text-3xl font-black text-slate-900 tracking-tight">
+                {activeTab === "events" ? "Ready to Announce" : "Announced Events"}
+              </h1>
+              <p className="text-slate-500 mt-1">
+                {activeTab === "events" 
+                  ? "Select an event below to open the presentation screen."
+                  : "These events have already been presented to the public."}
+              </p>
             </div>
             
             {/* Search */}

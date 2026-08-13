@@ -115,31 +115,31 @@ export default function PresentationScreen({ params }: { params: Promise<{ event
     return { ...w, points };
   });
 
-  participantsWithPoints.sort((a, b) => b.points - a.points);
-
-  const uniquePoints = Array.from(new Set(participantsWithPoints.map(p => p.points)))
-    .filter(p => p > 0)
-    .sort((a, b) => b - a);
-
   const finalParticipants = participantsWithPoints.map(w => {
     let displayRank = '-';
     let rankColor = 'text-slate-400 font-bold bg-transparent';
     
-    if (w.points > 0) {
-        const rankIndex = uniquePoints.indexOf(w.points);
-        if (rankIndex === 0) {
-            displayRank = '1st Place';
-            rankColor = 'text-yellow-600 font-black bg-yellow-50';
-        } else if (rankIndex === 1) {
-            displayRank = '2nd Place';
-            rankColor = 'text-slate-600 font-black bg-slate-100';
-        } else if (rankIndex === 2) {
-            displayRank = '3rd Place';
-            rankColor = 'text-orange-600 font-black bg-orange-50';
-        }
+    if (w.position === 'first') {
+        displayRank = '1st Place';
+        rankColor = 'text-yellow-600 font-black bg-yellow-50';
+    } else if (w.position === 'second') {
+        displayRank = '2nd Place';
+        rankColor = 'text-slate-600 font-black bg-slate-100';
+    } else if (w.position === 'third') {
+        displayRank = '3rd Place';
+        rankColor = 'text-orange-600 font-black bg-orange-50';
     }
 
     return { ...w, displayRank, rankColor };
+  });
+
+  // Sort by official position first, then by points
+  const positionValue: Record<string, number> = { 'first': 1, 'second': 2, 'third': 3, 'other': 4 };
+  finalParticipants.sort((a, b) => {
+      const posA = positionValue[a.position] || 5;
+      const posB = positionValue[b.position] || 5;
+      if (posA !== posB) return posA - posB;
+      return b.points - a.points;
   });
 
   return (
@@ -158,17 +158,17 @@ export default function PresentationScreen({ params }: { params: Promise<{ event
         </h1>
       </div>
 
-      {/* Consolidated Results Table */}
-      <div className="max-w-5xl mx-auto pt-4">
-        <div className="bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-sm">
+      {/* Consolidated Results */}
+      <div className="max-w-5xl mx-auto pt-4 px-4 md:px-0">
+        
+        {/* Desktop Table View */}
+        <div className="hidden md:block bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-sm">
           <div className="overflow-x-auto">
             <table className="w-full text-left">
               <thead className="bg-slate-50 border-b border-slate-200">
                 <tr>
-                  <th className="px-6 py-4 font-bold text-slate-500 uppercase text-xs tracking-widest w-16">SI</th>
                   <th className="px-6 py-4 font-bold text-slate-500 uppercase text-xs tracking-widest">Position</th>
                   <th className="px-6 py-4 font-bold text-slate-500 uppercase text-xs tracking-widest">Code</th>
-                  <th className="px-6 py-4 font-bold text-slate-500 uppercase text-xs tracking-widest">Chest No</th>
                   <th className="px-6 py-4 font-bold text-slate-500 uppercase text-xs tracking-widest">Name</th>
                   <th className="px-6 py-4 font-bold text-slate-500 uppercase text-xs tracking-widest">Team</th>
                   <th className="px-6 py-4 font-bold text-slate-500 uppercase text-xs tracking-widest">Grade</th>
@@ -178,20 +178,18 @@ export default function PresentationScreen({ params }: { params: Promise<{ event
               <tbody className="divide-y divide-slate-100">
                 {finalParticipants.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="px-6 py-12 text-center text-slate-400 font-medium">No results published yet.</td>
+                    <td colSpan={6} className="px-6 py-12 text-center text-slate-400 font-medium">No results published yet.</td>
                   </tr>
                 ) : (
                   finalParticipants.map((w: any, i: number) => {
                     return (
                       <tr key={i} className="hover:bg-slate-50 transition-colors">
-                        <td className="px-6 py-4 text-slate-400 font-bold">{i + 1}</td>
                         <td className="px-6 py-4">
                           <span className={`px-3 py-1.5 rounded-full text-[11px] uppercase tracking-wider ${w.rankColor}`}>
                             {w.displayRank}
                           </span>
                         </td>
                         <td className="px-6 py-4 text-slate-500 font-bold">{w.codeLetter || '-'}</td>
-                        <td className="px-6 py-4 text-slate-500 font-bold">{w.chestNo || '-'}</td>
                         <td className="px-6 py-4 text-slate-900 font-bold">{w.name}</td>
                         <td className="px-6 py-4">
                           <span className={`px-2 py-1 rounded text-xs font-bold ${getTeamColor(w.team)}`}>{w.team}</span>
@@ -205,6 +203,47 @@ export default function PresentationScreen({ params }: { params: Promise<{ event
               </tbody>
             </table>
           </div>
+        </div>
+
+        {/* Mobile Card View */}
+        <div className="md:hidden flex flex-col gap-4 pb-8">
+          {finalParticipants.length === 0 ? (
+            <div className="text-center py-12 bg-white rounded-2xl border border-slate-200 text-slate-400 font-medium shadow-sm">
+              No results published yet.
+            </div>
+          ) : (
+            finalParticipants.map((w: any, i: number) => (
+              <div key={i} className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-4">
+                <div className="flex justify-between items-start">
+                  <span className={`px-3 py-1.5 rounded-full text-[11px] font-black uppercase tracking-wider ${w.rankColor}`}>
+                    {w.displayRank}
+                  </span>
+                  {w.points > 0 ? (
+                    <span className="text-xl font-black text-emerald-600 flex items-baseline gap-1">
+                      {w.points} <span className="text-xs text-emerald-600/70 uppercase">PTS</span>
+                    </span>
+                  ) : (
+                    <span className="text-xl font-black text-slate-300">0</span>
+                  )}
+                </div>
+                
+                <div>
+                  <h3 className="text-xl font-black text-slate-900 mb-3">{w.name}</h3>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className={`px-2.5 py-1 rounded-md text-xs font-bold ${getTeamColor(w.team)}`}>{w.team}</span>
+                    <span className="bg-slate-100 text-slate-500 px-2.5 py-1 rounded-md text-xs font-bold uppercase tracking-wider">
+                      Code: {w.codeLetter || '-'}
+                    </span>
+                    {w.grade && (
+                      <span className="bg-emerald-50 text-emerald-700 border border-emerald-100 px-2.5 py-1 rounded-md text-xs font-bold uppercase tracking-wider">
+                        Grade: {w.grade}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
         </div>
       </div>
 

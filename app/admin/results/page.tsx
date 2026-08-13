@@ -104,12 +104,14 @@ export default function AdminResultsPage() {
     const handleEdit = (event: any) => {
         setEditingEvent(event)
 
-        const othersData = (event.results?.others || []).map((other: any) => ({
-            studentId: other.studentId || "",
-            grade: other.grade || "",
-            mark: other.mark || "",
-            codeLetter: other.codeLetter || ""
-        }));
+        const othersData = (event.results?.others || [])
+            .map((other: any) => ({
+                studentId: other.studentId || "",
+                grade: other.grade || "",
+                mark: other.mark || "",
+                codeLetter: other.codeLetter || ""
+            }))
+            .sort((a: any, b: any) => parseInt(b.mark || '0') - parseInt(a.mark || '0'));
 
         // Handle both old format (single values) and new format (arrays)
         const firstData = Array.isArray(event.results?.first)
@@ -169,9 +171,12 @@ export default function AdminResultsPage() {
 
         setSubmitting(true)
         try {
+            // Auto-sort others by mark descending before saving
+            const sortedOthers = [...resultData.others].sort((a, b) => parseInt(b.mark || '0') - parseInt(a.mark || '0'));
+            
             await axios.post('/api/events/result', {
                 eventId: editingEvent._id,
-                results: resultData
+                results: { ...resultData, others: sortedOthers }
             })
             toast({ title: "Success 🏆", description: "Result published successfully!" })
             setIsEditOpen(false)
@@ -687,15 +692,17 @@ export default function AdminResultsPage() {
                                     <p className="text-xs text-slate-400 text-center py-2">No additional positions added</p>
                                 ) : (
                                     <div className="space-y-2">
-                                        {resultData.others.map((other, idx) => (
-                                            <div key={idx} className="flex flex-wrap sm:flex-nowrap gap-2 items-center bg-white p-2 rounded-lg border border-blue-100">
-                                                <span className="text-xs font-bold text-slate-500 w-8">#{idx + 4}</span>
-                                                <Select value={other.studentId} onValueChange={val => updateOther(idx, 'studentId', val)}>
-                                                    <SelectTrigger className="flex-1 h-9 text-xs"><SelectValue placeholder="Select Student" /></SelectTrigger>
-                                                    <SelectContent className="max-h-60">
-                                                        {availableForOthers.map(s => <SelectItem key={s._id} value={s._id}>{s.name} ({s.team})</SelectItem>)}
-                                                    </SelectContent>
-                                                </Select>
+                                        {resultData.others.map((other, idx) => {
+                                            const totalTopWinners = resultData.first.length + resultData.second.length + resultData.third.length;
+                                            return (
+                                                <div key={idx} className="flex flex-wrap sm:flex-nowrap gap-2 items-center bg-white p-2 rounded-lg border border-blue-100">
+                                                    <span className="text-xs font-bold text-slate-500 w-8">#{totalTopWinners + idx + 1}</span>
+                                                    <Select value={other.studentId} onValueChange={val => updateOther(idx, 'studentId', val)}>
+                                                        <SelectTrigger className="flex-1 h-9 text-xs"><SelectValue placeholder="Select Student" /></SelectTrigger>
+                                                        <SelectContent className="max-h-60">
+                                                            {availableForOthers.map(s => <SelectItem key={s._id} value={s._id}>{s.name} ({s.team})</SelectItem>)}
+                                                        </SelectContent>
+                                                    </Select>
                                                 <Input
                                                     placeholder="Code Letter"
                                                     className="w-24 h-9 text-xs"
@@ -724,7 +731,8 @@ export default function AdminResultsPage() {
                                                     <X className="w-4 h-4" />
                                                 </Button>
                                             </div>
-                                        ))}
+                                        )
+                                        })}
                                     </div>
                                 )}
                             </div>
