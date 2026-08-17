@@ -1,0 +1,270 @@
+"use client";
+
+import { useState, useEffect, use } from "react";
+import { useRouter } from "next/navigation";
+import { Loader2, ArrowLeft, Trophy, Medal, Star, CheckCircle2 } from "lucide-react";
+import Link from "next/link";
+
+// We need the points calculator
+import { calculateGradeAndPoints } from "@/lib/points";
+
+const normalizeString = (str: string) => {
+    if (!str) return "";
+    return str.toLowerCase().replace(/[^a-z0-9]/g, "");
+};
+
+const getEventGroupStatus = (event: any) => {
+    if (!event) return false;
+    const eventName = normalizeString(event?.name || "");
+    const isGroupEvent = event.is_group_event === true ||
+        eventName === "histoart" ||
+        eventName === "dictionarymaking" ||
+        eventName === "swarafdebate" ||
+        eventName === "swarfdebate";
+
+    const individualPointExceptions = ["speechtranslation", "dictionarymaking", "swarafdebate", "swarfdebate"];
+    return isGroupEvent && !individualPointExceptions.includes(eventName);
+};
+
+export default function PresentationScreen({ params }: { params: Promise<{ eventId: string }> }) {
+  const unwrappedParams = use(params);
+  const eventId = unwrappedParams.eventId;
+  
+  const [data, setData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [marking, setMarking] = useState(false);
+  const router = useRouter();
+
+  useEffect(() => {
+    fetchResults();
+  }, [eventId]);
+
+
+  const fetchResults = async () => {
+    try {
+      // MOCK DATA
+      const mockData = {
+        event: { id: eventId, name: "Essay Writing", category: "Nexus", status: "completed" },
+        results: {
+          first: [{ name: "John Doe", team: "Ventus", position: "first", grade: "A", codeLetter: "A" }],
+          second: [{ name: "Ahmed Raza", team: "Ignis", position: "second", grade: "B", codeLetter: "B" }],
+          third: [],
+          others: [{ name: "Sammy K", team: "Ignis", position: "other", grade: "C", codeLetter: "C" }]
+        }
+      };
+      setData(mockData);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+
+  const markAsAnnounced = async () => {
+    if (data.event.status === 'announced') return;
+    setMarking(true);
+    setTimeout(() => {
+      setData({ ...data, event: { ...data.event, status: "announced" } });
+      setMarking(false);
+    }, 500);
+  };
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
+        <Loader2 className="w-12 h-12 animate-spin text-emerald-500" />
+        <h2 className="text-2xl font-bold text-slate-800 animate-pulse">Loading Results...</h2>
+      </div>
+    );
+  }
+
+  if (!data) return <div className="text-center py-20 text-red-500 font-bold">Error loading data.</div>;
+
+  const { event, results } = data;
+  const isGroup = getEventGroupStatus(event);
+
+  const getTeamColor = (team: string) => {
+    if (team === 'Ignis') return 'text-orange-700 border-orange-200 bg-orange-50';
+    if (team === 'Ventus') return 'text-sky-700 border-sky-200 bg-sky-50';
+    return 'text-slate-600 border-slate-200 bg-slate-100';
+  };
+
+  // Filter for captains if it's a group event
+  const filterWinners = (winnersArray: any[]) => {
+    if (!winnersArray) return [];
+    if (isGroup) {
+      return winnersArray.filter(w => w.isCaptain);
+    }
+    return winnersArray;
+  };
+
+  const allRawParticipants = [
+    ...(results?.first || []),
+    ...(results?.second || []),
+    ...(results?.third || []),
+    ...(results?.others || [])
+  ];
+
+  const filteredParticipants = filterWinners(allRawParticipants);
+
+  const participantsWithPoints = filteredParticipants.map(w => {
+    const points = calculateGradeAndPoints(w.mark, isGroup).points;
+    return { ...w, points };
+  });
+
+  const finalParticipants = participantsWithPoints.map(w => {
+    let displayRank = '-';
+    let rankColor = 'text-slate-400 font-bold bg-transparent';
+    
+    if (w.position === 'first') {
+        displayRank = '1st Place';
+        rankColor = 'text-yellow-600 font-black bg-yellow-50';
+    } else if (w.position === 'second') {
+        displayRank = '2nd Place';
+        rankColor = 'text-slate-600 font-black bg-slate-100';
+    } else if (w.position === 'third') {
+        displayRank = '3rd Place';
+        rankColor = 'text-orange-600 font-black bg-orange-50';
+    }
+
+    return { ...w, displayRank, rankColor };
+  });
+
+  // Sort by official position first, then by points
+  const positionValue: Record<string, number> = { 'first': 1, 'second': 2, 'third': 3, 'other': 4 };
+  finalParticipants.sort((a, b) => {
+      const posA = positionValue[a.position] || 5;
+      const posB = positionValue[b.position] || 5;
+      if (posA !== posB) return posA - posB;
+      return b.points - a.points;
+  });
+
+  return (
+    <div className="space-y-12 pb-32">
+      
+      {/* Header */}
+      <div className="text-center space-y-4 relative pt-6">
+        <Link href="/demo-announcer" className="absolute left-0 top-1/2 -translate-y-1/2 p-3 text-slate-400 hover:text-slate-800 hover:bg-slate-100 rounded-xl transition-all">
+          <ArrowLeft className="w-6 h-6" />
+        </Link>
+        <div className="inline-block px-4 py-1.5 rounded-full bg-slate-100 border border-slate-200 text-slate-600 font-bold uppercase tracking-widest text-sm mb-4">
+          {event.category}
+        </div>
+        <h1 className="text-5xl md:text-7xl font-black text-slate-900 tracking-tight drop-shadow-sm">
+          {event.name}
+        </h1>
+      </div>
+
+      {/* Consolidated Results */}
+      <div className="max-w-5xl mx-auto pt-4 px-4 md:px-0">
+        
+        {/* Desktop Table View */}
+        <div className="hidden md:block bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-sm">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left">
+              <thead className="bg-slate-50 border-b border-slate-200">
+                <tr>
+                  <th className="px-6 py-4 font-bold text-slate-500 uppercase text-xs tracking-widest">Position</th>
+                  <th className="px-6 py-4 font-bold text-slate-500 uppercase text-xs tracking-widest">Code</th>
+                  <th className="px-6 py-4 font-bold text-slate-500 uppercase text-xs tracking-widest">Name</th>
+                  <th className="px-6 py-4 font-bold text-slate-500 uppercase text-xs tracking-widest">Team</th>
+                  <th className="px-6 py-4 font-bold text-slate-500 uppercase text-xs tracking-widest">Grade</th>
+                  <th className="px-6 py-4 font-bold text-slate-500 uppercase text-xs tracking-widest text-right">Points</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {finalParticipants.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="px-6 py-12 text-center text-slate-400 font-medium">No results published yet.</td>
+                  </tr>
+                ) : (
+                  finalParticipants.map((w: any, i: number) => {
+                    return (
+                      <tr key={i} className="hover:bg-slate-50 transition-colors">
+                        <td className="px-6 py-4">
+                          <span className={`px-3 py-1.5 rounded-full text-[11px] uppercase tracking-wider ${w.rankColor}`}>
+                            {w.displayRank}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-slate-500 font-bold">{w.codeLetter || '-'}</td>
+                        <td className="px-6 py-4 text-slate-900 font-bold">{w.name}</td>
+                        <td className="px-6 py-4">
+                          <span className={`px-2 py-1 rounded text-xs font-bold ${getTeamColor(w.team)}`}>{w.team}</span>
+                        </td>
+                        <td className="px-6 py-4 font-black text-emerald-600">{w.grade || '-'}</td>
+                        <td className="px-6 py-4 text-right font-black text-emerald-600">{w.points > 0 ? w.points : 0}</td>
+                      </tr>
+                    )
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Mobile Card View */}
+        <div className="md:hidden flex flex-col gap-4 pb-8">
+          {finalParticipants.length === 0 ? (
+            <div className="text-center py-12 bg-white rounded-2xl border border-slate-200 text-slate-400 font-medium shadow-sm">
+              No results published yet.
+            </div>
+          ) : (
+            finalParticipants.map((w: any, i: number) => (
+              <div key={i} className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-4">
+                <div className="flex justify-between items-start">
+                  <span className={`px-3 py-1.5 rounded-full text-[11px] font-black uppercase tracking-wider ${w.rankColor}`}>
+                    {w.displayRank}
+                  </span>
+                  {w.points > 0 ? (
+                    <span className="text-xl font-black text-emerald-600 flex items-baseline gap-1">
+                      {w.points} <span className="text-xs text-emerald-600/70 uppercase">PTS</span>
+                    </span>
+                  ) : (
+                    <span className="text-xl font-black text-slate-300">0</span>
+                  )}
+                </div>
+                
+                <div>
+                  <h3 className="text-xl font-black text-slate-900 mb-3">{w.name}</h3>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className={`px-2.5 py-1 rounded-md text-xs font-bold ${getTeamColor(w.team)}`}>{w.team}</span>
+                    <span className="bg-slate-100 text-slate-500 px-2.5 py-1 rounded-md text-xs font-bold uppercase tracking-wider">
+                      Code: {w.codeLetter || '-'}
+                    </span>
+                    {w.grade && (
+                      <span className="bg-emerald-50 text-emerald-700 border border-emerald-100 px-2.5 py-1 rounded-md text-xs font-bold uppercase tracking-wider">
+                        Grade: {w.grade}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+
+      {/* Mark as Announced Footer Button */}
+      <div className="fixed bottom-0 left-0 w-full p-6 bg-white/90 backdrop-blur border-t border-slate-200 flex justify-center z-50">
+        <button
+          onClick={markAsAnnounced}
+          disabled={marking || event.status === 'announced'}
+          className={`flex items-center gap-3 px-10 py-4 rounded-2xl font-black uppercase tracking-widest text-lg transition-all duration-300 shadow-xl
+            ${event.status === 'announced' 
+              ? 'bg-emerald-100 text-emerald-700 cursor-not-allowed shadow-none border border-emerald-200' 
+              : 'bg-emerald-600 text-white hover:bg-emerald-700 hover:-translate-y-1 active:scale-95'
+            }`}
+        >
+          {marking ? (
+            <Loader2 className="w-6 h-6 animate-spin" />
+          ) : (
+            <CheckCircle2 className="w-6 h-6" />
+          )}
+          {event.status === 'announced' ? 'Officially Announced' : 'Mark as Announced'}
+        </button>
+      </div>
+
+    </div>
+  );
+}
