@@ -39,7 +39,7 @@ export default function Home() {
               </button>
             </Link>
 
-            <div className="w-full max-w-lg mt-4">
+            {/* <div className="w-full max-w-lg mt-4">
                <p className="text-xs text-slate-500 font-bold uppercase tracking-widest mb-4 text-center">Explore Demo Environments</p>
                <div className="flex flex-wrap justify-center gap-3">
                  <Link href="/demo-admin"><button className="px-5 py-2 border border-slate-700 hover:border-emerald-500/50 hover:bg-emerald-500/10 text-slate-300 hover:text-emerald-400 rounded-full text-xs font-bold uppercase transition-all">Admin</button></Link>
@@ -51,7 +51,7 @@ export default function Home() {
                  <Link href="/demo-judge"><button className="px-5 py-2 border border-slate-700 hover:border-emerald-500/50 hover:bg-emerald-500/10 text-slate-300 hover:text-emerald-400 rounded-full text-xs font-bold uppercase transition-all">Judge</button></Link>
                  <Link href="/demo-stage-judge"><button className="px-5 py-2 border border-slate-700 hover:border-emerald-500/50 hover:bg-emerald-500/10 text-slate-300 hover:text-emerald-400 rounded-full text-xs font-bold uppercase transition-all">Stage Judge</button></Link>
                </div>
-            </div>
+            </div> */}
 
             {/* Glassy Badge */}
             <div className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-slate-900/60 border border-slate-800 backdrop-blur-md text-[10px] font-bold text-slate-500 uppercase tracking-widest shadow-lg">
