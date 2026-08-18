@@ -872,7 +872,7 @@ export default function AdminResultsPage() {
                                         <td className="border border-black px-4 py-3 text-center">{winner.codeLetter || printingEvent.results.firstCodeLetter || "-"}</td>
                                         <td className="border border-black px-4 py-3 text-center">{winner.grade || printingEvent.results.firstGrade}</td>
                                         <td className="border border-black px-4 py-3 text-center">{winner.mark || printingEvent.results.firstMark || "-"}</td>
-                                        <td className="border border-black px-4 py-3 text-center font-bold">{getPoints(winner.grade || printingEvent.results.firstGrade, printingEvent, 'first')}</td>
+                                        <td className="border border-black px-4 py-3 text-center font-bold">{getPoints(winner.mark || printingEvent.results.firstMark, printingEvent)}</td>
                                     </tr>
                                 ));
                             })()}
@@ -889,7 +889,7 @@ export default function AdminResultsPage() {
                                         <td className="border border-black px-4 py-3 text-center">{winner.codeLetter || printingEvent.results.secondCodeLetter || "-"}</td>
                                         <td className="border border-black px-4 py-3 text-center">{winner.grade || printingEvent.results.secondGrade}</td>
                                         <td className="border border-black px-4 py-3 text-center">{winner.mark || printingEvent.results.secondMark || "-"}</td>
-                                        <td className="border border-black px-4 py-3 text-center font-bold">{getPoints(winner.grade || printingEvent.results.secondGrade, printingEvent, 'second')}</td>
+                                        <td className="border border-black px-4 py-3 text-center font-bold">{getPoints(winner.mark || printingEvent.results.secondMark, printingEvent)}</td>
                                     </tr>
                                 ));
                             })()}
@@ -906,7 +906,7 @@ export default function AdminResultsPage() {
                                         <td className="border border-black px-4 py-3 text-center">{winner.codeLetter || printingEvent.results.thirdCodeLetter || "-"}</td>
                                         <td className="border border-black px-4 py-3 text-center">{winner.grade || printingEvent.results.thirdGrade}</td>
                                         <td className="border border-black px-4 py-3 text-center">{winner.mark || printingEvent.results.thirdMark || "-"}</td>
-                                        <td className="border border-black px-4 py-3 text-center font-bold">{getPoints(winner.grade || printingEvent.results.thirdGrade, printingEvent, 'third')}</td>
+                                        <td className="border border-black px-4 py-3 text-center font-bold">{getPoints(winner.mark || printingEvent.results.thirdMark, printingEvent)}</td>
                                     </tr>
                                 ));
                             })()}
@@ -920,7 +920,7 @@ export default function AdminResultsPage() {
                                     <td className="border border-black px-4 py-2 text-center">{other.codeLetter || "-"}</td>
                                     <td className="border border-black px-4 py-2 text-center">{other.grade}</td>
                                     <td className="border border-black px-4 py-2 text-center">{other.mark || "-"}</td>
-                                    <td className="border border-black px-4 py-2 text-center font-bold">{getPoints(other.grade, printingEvent, 'other')}</td>
+                                    <td className="border border-black px-4 py-2 text-center font-bold">{getPoints(other.mark, printingEvent)}</td>
                                 </tr>
                             ))}
                         </tbody>

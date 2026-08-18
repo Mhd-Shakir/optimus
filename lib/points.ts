@@ -29,3 +29,31 @@ export const calculateGradeAndPoints = (mark: number, isGroup: boolean) => {
     return { grade: null, points: 0 };
   }
 };
+
+export const getPositionPoints = (position: string | null | undefined, isGroup: boolean) => {
+  if (!position) return 0;
+  const norm = position.toLowerCase();
+  
+  if (isGroup) {
+    if (norm === 'first') return 10;
+    if (norm === 'second') return 6;
+    if (norm === 'third') return 3;
+  } else {
+    if (norm === 'first') return 5;
+    if (norm === 'second') return 3;
+    if (norm === 'third') return 1;
+  }
+  return 0;
+};
+
+export const calculateTotalPoints = (mark: number, position: string | null | undefined, isGroup: boolean) => {
+  const { grade, points: gradePoints } = calculateGradeAndPoints(mark, isGroup);
+  const positionPoints = getPositionPoints(position, isGroup);
+  
+  return {
+    grade,
+    gradePoints,
+    positionPoints,
+    points: gradePoints + positionPoints
+  };
+};

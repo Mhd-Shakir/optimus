@@ -65,28 +65,10 @@ export default function DemoTeamDashboard() {
   };
 
 
-  // ✅ UPDATED POINTS CALCULATION - Matches Admin Results Logic
-  const getGradePoints = (grade: string, isGroup: boolean) => {
-    if (isGroup) {
-      if (grade === 'A+') return 15;
-      if (grade === 'A') return 10;
-      if (grade === 'B') return 5;
-      if (grade === 'C') return 2;
-      return 0;
-    } else {
-      if (grade === 'A+') return 6;
-      if (grade === 'A') return 5;
-      if (grade === 'B') return 3;
-      if (grade === 'C') return 1;
-      return 0;
-    }
-  };
-
-  const getPoints = (grade: string, event: any, position: string) => {
-    if (!event || !grade) return 0;
-
+  const getPoints = (grade: string, event: any, position: string, mark?: number) => {
+    if (!event) return 0;
+    
     const eventName = normalizeString(event?.name || "");
-
     const isGroupEvent = event.groupEvent === true ||
       eventName === "histoart" ||
       eventName === "dictionarymaking" ||
@@ -101,21 +83,11 @@ export default function DemoTeamDashboard() {
     ];
 
     const useGroupPoints = isGroupEvent && !individualPointExceptions.includes(eventName);
-    const gradePoints = getGradePoints(grade, useGroupPoints);
-
-    if (useGroupPoints) {
-      // Group points: position + grade for top 3, grade-based for others
-      if (position === 'first') return 10 + gradePoints;
-      if (position === 'second') return 6 + gradePoints;
-      if (position === 'third') return 3 + gradePoints;
-      return gradePoints;
-    } else {
-      // Individual points: position + grade for top 3, grade-based for others
-      if (position === 'first') return 5 + gradePoints;
-      if (position === 'second') return 3 + gradePoints;
-      if (position === 'third') return 1 + gradePoints;
-      return gradePoints;
-    }
+    
+    // We use the new calculateTotalPoints which takes (mark, position, isGroup)
+    // If we don't have mark (like legacy records), we fallback to 0 or we can just pass 0.
+    const { points } = calculateTotalPoints(mark || 0, position, useGroupPoints);
+    return points;
   }
 
   useEffect(() => {
@@ -256,7 +228,7 @@ export default function DemoTeamDashboard() {
 
     if (!grade) return { rank: null, grade: null, points: 0, mark: null };
 
-    const points = getPoints(grade, event, position);
+    const points = getPoints(grade, event, position, student.mark);
 
     return { rank, grade, points, mark };
   };

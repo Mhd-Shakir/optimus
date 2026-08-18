@@ -6,7 +6,7 @@ import { Loader2, ArrowLeft, Trophy, Medal, Star, CheckCircle2 } from "lucide-re
 import Link from "next/link";
 
 // We need the points calculator
-import { calculateGradeAndPoints } from "@/lib/points";
+import { calculateTotalPoints } from "@/lib/points";
 
 const normalizeString = (str: string) => {
     if (!str) return "";
@@ -109,7 +109,7 @@ export default function PresentationScreen({ params }: { params: Promise<{ event
   const filteredParticipants = filterWinners(allRawParticipants);
 
   const participantsWithPoints = filteredParticipants.map(w => {
-    const points = calculateGradeAndPoints(w.mark, isGroup).points;
+    const points = calculateTotalPoints(w.mark, w.position, isGroup).points;
     return { ...w, points };
   });
 

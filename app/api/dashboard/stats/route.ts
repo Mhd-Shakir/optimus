@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
-import { calculateGradeAndPoints } from "@/lib/points";
+import { calculateTotalPoints } from "@/lib/points";
 
 export const dynamic = "force-dynamic";
 
@@ -67,7 +67,7 @@ export async function GET() {
             const useGroupScale = isGroupEvent && !individualPointExceptions.includes(eventName);
 
             const isStage = event.type === "Stage";
-            const { points } = calculateGradeAndPoints(reg.mark, useGroupScale);
+            const { points } = calculateTotalPoints(reg.mark, reg.position, useGroupScale);
 
             // Team Scores
             if (isGroupEvent) {

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
+import { calculateTotalPoints } from "@/lib/points";
 
 export async function GET(req: Request) {
   try {
@@ -10,15 +11,6 @@ export async function GET(req: Request) {
     if (studentError || eventError || regError) throw new Error("DB Error");
 
     const championPoints: any = {};
-
-    const getPoints = (grade: string) => {
-        if (grade === "A+") return 10;
-        if (grade === "A") return 7;
-        if (grade === "B") return 5;
-        if (grade === "C") return 3;
-        return 0;
-    };
-
     events.forEach((ev: any) => {
         const eventRegs = registrations.filter(r => r.event_id === ev.id && (r.position || r.grade));
         if (eventRegs.length === 0) return;
@@ -34,11 +26,12 @@ export async function GET(req: Request) {
             const studentId = reg.student_id;
             const grade = reg.grade;
 
-            if (studentId && grade) {
+            if (studentId && (grade || reg.mark)) {
                 const student = students.find((s: any) => s.id === studentId);
                 
                 if (student) {
-                    let pointsToAdd = getPoints(grade);
+                    const { points } = calculateTotalPoints(reg.mark, reg.position, false); // Champion logic only applies to individual scale
+                    let pointsToAdd = points;
 
                     // Protons Rule: Only if Starred
                     if (isAlphaNonStage && !reg.is_star) {
