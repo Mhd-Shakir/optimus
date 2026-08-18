@@ -31,18 +31,7 @@ export const calculateGradeAndPoints = (mark: number, isGroup: boolean) => {
 };
 
 export const getPositionPoints = (position: string | null | undefined, isGroup: boolean) => {
-  if (!position) return 0;
-  const norm = position.toLowerCase();
-  
-  if (isGroup) {
-    if (norm === 'first') return 10;
-    if (norm === 'second') return 6;
-    if (norm === 'third') return 3;
-  } else {
-    if (norm === 'first') return 5;
-    if (norm === 'second') return 3;
-    if (norm === 'third') return 1;
-  }
+  // Position points have been removed as per requested logic
   return 0;
 };
 
