@@ -56,18 +56,19 @@ export default function JudgeValuationSheet({ params }: { params: Promise<{ even
 
                 setEvent(data.event);
                 
-                // Extract unique code letters and their marks
+                // Extract unique code letters, their marks and assigned topics
                 const rowsMap = new Map();
                 (data.registrations || []).forEach((reg: any) => {
                     if (reg.code_letter) {
-                        rowsMap.set(reg.code_letter, reg.mark || "");
+                        rowsMap.set(reg.code_letter, { mark: reg.mark || "", assigned_topic: reg.assigned_topic || "" });
                     }
                 });
                 
                 // Create a row for each assigned code letter
                 const initialRows = Array.from(rowsMap.keys()).sort().map(code => ({ 
                     codeLetter: code, 
-                    mark: rowsMap.get(code)?.toString() || "" 
+                    mark: rowsMap.get(code)?.mark?.toString() || "",
+                    assigned_topic: rowsMap.get(code)?.assigned_topic || ""
                 }));
                 setValuationRows(initialRows);
                 
@@ -130,7 +131,24 @@ export default function JudgeValuationSheet({ params }: { params: Promise<{ even
                     <ArrowLeft className="w-4 h-4" /> Back to Dashboard
                 </button>
 
-                <Card className="overflow-hidden border border-slate-200 shadow-md bg-white">
+                {/* Marquee for assigned topics */}
+                {valuationRows.some(row => row.assigned_topic) && (
+                    <div className="bg-blue-600 text-white py-2 rounded-t-lg shadow-sm overflow-hidden flex items-center">
+                        <div className="px-4 font-bold uppercase text-xs shrink-0 bg-blue-700 h-full py-2 z-10 shadow-[4px_0_10px_rgba(0,0,0,0.1)]">Now Performing</div>
+                        <div className="w-full overflow-hidden">
+                            <div className="animate-[marquee_20s_linear_infinite] whitespace-nowrap pl-4">
+                                {valuationRows.filter(r => r.assigned_topic).map((r, i) => (
+                                    <span key={i} className="mx-6 text-sm font-semibold">
+                                        Participant <span className="bg-white text-blue-800 px-1.5 py-0.5 rounded ml-1 font-black">{r.codeLetter}</span> : {r.assigned_topic}
+                                        <span className="mx-6 opacity-50">•</span>
+                                    </span>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                <Card className={`overflow-hidden border border-slate-200 shadow-md bg-white ${valuationRows.some(row => row.assigned_topic) ? 'rounded-t-none border-t-0' : ''}`}>
                     {/* Header matching PDF */}
                     <div className="p-6 border-b-2 border-slate-900">
                         <div className="flex justify-between items-start mb-4">
@@ -149,20 +167,37 @@ export default function JudgeValuationSheet({ params }: { params: Promise<{ even
                             <div className="py-2 font-bold uppercase text-sm">{event.category}</div>
                             <div className="py-2 font-bold uppercase text-sm">{event.is_group_event ? "GROUP" : "INDIVIDUAL"}</div>
                         </div>
+                        {event.topics && event.topics.length > 0 ? (
+                            <div className="text-left py-4 px-6 border-b border-slate-300 text-blue-800 bg-blue-50/50">
+                                <div className="font-bold text-sm uppercase mb-2">Topics:</div>
+                                <ul className="space-y-1">
+                                    {event.topics.map((t: string, i: number) => (
+                                        <li key={i} className="text-sm font-semibold flex items-start gap-2">
+                                            <span className="text-blue-500">{i + 1}.</span> {t}
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        ) : event.topic && (
+                            <div className="text-center py-2 font-bold text-sm border-b border-slate-300 text-blue-700 bg-blue-50">
+                                Topic: {event.topic}
+                            </div>
+                        )}
                     </div>
                     
                     <div className="p-0">
                         <Table className="min-w-full border-collapse">
                             <TableHeader>
                                 <TableRow className="bg-slate-50">
-                                    <TableHead className="w-1/2 border-b-2 border-r border-slate-300 text-center font-bold text-slate-900 py-4 uppercase text-xs">Code Letter</TableHead>
-                                    <TableHead className="w-1/2 border-b-2 border-slate-300 text-center font-bold text-slate-900 py-4 uppercase text-xs">Mark out of 100</TableHead>
+                                    <TableHead className="w-1/3 border-b-2 border-r border-slate-300 text-center font-bold text-slate-900 py-4 uppercase text-xs">Code Letter</TableHead>
+                                    <TableHead className="w-1/3 border-b-2 border-r border-slate-300 text-center font-bold text-slate-900 py-4 uppercase text-xs">Assigned Topic</TableHead>
+                                    <TableHead className="w-1/3 border-b-2 border-slate-300 text-center font-bold text-slate-900 py-4 uppercase text-xs">Mark out of 100</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {valuationRows.length === 0 ? (
                                     <TableRow>
-                                        <TableCell colSpan={2} className="text-center py-8 text-slate-500">
+                                        <TableCell colSpan={3} className="text-center py-8 text-slate-500">
                                             No code letters assigned for this event.
                                         </TableCell>
                                     </TableRow>
@@ -171,6 +206,9 @@ export default function JudgeValuationSheet({ params }: { params: Promise<{ even
                                         <TableRow key={idx} className="hover:bg-slate-50">
                                             <TableCell className="border-b border-r border-slate-200 text-center py-3 font-bold text-lg">
                                                 {row.codeLetter}
+                                            </TableCell>
+                                            <TableCell className="border-b border-r border-slate-200 text-center py-3 text-sm font-medium text-slate-600">
+                                                {row.assigned_topic || <span className="italic text-slate-400">Not Assigned</span>}
                                             </TableCell>
                                             <TableCell className="border-b border-slate-200 p-0 text-center align-middle">
                                                 <div className="px-4 py-1 h-full flex items-center justify-center">

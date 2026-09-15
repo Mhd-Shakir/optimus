@@ -125,6 +125,11 @@
   }
 }
 
+@keyframes marquee {
+  0% { transform: translateX(100%); }
+  100% { transform: translateX(-100%); }
+}
+
 /* Print styles for judge sheets */
 @media print {
   .no-print {

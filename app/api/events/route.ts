@@ -16,6 +16,8 @@ const mapEvent = (dbEvent: any) => ({
   },
   teamLimit: dbEvent.team_limit,
   judgeId: dbEvent.judge_id,
+  topic: dbEvent.topic,
+  topics: dbEvent.topics || [],
   createdAt: dbEvent.created_at,
   // Ensure we mock the results structure the frontend expects
   results: {
@@ -89,6 +91,8 @@ export async function GET() {
         },
         teamLimit: dbEvent.team_limit,
         judgeId: dbEvent.judge_id,
+        topic: dbEvent.topic,
+        topics: dbEvent.topics || [],
         createdAt: dbEvent.created_at,
         results: { first, second, third, others }
       };
@@ -116,7 +120,9 @@ export async function POST(req: Request) {
         category: body.category,
         type: body.type,
         is_group_event: body.groupEvent || false,
-        status: body.status || 'upcoming'
+        status: body.status || 'upcoming',
+        topic: body.topic || null,
+        topics: body.topics || []
       }])
       .select()
       .single();
@@ -150,15 +156,20 @@ export async function DELETE(req: Request) {
 export async function PATCH(req: Request) {
   try {
     const body = await req.json();
-    const { id, judgeId } = body;
+    const { id, judgeId, topic, topics } = body;
 
     if (!id) {
       return NextResponse.json({ error: "Event ID is required" }, { status: 400 });
     }
 
+    const updateData: any = {};
+    if (judgeId !== undefined) updateData.judge_id = judgeId || null;
+    if (topic !== undefined) updateData.topic = topic || null;
+    if (topics !== undefined) updateData.topics = topics || [];
+
     const { data: updatedEvent, error } = await supabaseAdmin
       .from('events')
-      .update({ judge_id: judgeId || null })
+      .update(updateData)
       .eq('id', id)
       .select()
       .single();

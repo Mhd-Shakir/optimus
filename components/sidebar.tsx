@@ -13,6 +13,7 @@ const navItems = [
   { href: "/admin/judges", label: "Judges", icon: UserCog },
   { href: "/admin/announcers", label: "Announcers", icon: Mic2 },
   { href: "/admin/events", label: "Events", icon: Calendar },
+  { href: "/admin/topics", label: "Topic Selection", icon: FileText },
   { href: "/admin/schedule", label: "Schedule", icon: Clock },
   { href: "/admin/registrations", label: "Registrations", icon: ClipboardList },
   { href: "/admin/results", label: "Results", icon: Trophy },

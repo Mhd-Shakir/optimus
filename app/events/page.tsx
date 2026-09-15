@@ -12,6 +12,7 @@ interface Event {
   points: number;
   status: string;
   winner: string | null;
+  topic?: string;
 }
 
 export default function EventsPage() {
@@ -19,7 +20,7 @@ export default function EventsPage() {
   const router = useRouter();
   const { toast } = useToast();
   const [events, setEvents] = useState<Event[]>([]);
-  const [newEvent, setNewEvent] = useState({ name: "", category: "stage", points: 10 });
+  const [newEvent, setNewEvent] = useState({ name: "", category: "stage", points: 10, topic: "" });
   const [loading, setLoading] = useState(true);
 
   // 1. Fetch Events
@@ -52,7 +53,7 @@ export default function EventsPage() {
       });
 
       if (res.ok) {
-        setNewEvent({ name: "", category: "stage", points: 10 }); // Reset form
+        setNewEvent({ name: "", category: "stage", points: 10, topic: "" }); // Reset form
         fetchEvents(); // Refresh list
         toast({ title: "Event added successfully!" });
       } else {
@@ -60,6 +61,28 @@ export default function EventsPage() {
       }
     } catch (error) {
       toast({ variant: "destructive", title: "Failed to add event" });
+    }
+  };
+
+  // 3. Update Event Topic
+  const handleUpdateTopic = async (eventId: string, currentTopic: string | undefined) => {
+    const newTopic = prompt("Enter new topic:", currentTopic || "");
+    if (newTopic === null) return; // User cancelled
+    
+    try {
+      const res = await fetch("/api/events", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: eventId, topic: newTopic }),
+      });
+      if (res.ok) {
+        toast({ title: "Topic updated successfully!" });
+        fetchEvents();
+      } else {
+        toast({ variant: "destructive", title: "Failed to update topic" });
+      }
+    } catch (error) {
+      toast({ variant: "destructive", title: "Failed to update topic" });
     }
   };
 
@@ -100,6 +123,16 @@ export default function EventsPage() {
                   className="px-3 py-2 border rounded-md w-24"
                 />
               </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Topic (Optional)</label>
+                <input
+                  type="text"
+                  value={newEvent.topic}
+                  onChange={(e) => setNewEvent({ ...newEvent, topic: e.target.value })}
+                  className="px-3 py-2 border rounded-md w-64"
+                  placeholder="Ex: Time is Precious"
+                />
+              </div>
               <button
                 type="submit"
                 className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
@@ -121,9 +154,20 @@ export default function EventsPage() {
               <div key={event._id} className="bg-white p-5 rounded-lg shadow-sm border border-gray-100 flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
                 <div>
                   <h3 className="text-lg font-bold text-gray-800">{event.name}</h3>
-                  <div className="flex gap-3 text-sm text-gray-500 mt-1">
+                  {event.topic && (
+                    <p className="text-sm text-blue-600 font-medium mt-1">Topic: {event.topic}</p>
+                  )}
+                  <div className="flex gap-3 text-sm text-gray-500 mt-1 items-center">
                     <span className="bg-gray-100 px-2 py-0.5 rounded text-xs uppercase tracking-wide">{event.category}</span>
                     <span>Points: {event.points}</span>
+                    {user?.role === "admin" && (
+                      <button 
+                        onClick={() => handleUpdateTopic(event._id, event.topic)}
+                        className="text-xs text-blue-500 hover:underline ml-2"
+                      >
+                        Edit Topic
+                      </button>
+                    )}
                   </div>
                 </div>
                 

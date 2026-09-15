@@ -32,6 +32,8 @@ type Event = {
   groupEvent?: boolean 
   teamLimit?: number
   judgeId?: string | null
+  topic?: string
+  topics?: string[]
 }
 
 const categories = ["Protons", "Nexus", "Cosmos", "General-A", "General-B"]
@@ -65,8 +67,12 @@ export default function EventsPage() {
 
   // Form Data
   const [formData, setFormData] = useState({
-    name: "", category: "Protons", type: "Stage", groupEvent: false
+    name: "", category: "Protons", type: "Stage", groupEvent: false, topic: "", topics: [] as string[]
   })
+
+  const [isTopicDialogOpen, setIsTopicDialogOpen] = useState(false)
+  const [editingTopicId, setEditingTopicId] = useState<string>("")
+  const [editingTopics, setEditingTopics] = useState<string[]>([])
 
   useEffect(() => {
     fetchData()
@@ -307,17 +313,47 @@ export default function EventsPage() {
     toast({ title: "Downloaded", description: `Report for ${filterCategory} generated.` });
   }
 
-  // Add Event
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
       await axios.post('/api/events/bulk', [formData]) 
       toast({ title: "Success", description: "Event added successfully!" })
-      setFormData({ name: "", category: "Protons", type: "Stage", groupEvent: false })
+      setFormData({ name: "", category: "Protons", type: "Stage", groupEvent: false, topic: "" })
       setIsAddDialogOpen(false)
       fetchData(true) 
     } catch (error) {
       toast({ variant: "destructive", title: "Error", description: "Failed to add event" })
+    }
+  }
+
+  // Open Topic Dialog
+  const handleUpdateTopic = (e: React.MouseEvent, eventId: string, currentTopics: string[] | undefined) => {
+    e.stopPropagation()
+    setEditingTopicId(eventId)
+    setEditingTopics(currentTopics && currentTopics.length > 0 ? currentTopics : [""])
+    setIsTopicDialogOpen(true)
+  }
+  
+  // Submit Topic Change
+  const submitTopicChange = async () => {
+    try {
+      // Filter out empty topics
+      const validTopics = editingTopics.filter(t => t.trim() !== "");
+      
+      const res = await fetch("/api/events", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: editingTopicId, topics: validTopics }),
+      })
+      if (res.ok) {
+        toast({ title: "Topic updated successfully!" })
+        fetchData(true)
+        setIsTopicDialogOpen(false)
+      } else {
+        toast({ variant: "destructive", title: "Failed to update topic" })
+      }
+    } catch (error) {
+      toast({ variant: "destructive", title: "Failed to update topic" })
     }
   }
 
@@ -480,6 +516,10 @@ export default function EventsPage() {
                         </Select>
                     </div>
                 </div>
+                <div className="space-y-2">
+                    <label className="text-sm font-medium">Topic (Optional)</label>
+                    <Input placeholder="e.g. Time is Precious" value={formData.topic} onChange={e => setFormData({...formData, topic: e.target.value})} />
+                </div>
                 <div className="flex items-center gap-2 border p-3 rounded-md bg-slate-50">
                     <input type="checkbox" id="isGroup" className="w-4 h-4" checked={formData.groupEvent} onChange={e => setFormData({...formData, groupEvent: e.target.checked})} />
                     <label htmlFor="isGroup" className="text-sm font-medium">Is Group Event?</label>
@@ -487,6 +527,46 @@ export default function EventsPage() {
                 <Button type="submit" className="w-full">Save Event</Button>
                 </form>
             </DialogContent>
+            </Dialog>
+
+            <Dialog open={isTopicDialogOpen} onOpenChange={setIsTopicDialogOpen}>
+              <DialogContent>
+                <DialogHeader><DialogTitle>Edit Event Topics</DialogTitle></DialogHeader>
+                <div className="space-y-4 pt-4">
+                  <div className="space-y-3 max-h-[40vh] overflow-y-auto pr-2">
+                    {editingTopics.map((topic, index) => (
+                      <div key={index} className="flex gap-2 items-center">
+                        <span className="text-sm font-bold text-slate-400">{index + 1}.</span>
+                        <Input 
+                          placeholder="e.g. Time is Precious" 
+                          value={topic} 
+                          onChange={e => {
+                            const newTopics = [...editingTopics];
+                            newTopics[index] = e.target.value;
+                            setEditingTopics(newTopics);
+                          }} 
+                        />
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-9 w-9 text-red-500 hover:text-red-600 hover:bg-red-50 shrink-0"
+                          onClick={() => setEditingTopics(editingTopics.filter((_, i) => i !== index))}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                  <Button 
+                    variant="outline" 
+                    className="w-full border-dashed"
+                    onClick={() => setEditingTopics([...editingTopics, ""])}
+                  >
+                    + Add Another Topic
+                  </Button>
+                  <Button onClick={submitTopicChange} className="w-full bg-blue-600 hover:bg-blue-700 mt-2">Save Topics</Button>
+                </div>
+              </DialogContent>
             </Dialog>
         </div>
       </div>
@@ -542,7 +622,14 @@ export default function EventsPage() {
                                     <Button variant="ghost" size="icon" className="h-6 w-6 text-slate-300 hover:text-red-600 hover:bg-red-50 rounded-full" onClick={(e) => handleDelete(e, event._id)}><Trash2 className="w-3.5 h-3.5" /></Button>
                                 </div>
                             </div>
-                            <div className="flex items-center gap-1 mt-1">
+                            {event.topics && event.topics.length > 0 ? (
+                                <p className="text-sm text-blue-600 font-medium mt-1 truncate" title={event.topics.join(', ')}>
+                                  {event.topics.length} Topic{event.topics.length > 1 ? 's' : ''}
+                                </p>
+                            ) : event.topic && (
+                                <p className="text-sm text-blue-600 font-medium mt-1 truncate" title={event.topic}>Topic: {event.topic}</p>
+                            )}
+                            <div className="flex items-center flex-wrap gap-1 mt-1">
                                 <Badge variant="outline" className="text-[10px] shrink-0">{event.category}</Badge>
                                 {event.groupEvent && <Badge variant="secondary" className="text-[9px] bg-yellow-100 text-yellow-800 hover:bg-yellow-200">Group</Badge>}
                                 {event.judgeId && (
@@ -554,7 +641,10 @@ export default function EventsPage() {
                         </CardHeader>
                         <CardFooter className="pt-3 text-xs text-slate-500 border-t bg-slate-50/50 rounded-b-xl flex justify-between items-center">
                             <div className="flex items-center gap-1.5 font-medium"><Users className="w-3.5 h-3.5" /> {participants.length} {event.teamLimit ? `/ ${event.teamLimit * 2}` : ''} Participants</div>
-                            <span className="text-blue-600 font-medium text-[10px] opacity-0 group-hover:opacity-100 transition-opacity uppercase tracking-wider">View</span>
+                            <div className="flex items-center gap-2">
+                                <button onClick={(e) => handleUpdateTopic(e, event._id, event.topics?.length ? event.topics : (event.topic ? [event.topic] : []))} className="text-[10px] font-bold text-blue-500 hover:underline uppercase tracking-wider z-10 relative">Edit Topic</button>
+                                <span className="text-blue-600 font-medium text-[10px] opacity-0 group-hover:opacity-100 transition-opacity uppercase tracking-wider">View</span>
+                            </div>
                         </CardFooter>
                     </Card>
                 )

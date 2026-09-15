@@ -47,6 +47,8 @@ export default function AnnouncerDashboard() {
     }
   };
 
+  const announcedCount = events.filter((e) => e.status === "announced").length;
+
   const filteredEvents = events.filter((e) => {
     const matchesSearch = e.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
                           e.category.toLowerCase().includes(searchTerm.toLowerCase());
@@ -218,7 +220,7 @@ export default function AnnouncerDashboard() {
               {filteredEvents.map((event, index) => (
                 <Link 
                   key={event.id} 
-                  href={`/announcer/${event.id}`}
+                  href={`/announcer/${event.id}?num=${activeTab === "events" ? announcedCount + 1 : index + 1}`}
                   className="group block relative"
                 >
                   <div className={`p-6 rounded-2xl border transition-all duration-300 h-full flex flex-col ${
@@ -229,7 +231,7 @@ export default function AnnouncerDashboard() {
                     
                     <div className="flex justify-between items-start mb-4">
                       <span className="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-slate-100 text-slate-600">
-                        #{index + 1} &middot; {event.category}
+                        {activeTab === "announced" ? `#${index + 1} \u00B7 ` : ""}{event.category}
                       </span>
                       
                       {event.status === 'announced' ? (

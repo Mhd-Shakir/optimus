@@ -21,6 +21,8 @@ export interface Event {
   firstPrize: number
   secondPrize: number
   thirdPrize: number
+  topic?: string
+  topics?: string[]
 }
 
 export interface Registration {

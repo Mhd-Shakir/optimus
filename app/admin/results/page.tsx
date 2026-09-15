@@ -169,6 +169,38 @@ export default function AdminResultsPage() {
             return toast({ variant: "destructive", title: "Wait!", description: "At least one First Place winner is required." })
         }
 
+        // Validate marks to ensure lower positions don't have higher marks than top positions
+        const getMarks = (arr: any[]) => arr.filter(x => x.studentId && x.mark).map(x => parseInt(x.mark || '0'));
+        
+        const firstMarks = getMarks(resultData.first);
+        const secondMarks = getMarks(resultData.second);
+        const thirdMarks = getMarks(resultData.third);
+        const otherMarks = getMarks(resultData.others);
+
+        const minFirst = firstMarks.length > 0 ? Math.min(...firstMarks) : Infinity;
+        const maxSecond = secondMarks.length > 0 ? Math.max(...secondMarks) : -Infinity;
+        const minSecond = secondMarks.length > 0 ? Math.min(...secondMarks) : Infinity;
+        const maxThird = thirdMarks.length > 0 ? Math.max(...thirdMarks) : -Infinity;
+        const minThird = thirdMarks.length > 0 ? Math.min(...thirdMarks) : Infinity;
+        const maxOther = otherMarks.length > 0 ? Math.max(...otherMarks) : -Infinity;
+
+        if (secondMarks.length > 0 && maxSecond > minFirst) {
+            return toast({ variant: "destructive", title: "Invalid Marks", description: "Second place cannot have a higher score than First place." });
+        }
+        if (thirdMarks.length > 0) {
+            if (secondMarks.length > 0 && maxThird > minSecond) {
+                return toast({ variant: "destructive", title: "Invalid Marks", description: "Third place cannot have a higher score than Second place." });
+            }
+            if (secondMarks.length === 0 && maxThird > minFirst) {
+                return toast({ variant: "destructive", title: "Invalid Marks", description: "Third place cannot have a higher score than First place." });
+            }
+        }
+        
+        const minTopMark = thirdMarks.length > 0 ? minThird : (secondMarks.length > 0 ? minSecond : minFirst);
+        if (otherMarks.length > 0 && minTopMark !== Infinity && maxOther > minTopMark) {
+            return toast({ variant: "destructive", title: "Invalid Marks", description: "Other positions cannot have a higher score than the top positions." });
+        }
+
         setSubmitting(true)
         try {
             // Auto-sort others by mark descending before saving

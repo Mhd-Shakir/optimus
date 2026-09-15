@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, use } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Loader2, ArrowLeft, Trophy, Medal, Star, CheckCircle2 } from "lucide-react";
 import Link from "next/link";
 
@@ -29,6 +29,8 @@ const getEventGroupStatus = (event: any) => {
 export default function PresentationScreen({ params }: { params: Promise<{ eventId: string }> }) {
   const unwrappedParams = use(params);
   const eventId = unwrappedParams.eventId;
+  const searchParams = useSearchParams();
+  const num = searchParams.get("num");
   
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -151,7 +153,7 @@ export default function PresentationScreen({ params }: { params: Promise<{ event
           <ArrowLeft className="w-6 h-6" />
         </Link>
         <div className="inline-block px-4 py-1.5 rounded-full bg-slate-100 border border-slate-200 text-slate-600 font-bold uppercase tracking-widest text-sm mb-4">
-          {event.category}
+          {num ? `#${num} \u00B7 ` : ""}{event.category}
         </div>
         <h1 className="text-5xl md:text-7xl font-black text-slate-900 tracking-tight drop-shadow-sm">
           {event.name}
