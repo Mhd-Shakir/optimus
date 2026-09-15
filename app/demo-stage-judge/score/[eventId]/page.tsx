@@ -155,7 +155,7 @@ export default function DemoStageJudgeValuationSheet({ params }: { params: Promi
                             <AlertDialogTrigger asChild>
                                 <Button 
                                     disabled={saving || valuationRows.length === 0} 
-                                    className="bg-blue-600 hover:bg-blue-700 text-white shadow-md text-lg px-8 py-6 h-auto transition-transform active:scale-95"
+                                    className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-md text-lg px-8 py-6 h-auto transition-transform active:scale-95"
                                 >
                                     {saving ? <Loader2 className="w-5 h-5 mr-2 animate-spin" /> : <Save className="w-5 h-5 mr-2" />}
                                     Publish Results
@@ -170,7 +170,7 @@ export default function DemoStageJudgeValuationSheet({ params }: { params: Promi
                                 </AlertDialogHeader>
                                 <AlertDialogFooter>
                                     <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                    <AlertDialogAction onClick={handleSave} className="bg-blue-600 text-white hover:bg-blue-700">
+                                    <AlertDialogAction onClick={handleSave} className="bg-emerald-600 text-white hover:bg-emerald-700">
                                         Yes, Publish Results
                                     </AlertDialogAction>
                                 </AlertDialogFooter>

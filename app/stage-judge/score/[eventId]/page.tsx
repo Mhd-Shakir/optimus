@@ -125,13 +125,13 @@ export default function StageJudgeValuationSheet({ params }: { params: Promise<{
 
                 {/* Marquee for assigned topics */}
                 {valuationRows.some(row => row.assigned_topic) && (
-                    <div className="bg-blue-600 text-white py-2 rounded-t-lg shadow-sm overflow-hidden flex items-center">
-                        <div className="px-4 font-bold uppercase text-xs shrink-0 bg-blue-700 h-full py-2 z-10 shadow-[4px_0_10px_rgba(0,0,0,0.1)]">Now Performing</div>
+                    <div className="bg-emerald-600 text-white py-2 rounded-t-lg shadow-sm overflow-hidden flex items-center">
+                        <div className="px-4 font-bold uppercase text-xs shrink-0 bg-emerald-700 h-full py-2 z-10 shadow-[4px_0_10px_rgba(0,0,0,0.1)]">Now Performing</div>
                         <div className="w-full overflow-hidden">
                             <div className="animate-[marquee_20s_linear_infinite] whitespace-nowrap pl-4">
                                 {valuationRows.filter(r => r.assigned_topic).map((r, i) => (
                                     <span key={i} className="mx-6 text-sm font-semibold">
-                                        Participant <span className="bg-white text-blue-800 px-1.5 py-0.5 rounded ml-1 font-black">{r.codeLetter}</span> : {r.assigned_topic}
+                                        Participant <span className="bg-white text-emerald-800 px-1.5 py-0.5 rounded ml-1 font-black">{r.codeLetter}</span> : {r.assigned_topic}
                                         <span className="mx-6 opacity-50">•</span>
                                     </span>
                                 ))}
@@ -159,18 +159,18 @@ export default function StageJudgeValuationSheet({ params }: { params: Promise<{
                             <div className="py-2 font-bold uppercase text-sm">{event.is_group_event ? "GROUP" : "INDIVIDUAL"}</div>
                         </div>
                         {event.topics && event.topics.length > 0 ? (
-                            <div className="text-left py-4 px-6 border-b border-slate-300 text-blue-800 bg-blue-50/50">
+                            <div className="text-left py-4 px-6 border-b border-slate-300 text-emerald-800 bg-emerald-50/50">
                                 <div className="font-bold text-sm uppercase mb-2">Topics:</div>
                                 <ul className="space-y-1">
                                     {event.topics.map((t: string, i: number) => (
                                         <li key={i} className="text-sm font-semibold flex items-start gap-2">
-                                            <span className="text-blue-500">{i + 1}.</span> {t}
+                                            <span className="text-emerald-500">{i + 1}.</span> {t}
                                         </li>
                                     ))}
                                 </ul>
                             </div>
                         ) : event.topic && (
-                            <div className="text-center py-2 font-bold text-sm border-b border-slate-300 text-blue-700 bg-blue-50">
+                            <div className="text-center py-2 font-bold text-sm border-b border-slate-300 text-emerald-700 bg-emerald-50">
                                 Topic: {event.topic}
                             </div>
                         )}
@@ -224,7 +224,7 @@ export default function StageJudgeValuationSheet({ params }: { params: Promise<{
                             <AlertDialogTrigger asChild>
                                 <Button 
                                     disabled={saving || valuationRows.length === 0} 
-                                    className="bg-blue-600 hover:bg-blue-700 text-white shadow-md text-lg px-8 py-6 h-auto transition-transform active:scale-95"
+                                    className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-md text-lg px-8 py-6 h-auto transition-transform active:scale-95"
                                 >
                                     {saving ? <Loader2 className="w-5 h-5 mr-2 animate-spin" /> : <Save className="w-5 h-5 mr-2" />}
                                     Publish Results
@@ -239,7 +239,7 @@ export default function StageJudgeValuationSheet({ params }: { params: Promise<{
                                 </AlertDialogHeader>
                                 <AlertDialogFooter>
                                     <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                    <AlertDialogAction onClick={handleSave} className="bg-blue-600 text-white hover:bg-blue-700">
+                                    <AlertDialogAction onClick={handleSave} className="bg-emerald-600 text-white hover:bg-emerald-700">
                                         Yes, Publish Results
                                     </AlertDialogAction>
                                 </AlertDialogFooter>

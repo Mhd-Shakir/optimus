@@ -79,7 +79,7 @@ export default function DemoStageJudgeDashboard() {
                 <DemoSidebar />
                 <main className="flex-1 overflow-y-auto p-4 md:p-8 custom-scrollbar bg-slate-50 flex items-center justify-center">
                 <Card className="w-full max-w-sm p-8 shadow-lg text-center space-y-6 border-0">
-                    <div className="w-16 h-16 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4">
                         <Lock className="w-8 h-8" />
                     </div>
                     <div>
@@ -103,7 +103,7 @@ export default function DemoStageJudgeDashboard() {
                                 {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                             </button>
                         </div>
-                        <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 h-12 text-md">Enter Portal</Button>
+                        <Button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-700 h-12 text-md">Enter Portal</Button>
                     </form>
                 </Card>
                 </main>
@@ -126,7 +126,7 @@ export default function DemoStageJudgeDashboard() {
             <div className="max-w-4xl mx-auto">
                 <div className="flex items-center justify-between mb-8">
                     <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 rounded-full bg-blue-600 text-white flex items-center justify-center shadow-sm">
+                        <div className="w-12 h-12 rounded-full bg-emerald-600 text-white flex items-center justify-center shadow-sm">
                             <Mic2 className="w-6 h-6" />
                         </div>
                         <div>
@@ -141,11 +141,11 @@ export default function DemoStageJudgeDashboard() {
 
                 <div className="grid gap-4">
                     {sortedEvents.map(event => (
-                        <Card key={event._id} className="p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border border-slate-200 shadow-sm hover:border-blue-300 transition-colors cursor-pointer" onClick={() => router.push(`/demo-stage-judge/score/${event._id}`)}>
+                        <Card key={event._id} className="p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border border-slate-200 shadow-sm hover:border-emerald-300 transition-colors cursor-pointer" onClick={() => router.push(`/demo-stage-judge/score/${event._id}`)}>
                             <div>
                                 <h3 className="font-bold text-lg text-slate-800">{event.name}</h3>
                                 <div className="flex gap-2 mt-1">
-                                    <Badge variant="secondary" className="text-xs bg-blue-50 text-blue-700">{event.category}</Badge>
+                                    <Badge variant="secondary" className="text-xs bg-emerald-50 text-emerald-700">{event.category}</Badge>
                                     <Badge variant="outline" className="text-xs text-slate-500">
                                         {(event.status === "completed" || event.status === "announced") ? "Evaluated" : "Pending Evaluation"}
                                     </Badge>
@@ -153,7 +153,7 @@ export default function DemoStageJudgeDashboard() {
                             </div>
                             <Button 
                                 onClick={(e) => { e.stopPropagation(); router.push(`/demo-stage-judge/score/${event._id}`); }}
-                                className={(event.status === "completed" || event.status === "announced") ? "bg-slate-100 text-slate-600 hover:bg-slate-200" : "bg-blue-600 text-white hover:bg-blue-700"}
+                                className={(event.status === "completed" || event.status === "announced") ? "bg-slate-100 text-slate-600 hover:bg-slate-200" : "bg-emerald-600 text-white hover:bg-emerald-700"}
                             >
                                 {(event.status === "completed" || event.status === "announced") ? "View Results" : "Evaluate"}
                                 <ArrowRight className="w-4 h-4 ml-2" />

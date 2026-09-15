@@ -64,7 +64,7 @@ export default function JudgeDashboard() {
         <div className="p-6 space-y-6 bg-slate-50 min-h-screen">
             <div className="max-w-4xl mx-auto">
                 <div className="flex items-center gap-3 mb-8">
-                    <div className="w-12 h-12 rounded-full bg-slate-900 text-white flex items-center justify-center shadow-sm">
+                    <div className="w-12 h-12 rounded-full bg-emerald-600 text-white flex items-center justify-center shadow-sm">
                         <Gavel className="w-6 h-6" />
                     </div>
                     <div>
@@ -75,11 +75,11 @@ export default function JudgeDashboard() {
 
                 <div className="grid gap-4">
                     {sortedEvents.map(event => (
-                        <Card key={event._id} className="p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border border-slate-200 shadow-sm hover:border-slate-300 transition-colors">
+                        <Card key={event._id} className="p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border border-slate-200 shadow-sm hover:border-emerald-300 transition-colors">
                             <div>
                                 <h3 className="font-bold text-lg text-slate-800">{event.name}</h3>
                                 <div className="flex gap-2 mt-1">
-                                    <Badge variant="secondary" className="text-xs bg-slate-100 text-slate-700">{event.category}</Badge>
+                                    <Badge variant="secondary" className="text-xs bg-emerald-50 text-emerald-700">{event.category}</Badge>
                                     <Badge variant="outline" className="text-xs text-slate-500">
                                         {(event.status === "completed" || event.status === "announced") ? "Evaluated" : "Pending Evaluation"}
                                     </Badge>
@@ -87,7 +87,7 @@ export default function JudgeDashboard() {
                             </div>
                             <Button 
                                 onClick={() => router.push(`/judge/results/${event._id}`)}
-                                className={(event.status === "completed" || event.status === "announced") ? "bg-slate-100 text-slate-600 hover:bg-slate-200" : "bg-slate-900 text-white hover:bg-slate-800"}
+                                className={(event.status === "completed" || event.status === "announced") ? "bg-slate-100 text-slate-600 hover:bg-slate-200" : "bg-emerald-600 text-white hover:bg-emerald-700"}
                             >
                                 {(event.status === "completed" || event.status === "announced") ? "View Results" : "Evaluate"}
                                 <ArrowRight className="w-4 h-4 ml-2" />
