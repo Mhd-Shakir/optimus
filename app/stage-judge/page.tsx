@@ -111,10 +111,11 @@ export default function StageJudgeDashboard() {
         );
     }
 
-    // Sort events: Pending first, then completed
     const sortedEvents = [...events].sort((a, b) => {
-        if (a.status === "upcoming" && b.status === "completed") return -1;
-        if (a.status === "completed" && b.status === "upcoming") return 1;
+        const aCompleted = a.status === "completed" || a.status === "announced";
+        const bCompleted = b.status === "completed" || b.status === "announced";
+        if (a.status === "upcoming" && bCompleted) return -1;
+        if (aCompleted && b.status === "upcoming") return 1;
         return 0;
     });
 
@@ -144,15 +145,15 @@ export default function StageJudgeDashboard() {
                                 <div className="flex gap-2 mt-1">
                                     <Badge variant="secondary" className="text-xs bg-blue-50 text-blue-700">{event.category}</Badge>
                                     <Badge variant="outline" className="text-xs text-slate-500">
-                                        {event.status === "completed" ? "Evaluated" : "Pending Evaluation"}
+                                        {(event.status === "completed" || event.status === "announced") ? "Evaluated" : "Pending Evaluation"}
                                     </Badge>
                                 </div>
                             </div>
                             <Button 
                                 onClick={(e) => { e.stopPropagation(); router.push(`/stage-judge/score/${event._id}`); }}
-                                className={event.status === "completed" ? "bg-slate-100 text-slate-600 hover:bg-slate-200" : "bg-blue-600 text-white hover:bg-blue-700"}
+                                className={(event.status === "completed" || event.status === "announced") ? "bg-slate-100 text-slate-600 hover:bg-slate-200" : "bg-blue-600 text-white hover:bg-blue-700"}
                             >
-                                {event.status === "completed" ? "View Results" : "Evaluate"}
+                                {(event.status === "completed" || event.status === "announced") ? "View Results" : "Evaluate"}
                                 <ArrowRight className="w-4 h-4 ml-2" />
                             </Button>
                         </Card>

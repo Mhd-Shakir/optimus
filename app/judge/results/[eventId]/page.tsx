@@ -214,10 +214,10 @@ export default function JudgeValuationSheet({ params }: { params: Promise<{ even
                                                 <div className="px-4 py-1 h-full flex items-center justify-center">
                                                     <Input 
                                                         type="number" 
-                                                        placeholder={event.status === "completed" ? "-" : "Enter marks..."}
+                                                        placeholder={(event.status === "completed" || event.status === "announced") ? "-" : "Enter marks..."}
                                                         value={row.mark} 
                                                         onChange={(e) => handleMarkChange(idx, e.target.value)} 
-                                                        disabled={event.status === "completed"}
+                                                        disabled={event.status === "completed" || event.status === "announced"}
                                                         className="w-full text-center font-bold text-lg border-none shadow-none focus-visible:ring-0 placeholder:text-slate-300 placeholder:font-normal h-full bg-transparent disabled:opacity-100 disabled:text-slate-700" 
                                                     />
                                                 </div>
@@ -229,7 +229,7 @@ export default function JudgeValuationSheet({ params }: { params: Promise<{ even
                         </Table>
                     </div>
 
-                    {event.status !== "completed" && (
+                    {(event.status !== "completed" && event.status !== "announced") && (
                         <div className="p-6 bg-slate-50 border-t flex justify-end">
                             <AlertDialog>
                                 <AlertDialogTrigger asChild>
