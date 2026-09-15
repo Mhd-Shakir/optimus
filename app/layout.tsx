@@ -13,23 +13,6 @@ export const metadata: Metadata = {
   title: "Optimus - Event Management",
   description: "Event Management System for Darul Aman Integrated Islamic Academy",
   generator: "v0.app",
-  icons: {
-    icon: [
-      {
-        url: "/icon.png",
-        media: "(prefers-color-scheme: light)",
-      },
-      {
-        url: "/icon.png",
-        media: "(prefers-color-scheme: dark)",
-      },
-      {
-        url: "/icon.png",
-        type: "image/svg+xml",
-      },
-    ],
-    apple: "/icon.png",
-  },
 }
 
 export default function RootLayout({
