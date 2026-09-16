@@ -418,17 +418,47 @@ export default function CodeLettersPage({ params }: { params: Promise<{ eventId:
                                             </TableCell>
                                         )}
                                         <TableCell className="text-right">
-                                            {reg.code_letter ? (
-                                                <span className="inline-flex items-center justify-center w-12 h-10 rounded bg-slate-900 text-white font-black text-lg shadow-sm">
-                                                    {reg.code_letter}
-                                                </span>
+                                            {normalizeString(event?.name) === "thadrees" ? (
+                                                <input
+                                                    type="text"
+                                                    value={reg.code_letter || ""}
+                                                    onChange={(e) => {
+                                                        const value = e.target.value.toUpperCase();
+                                                        const newRegs = [...registrations];
+                                                        const targetReg = newRegs.find(r => r.id === reg.id);
+                                                        if (targetReg) {
+                                                            if (isGroupEvent) {
+                                                                const team = targetReg.students?.team || "noteam";
+                                                                const groupNo = targetReg.group_no || "unassigned";
+                                                                newRegs.forEach(r => {
+                                                                    if ((r.students?.team || "noteam") === team && (r.group_no || "unassigned") === groupNo) {
+                                                                        r.code_letter = value;
+                                                                    }
+                                                                });
+                                                            } else {
+                                                                targetReg.code_letter = value;
+                                                            }
+                                                            setRegistrations(newRegs);
+                                                            setHasUnsavedChanges(true);
+                                                        }
+                                                    }}
+                                                    className="w-16 h-10 text-center rounded bg-white border border-slate-300 text-slate-900 font-black text-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 uppercase"
+                                                    placeholder="A"
+                                                    maxLength={2}
+                                                />
                                             ) : (
-                                                event?.type === "Non-Stage" ? (
-                                                    <Button size="sm" onClick={() => handleScratch(reg, isGroupEvent)} className="bg-purple-600 hover:bg-purple-700 text-white shadow-sm text-xs h-10 w-24">
-                                                        Assign ✨
-                                                    </Button>
+                                                reg.code_letter ? (
+                                                    <span className="inline-flex items-center justify-center w-12 h-10 rounded bg-slate-900 text-white font-black text-lg shadow-sm">
+                                                        {reg.code_letter}
+                                                    </span>
                                                 ) : (
-                                                    <span className="text-slate-300 italic text-sm">Unassigned</span>
+                                                    event?.type === "Non-Stage" ? (
+                                                        <Button size="sm" onClick={() => handleScratch(reg, isGroupEvent)} className="bg-purple-600 hover:bg-purple-700 text-white shadow-sm text-xs h-10 w-24">
+                                                            Assign ✨
+                                                        </Button>
+                                                    ) : (
+                                                        <span className="text-slate-300 italic text-sm">Unassigned</span>
+                                                    )
                                                 )
                                             )}
                                         </TableCell>

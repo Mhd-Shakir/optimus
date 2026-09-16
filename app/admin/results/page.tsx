@@ -163,8 +163,8 @@ export default function AdminResultsPage() {
         }, 100);
     }
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault()
+    const handleSubmit = async (e?: any) => {
+        e?.preventDefault()
         if (resultData.first.length === 0 || !resultData.first[0].studentId) {
             return toast({ variant: "destructive", title: "Wait!", description: "At least one First Place winner is required." })
         }
@@ -771,7 +771,7 @@ export default function AdminResultsPage() {
 
                             <div className="flex gap-3 pt-2">
                                 <Button type="button" variant="ghost" onClick={() => setIsEditOpen(false)}>Cancel</Button>
-                                <Button type="submit" disabled={submitting} className="flex-1 bg-slate-900 hover:bg-slate-800 text-white">
+                                <Button type="button" onClick={handleSubmit} disabled={submitting} className="flex-1 bg-slate-900 hover:bg-slate-800 text-white">
                                     {submitting ? <Loader2 className="animate-spin mr-2" /> : <><Save className="w-4 h-4 mr-2" /> Publish Results</>}
                                 </Button>
                             </div>

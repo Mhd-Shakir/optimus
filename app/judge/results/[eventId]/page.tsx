@@ -33,6 +33,8 @@ export default function JudgeValuationSheet({ params }: { params: Promise<{ even
     const [event, setEvent] = useState<any>(null);
     const [valuationRows, setValuationRows] = useState<{ codeLetter: string, mark: string }[]>([]);
 
+    const [isEditing, setIsEditing] = useState(false);
+
     useEffect(() => {
         if (authLoading) return;
         if (!user || user.role !== 'judge') {
@@ -107,7 +109,9 @@ export default function JudgeValuationSheet({ params }: { params: Promise<{ even
 
             await axios.post('/api/events/result-judge', payload);
             
-            toast({ title: "Results Published!", description: "Results have been auto-calculated and saved to the scoreboard." });
+            setIsEditing(false);
+            setEvent({...event, status: "completed"});
+            toast({ title: isEditing ? "Results Updated!" : "Results Published!", description: "Results have been auto-calculated and saved to the scoreboard." });
             router.push('/judge');
         } catch (error: any) {
             toast({ variant: "destructive", title: "Error", description: error.response?.data?.error || error.message || "Failed to save results" });
@@ -214,10 +218,10 @@ export default function JudgeValuationSheet({ params }: { params: Promise<{ even
                                                 <div className="px-4 py-1 h-full flex items-center justify-center">
                                                     <Input 
                                                         type="number" 
-                                                        placeholder={(event.status === "completed" || event.status === "announced") ? "-" : "Enter marks..."}
+                                                        placeholder={(!isEditing && (event.status === "completed" || event.status === "announced")) ? "-" : "Enter marks..."}
                                                         value={row.mark} 
                                                         onChange={(e) => handleMarkChange(idx, e.target.value)} 
-                                                        disabled={event.status === "completed" || event.status === "announced"}
+                                                        disabled={(!isEditing && (event.status === "completed" || event.status === "announced"))}
                                                         className="w-full text-center font-bold text-lg border-none shadow-none focus-visible:ring-0 placeholder:text-slate-300 placeholder:font-normal h-full bg-transparent disabled:opacity-100 disabled:text-slate-700" 
                                                     />
                                                 </div>
@@ -229,7 +233,33 @@ export default function JudgeValuationSheet({ params }: { params: Promise<{ even
                         </Table>
                     </div>
 
-                    {(event.status !== "completed" && event.status !== "announced") && (
+                    {((event.status === "completed" || event.status === "announced") && !isEditing) && (
+                        <div className="p-6 bg-slate-50 border-t flex justify-end">
+                            <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                    <Button className="bg-amber-600 hover:bg-amber-700 text-white shadow-md text-lg px-8 py-6 h-auto transition-transform active:scale-95">
+                                        Edit Results
+                                    </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent className="bg-white">
+                                    <AlertDialogHeader>
+                                        <AlertDialogTitle>Edit Published Results?</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                            Are you sure you want to edit these results? This will allow you to modify the marks and re-publish them.
+                                        </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                        <AlertDialogAction onClick={() => setIsEditing(true)} className="bg-amber-600 text-white hover:bg-amber-700">
+                                            Yes, Enable Editing
+                                        </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                </AlertDialogContent>
+                            </AlertDialog>
+                        </div>
+                    )}
+
+                    {((event.status !== "completed" && event.status !== "announced") || isEditing) && (
                         <div className="p-6 bg-slate-50 border-t flex justify-end">
                             <AlertDialog>
                                 <AlertDialogTrigger asChild>
@@ -238,20 +268,20 @@ export default function JudgeValuationSheet({ params }: { params: Promise<{ even
                                         className="bg-slate-900 hover:bg-slate-800 text-white shadow-md text-lg px-8 py-6 h-auto transition-transform active:scale-95"
                                     >
                                         {saving ? <Loader2 className="w-5 h-5 mr-2 animate-spin" /> : <Save className="w-5 h-5 mr-2" />}
-                                        Publish Results
+                                        {isEditing ? "Update Results" : "Publish Results"}
                                     </Button>
                                 </AlertDialogTrigger>
                                 <AlertDialogContent className="bg-white">
                                     <AlertDialogHeader>
                                         <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                                         <AlertDialogDescription>
-                                            This action will publish the marks to the main scoreboard and cannot be easily undone. Please double check all marks before confirming.
+                                            This action will {isEditing ? "update the marks" : "publish the marks to the main scoreboard"} and cannot be easily undone. Please double check all marks before confirming.
                                         </AlertDialogDescription>
                                     </AlertDialogHeader>
                                     <AlertDialogFooter>
                                         <AlertDialogCancel>Cancel</AlertDialogCancel>
                                         <AlertDialogAction onClick={handleSave} className="bg-slate-900 text-white hover:bg-slate-800">
-                                            Yes, Publish Results
+                                            {isEditing ? "Yes, Update Results" : "Yes, Publish Results"}
                                         </AlertDialogAction>
                                     </AlertDialogFooter>
                                 </AlertDialogContent>
