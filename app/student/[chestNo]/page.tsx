@@ -1,15 +1,42 @@
 "use client";
 
-import { useEffect, useState, use } from "react";
+import { useEffect, useState, use, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { User, Trophy, Star, ShieldCheck, CheckCircle2 } from "lucide-react";
+import { User, Trophy, Star, ShieldCheck, CheckCircle2, Camera } from "lucide-react";
 
 export default function StudentPublicProfile({ params }: { params: Promise<{ chestNo: string }> }) {
   const resolvedParams = use(params);
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [profilePic, setProfilePic] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (data?.student?.chest_no) {
+      const savedPic = localStorage.getItem(`optimus_profile_pic_${data.student.chest_no}`);
+      if (savedPic) {
+        setProfilePic(savedPic);
+      }
+    }
+  }, [data]);
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64String = reader.result as string;
+        setProfilePic(base64String);
+        if (data?.student?.chest_no) {
+          localStorage.setItem(`optimus_profile_pic_${data.student.chest_no}`, base64String);
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   useEffect(() => {
     const fetchStudentData = async () => {
@@ -58,10 +85,29 @@ export default function StudentPublicProfile({ params }: { params: Promise<{ che
         <div className={`h-24 ${student.team === 'Ignis' ? 'bg-amber-500' : 'bg-violet-600'}`} />
         
         <div className="px-6 relative pb-6">
-          <div className="w-24 h-24 bg-white rounded-full p-2 absolute -top-12 left-6 shadow-md">
-            <div className={`w-full h-full rounded-full flex items-center justify-center ${student.team === 'Ignis' ? 'bg-amber-100 text-amber-600' : 'bg-violet-100 text-violet-600'}`}>
-              <User className="w-10 h-10" />
+          <div 
+            className="w-24 h-24 bg-white rounded-full p-2 absolute -top-12 left-6 shadow-md cursor-pointer group"
+            onClick={() => fileInputRef.current?.click()}
+          >
+            <div className={`w-full h-full rounded-full flex items-center justify-center overflow-hidden relative ${student.team === 'Ignis' ? 'bg-amber-100 text-amber-600' : 'bg-violet-100 text-violet-600'}`}>
+              {profilePic ? (
+                <img src={profilePic} alt="Profile" className="w-full h-full object-cover" />
+              ) : (
+                <User className="w-10 h-10" />
+              )}
+              {/* Hover overlay for upload */}
+              <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                 <Camera className="w-6 h-6 text-white mb-1" />
+                 <span className="text-[8px] font-bold text-white uppercase tracking-wider">Upload</span>
+              </div>
             </div>
+            <input 
+              type="file" 
+              ref={fileInputRef} 
+              className="hidden" 
+              accept="image/*"
+              onChange={handleImageUpload}
+            />
           </div>
           
           <div className="pt-16">

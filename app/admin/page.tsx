@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import axios from "axios"
-import { Users, Calendar, Trophy, ClipboardList, Star, PenTool, Lock, Unlock, Power, Settings, UserCog, ShieldCheck, Award, QrCode } from "lucide-react"
+import { Users, Calendar, Trophy, ClipboardList, Star, PenTool, Lock, Unlock, Power, Settings, UserCog, ShieldCheck, Award, QrCode, Clock } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -101,6 +101,14 @@ export default function AdminDashboard() {
   
   // Staff Credentials
   const [staffCredData, setStaffCredData] = useState({ role: "", newUsername: "", newPassword: "" })
+
+  // Category Champions Top 10 Modal
+  const [isChampionsModalOpen, setIsChampionsModalOpen] = useState(false)
+  const [selectedChampionsData, setSelectedChampionsData] = useState<{cat: string, data: any} | null>(null)
+  
+  // Student Events Modal
+  const [selectedStudentForEvents, setSelectedStudentForEvents] = useState<any>(null)
+  const [selectedEventType, setSelectedEventType] = useState<'stage' | 'non-stage' | null>(null)
 
   const { toast } = useToast()
 
@@ -361,7 +369,10 @@ export default function AdminDashboard() {
             {['Protons', 'Nexus', 'Cosmos'].map((cat) => {
                 const catData = stats.champions?.[cat.toLowerCase()];
                 return (
-                    <Card key={cat} className="overflow-hidden flex flex-col border-2">
+                    <Card key={cat} className="overflow-hidden flex flex-col border-2 cursor-pointer hover:border-slate-400 transition-colors" onClick={() => {
+                        setSelectedChampionsData({cat, data: catData})
+                        setIsChampionsModalOpen(true)
+                    }}>
                         <CardHeader className="bg-gradient-to-r from-slate-100 to-slate-50 py-3 border-b-2 border-slate-200">
                             <CardTitle className="text-sm font-black text-center uppercase tracking-wider text-slate-700 flex items-center justify-center gap-2">
                                 <Award className="w-4 h-4" /> {cat} Category
@@ -422,6 +433,124 @@ export default function AdminDashboard() {
             })}
         </div>
       </div>
+
+      {/* --- MODAL: ALL CHAMPIONS --- */}
+      <Dialog open={isChampionsModalOpen} onOpenChange={setIsChampionsModalOpen}>
+        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+                <DialogTitle className="flex items-center gap-2 uppercase tracking-wider"><Award className="w-5 h-5 text-yellow-600"/> {selectedChampionsData?.cat} Category - Rankings</DialogTitle>
+            </DialogHeader>
+
+            <Tabs defaultValue="star" className="w-full">
+              <TabsList className="w-full grid grid-cols-2 mb-4">
+                <TabsTrigger value="star">Star of {selectedChampionsData?.cat} (Stage)</TabsTrigger>
+                <TabsTrigger value="pen">Pen of {selectedChampionsData?.cat} (Non-Stage)</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="star">
+                  <div className="space-y-2">
+                      {selectedChampionsData?.data?.rankedStar?.length > 0 ? selectedChampionsData.data.rankedStar.map((student: any, idx: number) => (
+                          <div key={idx} 
+                               className="p-3 bg-slate-50 border rounded flex items-center justify-between cursor-pointer hover:bg-slate-100 transition-colors"
+                               onClick={() => {
+                                   setSelectedStudentForEvents(student);
+                                   setSelectedEventType('stage');
+                               }}>
+                              <div className="flex items-center gap-3">
+                                  <div className="w-8 h-8 rounded-full bg-yellow-100 flex items-center justify-center text-yellow-700 font-bold text-sm">
+                                      #{idx + 1}
+                                  </div>
+                                  <div>
+                                      <p className="font-bold text-slate-800">{student.name}</p>
+                                      <div className="flex items-center gap-2 mt-1">
+                                          <Badge variant="outline" className="text-[10px]">{student.chestNo}</Badge>
+                                          <Badge className={student.team === "Ignis" ? "text-[10px] bg-amber-100 text-amber-700" : "text-[10px] bg-violet-100 text-violet-700"}>
+                                              {student.team}
+                                          </Badge>
+                                      </div>
+                                  </div>
+                              </div>
+                              <div className="font-bold text-emerald-600">
+                                  {student.stagePoints} pts
+                              </div>
+                          </div>
+                      )) : <p className="text-sm text-slate-500 italic text-center p-4">No data available</p>}
+                  </div>
+              </TabsContent>
+
+              <TabsContent value="pen">
+                  <div className="space-y-2">
+                      {selectedChampionsData?.data?.rankedPen?.length > 0 ? selectedChampionsData.data.rankedPen.map((student: any, idx: number) => (
+                          <div key={idx} 
+                               className="p-3 bg-slate-50 border rounded flex items-center justify-between cursor-pointer hover:bg-slate-100 transition-colors"
+                               onClick={() => {
+                                   setSelectedStudentForEvents(student);
+                                   setSelectedEventType('non-stage');
+                               }}>
+                              <div className="flex items-center gap-3">
+                                  <div className="w-8 h-8 rounded-full bg-teal-100 flex items-center justify-center text-teal-700 font-bold text-sm">
+                                      #{idx + 1}
+                                  </div>
+                                  <div>
+                                      <p className="font-bold text-slate-800">{student.name}</p>
+                                      <div className="flex items-center gap-2 mt-1">
+                                          <Badge variant="outline" className="text-[10px]">{student.chestNo}</Badge>
+                                          <Badge className={student.team === "Ignis" ? "text-[10px] bg-amber-100 text-amber-700" : "text-[10px] bg-violet-100 text-violet-700"}>
+                                              {student.team}
+                                          </Badge>
+                                      </div>
+                                  </div>
+                              </div>
+                              <div className="font-bold text-blue-600">
+                                  {student.nonStagePoints} pts
+                              </div>
+                          </div>
+                      )) : <p className="text-sm text-slate-500 italic text-center p-4">No data available</p>}
+                  </div>
+              </TabsContent>
+            </Tabs>
+        </DialogContent>
+      </Dialog>
+
+      {/* --- MODAL: STUDENT EVENTS --- */}
+      <Dialog open={!!selectedStudentForEvents} onOpenChange={(open) => !open && setSelectedStudentForEvents(null)}>
+        <DialogContent className="max-w-md max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+                <DialogTitle className="flex items-center gap-2"><UserCog className="w-5 h-5 text-slate-600"/> {selectedStudentForEvents?.name}'s Events</DialogTitle>
+                <p className="text-sm text-slate-500">Chest No: {selectedStudentForEvents?.chestNo} | Team: {selectedStudentForEvents?.team}</p>
+            </DialogHeader>
+            <div className="space-y-3 mt-4">
+                {selectedStudentForEvents?.events?.filter((ev: any) => selectedEventType === 'stage' ? ev.isStage : !ev.isStage).length > 0 ? selectedStudentForEvents.events.filter((ev: any) => selectedEventType === 'stage' ? ev.isStage : !ev.isStage).map((ev: any, idx: number) => (
+                    <div key={idx} className="p-3 border rounded bg-white shadow-sm flex justify-between items-center">
+                        <div>
+                            <p className="font-bold text-sm text-slate-800">{ev.eventName}</p>
+                            <div className="flex flex-wrap gap-2 mt-1">
+                                <Badge variant="outline" className="text-[10px]">{ev.isStage ? "Stage" : "Non-Stage"}</Badge>
+                                {ev.isPublished === false ? (
+                                    <Badge className="bg-slate-100 text-slate-500 text-[10px] hover:bg-slate-200">Upcoming</Badge>
+                                ) : (
+                                    <>
+                                        {ev.position && <Badge className="bg-yellow-100 text-yellow-800 text-[10px] hover:bg-yellow-100">{ev.position}</Badge>}
+                                        {ev.mark && <Badge className="bg-blue-100 text-blue-800 text-[10px] hover:bg-blue-100">Grade {ev.mark}</Badge>}
+                                        {ev.isStar && <Badge className="bg-emerald-100 text-emerald-800 text-[10px] hover:bg-emerald-100">Star</Badge>}
+                                    </>
+                                )}
+                            </div>
+                        </div>
+                        {ev.isPublished !== false ? (
+                            <div className={ev.isStage || ev.isStar ? "w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 font-bold text-sm shadow-sm" : "font-black text-slate-400 text-lg"}>
+                                +{ev.points}
+                            </div>
+                        ) : (
+                            <div className="text-slate-300">
+                                <Clock className="w-5 h-5" />
+                            </div>
+                        )}
+                    </div>
+                )) : <p className="text-sm text-slate-500 italic text-center p-4">No events found.</p>}
+            </div>
+        </DialogContent>
+      </Dialog>
 
       {/* --- MODAL 1: ADMIN & STAFF CREDENTIALS --- */}
       <Dialog open={isCredModalOpen} onOpenChange={setIsCredModalOpen}>
