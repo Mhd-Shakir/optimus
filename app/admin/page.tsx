@@ -527,7 +527,10 @@ export default function AdminDashboard() {
                             <div className="flex flex-wrap gap-2 mt-1">
                                 <Badge variant="outline" className="text-[10px]">{ev.isStage ? "Stage" : "Non-Stage"}</Badge>
                                 {ev.isPublished === false ? (
-                                    <Badge className="bg-slate-100 text-slate-500 text-[10px] hover:bg-slate-200">Upcoming</Badge>
+                                    <>
+                                        <Badge className="bg-slate-100 text-slate-500 text-[10px] hover:bg-slate-200">Upcoming</Badge>
+                                        {ev.isStar && <Badge className="bg-emerald-100 text-emerald-800 text-[10px] hover:bg-emerald-100">Star</Badge>}
+                                    </>
                                 ) : (
                                     <>
                                         {ev.position && <Badge className="bg-yellow-100 text-yellow-800 text-[10px] hover:bg-yellow-100">{ev.position}</Badge>}
