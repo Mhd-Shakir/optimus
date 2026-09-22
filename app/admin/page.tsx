@@ -281,6 +281,18 @@ export default function AdminDashboard() {
                 </div>
             </Button>
 
+            {/* Trophy Distribution Button */}
+            <Button 
+                onClick={() => router.push('/admin/trophies')}
+                className="h-auto bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 gap-3 shadow-sm rounded-xl px-5 py-3"
+            >
+                <Trophy className="w-5 h-5 text-yellow-500" />
+                <div className="text-left hidden sm:block">
+                    <p className="text-xs font-bold text-slate-400 uppercase">View</p>
+                    <p className="font-bold text-sm">Trophies</p>
+                </div>
+            </Button>
+
             {/* 3. Admin Settings Button */}
             <Button 
                 onClick={() => setIsCredModalOpen(true)}

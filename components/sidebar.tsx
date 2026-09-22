@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
-import { LayoutDashboard, Users, Calendar, LogOut, ClipboardList, Trophy, FileText, Menu, X, Mic2, UserCog, Clock } from "lucide-react"
+import { LayoutDashboard, Users, Calendar, LogOut, ClipboardList, Trophy, FileText, Menu, X, Mic2, UserCog, Clock, Award } from "lucide-react"
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 
@@ -17,6 +17,7 @@ const navItems = [
   { href: "/admin/schedule", label: "Schedule", icon: Clock },
   { href: "/admin/registrations", label: "Registrations", icon: ClipboardList },
   { href: "/admin/results", label: "Results", icon: Trophy },
+  { href: "/admin/trophies", label: "Trophies", icon: Award },
 ]
 
 export function Sidebar() {

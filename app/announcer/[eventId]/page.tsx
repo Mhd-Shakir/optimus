@@ -98,7 +98,19 @@ export default function PresentationScreen({ params }: { params: Promise<{ event
   const filterWinners = (winnersArray: any[]) => {
     if (!winnersArray) return [];
     if (isGroup) {
-      return winnersArray.filter(w => w.isCaptain);
+      const grouped = new Map();
+      winnersArray.forEach(w => {
+        const key = w.groupNo || w.team || 'unknown';
+        if (!grouped.has(key)) grouped.set(key, []);
+        grouped.get(key).push(w);
+      });
+      
+      const filteredArray = [];
+      for (const group of grouped.values()) {
+        const captain = group.find((w: any) => w.isCaptain);
+        filteredArray.push(captain || group[0]);
+      }
+      return filteredArray;
     }
     return winnersArray;
   };

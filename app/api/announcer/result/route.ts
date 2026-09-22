@@ -41,7 +41,8 @@ export async function GET(req: Request) {
       mark: reg.mark || 0,
       grade: reg.grade || "",
       position: reg.position,
-      isCaptain: reg.is_captain || false
+      isCaptain: reg.is_captain || false,
+      groupNo: reg.group_no || null
     });
 
     const first = registrations.filter((r: any) => r.position === 'first').map(formatWinner);

@@ -68,7 +68,9 @@ export async function GET() {
         name: reg.students?.name || "",
         codeLetter: reg.code_letter || "",
         mark: reg.mark || 0,
-        grade: reg.grade || ""
+        grade: reg.grade || "",
+        isCaptain: reg.is_captain || false,
+        groupNo: reg.group_no || null
       });
 
       const first = eventRegs.filter((r: any) => r.position === 'first').map(formatWinner);

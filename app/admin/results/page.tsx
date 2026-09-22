@@ -244,6 +244,28 @@ export default function AdminResultsPage() {
         return s ? s : null
     }
 
+    const getDisplayWinners = (winnersArray: any[], event: any) => {
+        if (!winnersArray || winnersArray.length === 0) return [];
+        const isGroup = getEventGroupStatus(event);
+        if (!isGroup) return winnersArray;
+
+        const grouped = new Map();
+        winnersArray.forEach(w => {
+            const studentId = w.studentId || w;
+            const student = getStudentDetails(studentId);
+            const key = w.groupNo || student?.team || 'unknown';
+            if (!grouped.has(key)) grouped.set(key, []);
+            grouped.get(key).push(w);
+        });
+
+        const filteredArray = [];
+        for (const group of grouped.values()) {
+            const captain = group.find((w: any) => w.isCaptain);
+            filteredArray.push(captain || group[0]);
+        }
+        return filteredArray;
+    }
+
     const filteredEvents = events.filter(ev => {
         const matchSearch = ev.name.toLowerCase().includes(searchTerm.toLowerCase())
         if (!matchSearch) return false;
@@ -789,8 +811,9 @@ export default function AdminResultsPage() {
                         <div className="space-y-2 mt-2">
                             {/* First Place */}
                             {(() => {
-                                const firstData = Array.isArray(selectedWinnersEvent.results.first) ? selectedWinnersEvent.results.first :
+                                let firstData = Array.isArray(selectedWinnersEvent.results.first) ? selectedWinnersEvent.results.first :
                                     selectedWinnersEvent.results.first ? [{ studentId: selectedWinnersEvent.results.first, grade: selectedWinnersEvent.results.firstGrade, mark: selectedWinnersEvent.results.firstMark, codeLetter: selectedWinnersEvent.results.firstCodeLetter }] : [];
+                                firstData = getDisplayWinners(firstData, selectedWinnersEvent);
                                 return firstData.map((winner: any, idx: number) => (
                                     <div key={idx} className="flex items-center gap-2 p-2.5 bg-yellow-50 rounded-md border border-yellow-100 text-sm">
                                         <Trophy className="w-4 h-4 text-yellow-500" />
@@ -807,8 +830,9 @@ export default function AdminResultsPage() {
 
                             {/* Second Place */}
                             {(() => {
-                                const secondData = Array.isArray(selectedWinnersEvent.results.second) ? selectedWinnersEvent.results.second :
+                                let secondData = Array.isArray(selectedWinnersEvent.results.second) ? selectedWinnersEvent.results.second :
                                     selectedWinnersEvent.results.second ? [{ studentId: selectedWinnersEvent.results.second, grade: selectedWinnersEvent.results.secondGrade, mark: selectedWinnersEvent.results.secondMark, codeLetter: selectedWinnersEvent.results.secondCodeLetter }] : [];
+                                secondData = getDisplayWinners(secondData, selectedWinnersEvent);
                                 return secondData.map((winner: any, idx: number) => (
                                     <div key={idx} className="flex items-center gap-2 p-2.5 bg-slate-50 rounded-md border border-slate-200 text-sm">
                                         <Medal className="w-4 h-4 text-slate-400" />
@@ -825,8 +849,9 @@ export default function AdminResultsPage() {
 
                             {/* Third Place */}
                             {(() => {
-                                const thirdData = Array.isArray(selectedWinnersEvent.results.third) ? selectedWinnersEvent.results.third :
+                                let thirdData = Array.isArray(selectedWinnersEvent.results.third) ? selectedWinnersEvent.results.third :
                                     selectedWinnersEvent.results.third ? [{ studentId: selectedWinnersEvent.results.third, grade: selectedWinnersEvent.results.thirdGrade, mark: selectedWinnersEvent.results.thirdMark, codeLetter: selectedWinnersEvent.results.thirdCodeLetter }] : [];
+                                thirdData = getDisplayWinners(thirdData, selectedWinnersEvent);
                                 return thirdData.map((winner: any, idx: number) => (
                                     <div key={idx} className="flex items-center gap-2 p-2.5 bg-amber-50 rounded-md border border-amber-100 text-sm">
                                         <Medal className="w-4 h-4 text-amber-600" />
@@ -842,10 +867,10 @@ export default function AdminResultsPage() {
                             })()}
 
                             {/* Others */}
-                            {selectedWinnersEvent.results.others && selectedWinnersEvent.results.others.length > 0 && (
+                            {selectedWinnersEvent.results.others && getDisplayWinners(selectedWinnersEvent.results.others, selectedWinnersEvent).length > 0 && (
                                 <div className="pt-3 border-t space-y-1.5 mt-3">
                                     <p className="text-xs font-semibold text-slate-400 uppercase mb-2">Other Participants</p>
-                                    {selectedWinnersEvent.results.others.map((other: any, idx: number) => (
+                                    {getDisplayWinners(selectedWinnersEvent.results.others, selectedWinnersEvent).map((other: any, idx: number) => (
                                         <div key={idx} className="flex items-center gap-2 px-3 py-2 bg-gray-50 border border-gray-100 rounded-md text-sm">
                                             <span className="font-medium text-slate-400 w-6">#{idx + 4}</span>
                                             <span className="text-slate-700 flex-1">{getStudentName(other.studentId)}</span>
@@ -894,8 +919,9 @@ export default function AdminResultsPage() {
                         <tbody>
                             {/* First Place - handle both array and single value */}
                             {(() => {
-                                const firstData = Array.isArray(printingEvent.results.first) ? printingEvent.results.first :
+                                let firstData = Array.isArray(printingEvent.results.first) ? printingEvent.results.first :
                                     printingEvent.results.first ? [{ studentId: printingEvent.results.first, grade: printingEvent.results.firstGrade, mark: printingEvent.results.firstMark, codeLetter: printingEvent.results.firstCodeLetter }] : [];
+                                firstData = getDisplayWinners(firstData, printingEvent);
                                 return firstData.map((winner: any, idx: number) => (
                                     <tr key={idx}>
                                         <td className="border border-black px-4 py-3 text-center font-bold">1st{firstData.length > 1 ? `(${idx + 1})` : ''}</td>
@@ -911,8 +937,9 @@ export default function AdminResultsPage() {
 
                             {/* Second Place - handle both array and single value */}
                             {(() => {
-                                const secondData = Array.isArray(printingEvent.results.second) ? printingEvent.results.second :
+                                let secondData = Array.isArray(printingEvent.results.second) ? printingEvent.results.second :
                                     printingEvent.results.second ? [{ studentId: printingEvent.results.second, grade: printingEvent.results.secondGrade, mark: printingEvent.results.secondMark, codeLetter: printingEvent.results.secondCodeLetter }] : [];
+                                secondData = getDisplayWinners(secondData, printingEvent);
                                 return secondData.map((winner: any, idx: number) => (
                                     <tr key={idx}>
                                         <td className="border border-black px-4 py-3 text-center font-bold">2nd{secondData.length > 1 ? `(${idx + 1})` : ''}</td>
@@ -928,8 +955,9 @@ export default function AdminResultsPage() {
 
                             {/* Third Place - handle both array and single value */}
                             {(() => {
-                                const thirdData = Array.isArray(printingEvent.results.third) ? printingEvent.results.third :
+                                let thirdData = Array.isArray(printingEvent.results.third) ? printingEvent.results.third :
                                     printingEvent.results.third ? [{ studentId: printingEvent.results.third, grade: printingEvent.results.thirdGrade, mark: printingEvent.results.thirdMark, codeLetter: printingEvent.results.thirdCodeLetter }] : [];
+                                thirdData = getDisplayWinners(thirdData, printingEvent);
                                 return thirdData.map((winner: any, idx: number) => (
                                     <tr key={idx}>
                                         <td className="border border-black px-4 py-3 text-center font-bold">3rd{thirdData.length > 1 ? `(${idx + 1})` : ''}</td>
@@ -944,7 +972,7 @@ export default function AdminResultsPage() {
                             })()}
 
                             {/* Others */}
-                            {printingEvent.results.others && printingEvent.results.others.map((other: any, idx: number) => (
+                            {printingEvent.results.others && getDisplayWinners(printingEvent.results.others, printingEvent).map((other: any, idx: number) => (
                                 <tr key={idx}>
                                     <td className="border border-black px-4 py-2 text-center text-sm text-gray-600">{idx + 4}th</td>
                                     <td className="border border-black px-4 py-2">{getStudentDetails(other.studentId)?.name}</td>
