@@ -78,6 +78,9 @@ export async function GET() {
       const third = eventRegs.filter((r: any) => r.position === 'third').map(formatWinner);
       const others = eventRegs.filter((r: any) => r.position === 'other').map(formatWinner);
 
+      const judgeMarker = (dbEvent.topics || []).find((t: string) => typeof t === 'string' && t.startsWith('__judge_name:'));
+      const judgeName = judgeMarker ? judgeMarker.replace('__judge_name:', '').trim() : '';
+
       return {
         _id: dbEvent.id,
         name: dbEvent.name,
@@ -87,6 +90,7 @@ export async function GET() {
         groupEvent: dbEvent.is_group_event,
         hasCodeLetters: hasCodeLetters,
         needsShuffle: needsShuffle,
+        judgeName: judgeName,
         teamPoints: {
           "Ignis": dbEvent.team_points_auris,
           "Ventus": dbEvent.team_points_libras
@@ -94,7 +98,7 @@ export async function GET() {
         teamLimit: dbEvent.team_limit,
         judgeId: dbEvent.judge_id,
         topic: dbEvent.topic,
-        topics: dbEvent.topics || [],
+        topics: (dbEvent.topics || []).filter((t: string) => typeof t === 'string' && !t.startsWith('__announced_at:') && !t.startsWith('__judge_name:')),
         createdAt: dbEvent.created_at,
         results: { first, second, third, others }
       };

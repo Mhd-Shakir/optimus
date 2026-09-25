@@ -43,18 +43,33 @@ export async function GET(req: Request) {
                             name: student.name,
                             team: student.team,
                             category: student.category,
-                            totalPoints: 0
+                            totalPoints: 0,
+                            firstCount: 0,
+                            secondCount: 0,
+                            thirdCount: 0,
+                            totalMarks: 0
                         };
                     }
                     if (pointsToAdd > 0) {
                         championPoints[studentId].totalPoints += pointsToAdd;
+                        championPoints[studentId].totalMarks += (typeof reg.mark === 'number' ? reg.mark : (parseFloat(reg.mark) || 0));
+                        const posNorm = (reg.position || '').toString().toLowerCase().trim();
+                        if (posNorm === 'first' || posNorm === '1st') championPoints[studentId].firstCount++;
+                        else if (posNorm === 'second' || posNorm === '2nd') championPoints[studentId].secondCount++;
+                        else if (posNorm === 'third' || posNorm === '3rd') championPoints[studentId].thirdCount++;
                     }
                 }
             }
         });
     });
 
-    const ranking = Object.values(championPoints).sort((a: any, b: any) => b.totalPoints - a.totalPoints);
+    const ranking = Object.values(championPoints).sort((a: any, b: any) => {
+        if (b.totalPoints !== a.totalPoints) return b.totalPoints - a.totalPoints;
+        if (b.firstCount !== a.firstCount) return b.firstCount - a.firstCount;
+        if (b.secondCount !== a.secondCount) return b.secondCount - a.secondCount;
+        if (b.thirdCount !== a.thirdCount) return b.thirdCount - a.thirdCount;
+        return (b.totalMarks || 0) - (a.totalMarks || 0);
+    });
     return NextResponse.json(ranking, { status: 200 });
 
   } catch (error) {

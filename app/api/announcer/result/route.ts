@@ -68,9 +68,15 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
     }
 
+    const { data: event } = await supabaseAdmin.from('events').select('topics').eq('id', eventId).single();
+    let topics = event?.topics || [];
+    if (!topics.some((t: string) => typeof t === 'string' && t.startsWith('__announced_at:'))) {
+      topics.push(`__announced_at:${Date.now()}`);
+    }
+
     const { error } = await supabaseAdmin
       .from('events')
-      .update({ status: 'announced' })
+      .update({ status: 'announced', topics })
       .eq('id', eventId);
 
     if (error) throw error;

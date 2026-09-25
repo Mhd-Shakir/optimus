@@ -42,18 +42,18 @@ export function Sidebar() {
       {/* Sidebar */}
       <aside
         className={cn(
-          "fixed top-0 left-0 z-40 h-screen w-64 bg-card border-r border-border transition-transform duration-300 no-print",
+          "fixed top-0 left-0 z-40 h-screen w-64 bg-card border-r border-border transition-transform duration-300 no-print flex flex-col",
           "lg:translate-x-0",
           isOpen ? "translate-x-0" : "-translate-x-full",
         )}
       >
-        <div className="flex flex-col h-full">
-          <div className="p-6 border-b border-border">
+        <div className="flex flex-col h-full min-h-0">
+          <div className="p-6 border-b border-border shrink-0">
             <h1 className="text-2xl font-bold text-primary">Optimus</h1>
             <p className="text-sm text-muted-foreground mt-1">Event Management</p>
           </div>
 
-          <nav className="flex-1 p-4 space-y-1">
+          <nav className="flex-1 p-4 space-y-1 overflow-y-auto min-h-0">
             {navItems.map((item) => {
               const isActive = pathname === item.href
               return (
@@ -75,7 +75,7 @@ export function Sidebar() {
             })}
           </nav>
 
-          <div className="p-4 border-t border-border">
+          <div className="p-4 border-t border-border shrink-0">
             <Link
               href="/"
               className="flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"

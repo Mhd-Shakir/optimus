@@ -19,6 +19,8 @@ export default function StageJudgeDashboard() {
     const [passwordInput, setPasswordInput] = useState("");
     const [showPassword, setShowPassword] = useState(false);
 
+    const [searchQuery, setSearchQuery] = useState("");
+
     useEffect(() => {
         // Check local storage for session
         const authStatus = localStorage.getItem("stageJudgeAuth");
@@ -43,8 +45,13 @@ export default function StageJudgeDashboard() {
                 eventsList = data.events;
             }
             
-            // Show all Stage events that have code letters saved
-            const stageEvents = eventsList.filter((e: any) => e.type === "Stage" && e.hasCodeLetters);
+            // Show ONLY Stage events that have code letters saved and are NOT yet evaluated
+            const stageEvents = eventsList.filter((e: any) => 
+                e.type === "Stage" && 
+                e.hasCodeLetters && 
+                e.status !== "completed" && 
+                e.status !== "announced"
+            );
             setEvents(stageEvents);
         } catch (error) {
             toast({ variant: "destructive", title: "Error", description: "Failed to load events." });
@@ -111,18 +118,16 @@ export default function StageJudgeDashboard() {
         );
     }
 
-    const sortedEvents = [...events].sort((a, b) => {
-        const aCompleted = a.status === "completed" || a.status === "announced";
-        const bCompleted = b.status === "completed" || b.status === "announced";
-        if (a.status === "upcoming" && bCompleted) return -1;
-        if (aCompleted && b.status === "upcoming") return 1;
-        return 0;
+    const filteredEvents = events.filter((e) => {
+        const matchesSearch = e.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                              e.category.toLowerCase().includes(searchQuery.toLowerCase());
+        return matchesSearch;
     });
 
     return (
         <div className="p-6 space-y-6 bg-slate-50 min-h-screen">
-            <div className="max-w-4xl mx-auto">
-                <div className="flex items-center justify-between mb-8">
+            <div className="max-w-4xl mx-auto space-y-6">
+                <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                         <div className="w-12 h-12 rounded-full bg-emerald-600 text-white flex items-center justify-center shadow-sm">
                             <Mic2 className="w-6 h-6" />
@@ -137,30 +142,49 @@ export default function StageJudgeDashboard() {
                     </Button>
                 </div>
 
+                {/* Search */}
+                <div className="flex items-center justify-end">
+                    <Input
+                        placeholder="Search stage events..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="w-full sm:w-72 bg-white"
+                    />
+                </div>
+
                 <div className="grid gap-4">
-                    {sortedEvents.map(event => (
-                        <Card key={event._id} className="p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border border-slate-200 shadow-sm hover:border-emerald-300 transition-colors cursor-pointer" onClick={() => router.push(`/stage-judge/score/${event._id}`)}>
+                    {filteredEvents.map(event => (
+                        <Card 
+                            key={event._id} 
+                            className="p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border border-slate-200 shadow-sm hover:border-emerald-300 transition-colors cursor-pointer" 
+                            onClick={() => router.push(`/stage-judge/score/${event._id}`)}
+                        >
                             <div>
                                 <h3 className="font-bold text-lg text-slate-800">{event.name}</h3>
-                                <div className="flex gap-2 mt-1">
+                                <div className="flex items-center gap-2 mt-1">
                                     <Badge variant="secondary" className="text-xs bg-emerald-50 text-emerald-700">{event.category}</Badge>
-                                    <Badge variant="outline" className="text-xs text-slate-500">
-                                        {(event.status === "completed" || event.status === "announced") ? "Evaluated" : "Pending Evaluation"}
+                                    <Badge variant="outline" className="text-xs text-amber-700 bg-amber-50 border-amber-200">
+                                        Ready to Evaluate
                                     </Badge>
+                                    {event.judgeName && (
+                                        <Badge className="text-xs bg-emerald-100 text-emerald-800 border-emerald-200 hover:bg-emerald-100 font-semibold">
+                                            Judge: {event.judgeName}
+                                        </Badge>
+                                    )}
                                 </div>
                             </div>
                             <Button 
                                 onClick={(e) => { e.stopPropagation(); router.push(`/stage-judge/score/${event._id}`); }}
-                                className={(event.status === "completed" || event.status === "announced") ? "bg-slate-100 text-slate-600 hover:bg-slate-200" : "bg-emerald-600 text-white hover:bg-emerald-700"}
+                                className="bg-emerald-600 text-white hover:bg-emerald-700"
                             >
-                                {(event.status === "completed" || event.status === "announced") ? "View Results" : "Evaluate"}
+                                Evaluate
                                 <ArrowRight className="w-4 h-4 ml-2" />
                             </Button>
                         </Card>
                     ))}
-                    {sortedEvents.length === 0 && (
+                    {filteredEvents.length === 0 && (
                         <div className="text-center p-12 text-slate-500 bg-white rounded-xl border border-dashed">
-                            No stage events found.
+                            No stage events currently ready for evaluation.
                         </div>
                     )}
                 </div>

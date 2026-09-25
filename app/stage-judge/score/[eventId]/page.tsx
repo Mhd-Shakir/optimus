@@ -6,7 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ArrowLeft, Save, Loader2 } from "lucide-react";
+import { ArrowLeft, Save, Loader2, Sparkles, UserCog } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import axios from "axios";
 import {
@@ -123,10 +123,29 @@ export default function StageJudgeValuationSheet({ params }: { params: Promise<{
                     <ArrowLeft className="w-4 h-4" /> Back to Dashboard
                 </button>
 
+                {/* Welcome Judge Banner */}
+                {event.judgeName && (
+                    <div className="bg-emerald-600 text-white p-4 rounded-2xl shadow-sm flex items-center justify-between animate-in fade-in slide-in-from-top-2 duration-300">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
+                                <Sparkles className="w-5 h-5 text-yellow-300" />
+                            </div>
+                            <div>
+                                <p className="text-[11px] font-bold uppercase tracking-wider text-emerald-100">Stage Evaluator</p>
+                                <h2 className="text-xl font-black tracking-tight">Welcome {event.judgeName}</h2>
+                            </div>
+                        </div>
+                        <div className="text-right hidden sm:block">
+                            <span className="text-xs text-emerald-100 font-semibold">Controlling Event</span>
+                            <p className="text-sm font-bold text-white">{event.name}</p>
+                        </div>
+                    </div>
+                )}
+
                 {/* Marquee for assigned topics */}
                 {valuationRows.some(row => row.assigned_topic) && (
-                    <div className="bg-emerald-600 text-white py-2 rounded-t-lg shadow-sm overflow-hidden flex items-center">
-                        <div className="px-4 font-bold uppercase text-xs shrink-0 bg-emerald-700 h-full py-2 z-10 shadow-[4px_0_10px_rgba(0,0,0,0.1)]">Now Performing</div>
+                    <div className="bg-emerald-700 text-white py-2 rounded-t-lg shadow-sm overflow-hidden flex items-center">
+                        <div className="px-4 font-bold uppercase text-xs shrink-0 bg-emerald-800 h-full py-2 z-10 shadow-[4px_0_10px_rgba(0,0,0,0.1)]">Now Performing</div>
                         <div className="w-full overflow-hidden">
                             <div className="animate-[marquee_20s_linear_infinite] whitespace-nowrap pl-4">
                                 {valuationRows.filter(r => r.assigned_topic).map((r, i) => (
@@ -158,6 +177,11 @@ export default function StageJudgeValuationSheet({ params }: { params: Promise<{
                             <div className="py-2 font-bold uppercase text-sm">{event.category}</div>
                             <div className="py-2 font-bold uppercase text-sm">{event.is_group_event ? "GROUP" : "INDIVIDUAL"}</div>
                         </div>
+                        {event.judgeName && (
+                            <div className="text-center py-2 font-bold text-xs border-b border-slate-300 text-slate-700 bg-slate-50 uppercase tracking-wider">
+                                Judge: <span className="text-emerald-800 font-black">{event.judgeName}</span>
+                            </div>
+                        )}
                         {event.topics && event.topics.length > 0 ? (
                             <div className="text-left py-4 px-6 border-b border-slate-300 text-emerald-800 bg-emerald-50/50">
                                 <div className="font-bold text-sm uppercase mb-2">Topics:</div>

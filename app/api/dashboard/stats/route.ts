@@ -43,6 +43,14 @@ export async function GET() {
                         totalPoints: 0,
                         stagePoints: 0,
                         nonStagePoints: 0,
+                        stageFirstCount: 0,
+                        stageSecondCount: 0,
+                        stageThirdCount: 0,
+                        stageTotalMarks: 0,
+                        nonStageFirstCount: 0,
+                        nonStageSecondCount: 0,
+                        nonStageThirdCount: 0,
+                        nonStageTotalMarks: 0,
                         events: []
                     };
                 }
@@ -89,13 +97,24 @@ export async function GET() {
                     });
 
                     if (isCompleted && hasMark) {
+                        const markNum = typeof reg.mark === 'number' ? reg.mark : (parseFloat(reg.mark) || 0);
+                        const posNorm = (reg.position || '').toString().toLowerCase().trim();
+
                         if (isStage) {
                             studentStats.totalPoints += points;
                             studentStats.stagePoints += points;
+                            studentStats.stageTotalMarks += markNum;
+                            if (posNorm === 'first' || posNorm === '1st') studentStats.stageFirstCount++;
+                            else if (posNorm === 'second' || posNorm === '2nd') studentStats.stageSecondCount++;
+                            else if (posNorm === 'third' || posNorm === '3rd') studentStats.stageThirdCount++;
                         } else {
                             if (reg.is_star) {
                                 studentStats.totalPoints += points;
                                 studentStats.nonStagePoints += points;
+                                studentStats.nonStageTotalMarks += markNum;
+                                if (posNorm === 'first' || posNorm === '1st') studentStats.nonStageFirstCount++;
+                                else if (posNorm === 'second' || posNorm === '2nd') studentStats.nonStageSecondCount++;
+                                else if (posNorm === 'third' || posNorm === '3rd') studentStats.nonStageThirdCount++;
                             }
                         }
                     }
@@ -118,11 +137,27 @@ export async function GET() {
             }
         });
 
-        // Champions calculation
+        // Champions calculation with Tie-Breaking (Points -> 1st -> 2nd -> 3rd -> Total Marks)
         const allStudentsWithScores = Object.values(studentScores);
         const getChampions = (list: any[]) => {
-            const starList = [...list].filter(s => s.stagePoints > 0).sort((a: any, b: any) => b.stagePoints - a.stagePoints);
-            const penList = [...list].filter(s => s.nonStagePoints > 0).sort((a: any, b: any) => b.nonStagePoints - a.nonStagePoints);
+            const compareStar = (a: any, b: any) => {
+                if (b.stagePoints !== a.stagePoints) return b.stagePoints - a.stagePoints;
+                if (b.stageFirstCount !== a.stageFirstCount) return b.stageFirstCount - a.stageFirstCount;
+                if (b.stageSecondCount !== a.stageSecondCount) return b.stageSecondCount - a.stageSecondCount;
+                if (b.stageThirdCount !== a.stageThirdCount) return b.stageThirdCount - a.stageThirdCount;
+                return (b.stageTotalMarks || 0) - (a.stageTotalMarks || 0);
+            };
+
+            const comparePen = (a: any, b: any) => {
+                if (b.nonStagePoints !== a.nonStagePoints) return b.nonStagePoints - a.nonStagePoints;
+                if (b.nonStageFirstCount !== a.nonStageFirstCount) return b.nonStageFirstCount - a.nonStageFirstCount;
+                if (b.nonStageSecondCount !== a.nonStageSecondCount) return b.nonStageSecondCount - a.nonStageSecondCount;
+                if (b.nonStageThirdCount !== a.nonStageThirdCount) return b.nonStageThirdCount - a.nonStageThirdCount;
+                return (b.nonStageTotalMarks || 0) - (a.nonStageTotalMarks || 0);
+            };
+
+            const starList = [...list].filter(s => s.stagePoints > 0).sort(compareStar);
+            const penList = [...list].filter(s => s.nonStagePoints > 0).sort(comparePen);
             
             return { 
                 star: starList[0] || null, 

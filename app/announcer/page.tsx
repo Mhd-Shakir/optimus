@@ -2,16 +2,20 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, Search, CheckCircle2, Trophy, ArrowRight } from "lucide-react";
+import { Loader2, Search, CheckCircle2, Trophy, ArrowRight, ListOrdered, ArrowUp, ArrowDown, X, Save } from "lucide-react";
 import Link from "next/link";
 
 export default function AnnouncerDashboard() {
   const [events, setEvents] = useState<any[]>([]);
   const [stats, setStats] = useState<any>(null);
   const [history, setHistory] = useState<any[]>([]);
+  const [currentAnnouncedPoints, setCurrentAnnouncedPoints] = useState<{ventus: number, ignis: number, count: number} | null>(null);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState<"events" | "announced" | "points">("events");
+  const [isReorderOpen, setIsReorderOpen] = useState(false);
+  const [reorderList, setReorderList] = useState<any[]>([]);
+  const [savingOrder, setSavingOrder] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -39,6 +43,7 @@ export default function AnnouncerDashboard() {
       if (historyRes.ok) {
         const historyData = await historyRes.json();
         setHistory(historyData.milestones || []);
+        setCurrentAnnouncedPoints(historyData.current || null);
       }
     } catch (error) {
       console.error("Failed to fetch data", error);
@@ -62,6 +67,42 @@ export default function AnnouncerDashboard() {
     }
     return true;
   });
+
+  const openReorderModal = () => {
+    const announcedEvents = events.filter(e => e.status === 'announced');
+    announcedEvents.sort((a, b) => (a.announcedNumber || 0) - (b.announcedNumber || 0));
+    setReorderList([...announcedEvents]);
+    setIsReorderOpen(true);
+  };
+
+  const moveItem = (index: number, direction: 'up' | 'down') => {
+    if (direction === 'up' && index === 0) return;
+    if (direction === 'down' && index === reorderList.length - 1) return;
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    const newList = [...reorderList];
+    const item = newList.splice(index, 1)[0];
+    newList.splice(targetIndex, 0, item);
+    setReorderList(newList);
+  };
+
+  const saveReorder = async () => {
+    setSavingOrder(true);
+    try {
+      const res = await fetch("/api/announcer/reorder", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ eventIds: reorderList.map(e => e.id) })
+      });
+      if (res.ok) {
+        await fetchData();
+        setIsReorderOpen(false);
+      }
+    } catch (e) {
+      console.error("Reorder save error", e);
+    } finally {
+      setSavingOrder(false);
+    }
+  };
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -144,13 +185,13 @@ export default function AnnouncerDashboard() {
             </h3>
             
             {history.length === 0 ? (
-              <div className="text-center py-12 bg-slate-50 rounded-2xl border border-slate-200 border-dashed text-slate-400 font-medium">
-                Not enough events announced to form a milestone. Wait until 5 events are announced!
+              <div className="text-center text-slate-400 py-8 bg-white border border-slate-200 rounded-3xl shadow-sm">
+                No score history available yet.
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {history.map((milestone, idx) => (
-                  <div key={idx} className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {history.slice(0, 5).map((milestone: any, index: number) => (
+                  <div key={index} className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm flex flex-col justify-between relative overflow-hidden">
                     <div className="absolute -top-4 -right-4 w-24 h-24 bg-emerald-50 rounded-full blur-2xl opacity-50"></div>
                     <div className="flex justify-between items-center mb-8 relative z-10">
                       <h4 className="text-sm font-bold text-slate-400 uppercase tracking-widest">After {milestone.count} Programs</h4>
@@ -189,18 +230,31 @@ export default function AnnouncerDashboard() {
               </p>
             </div>
             
-            {/* Search */}
-            <div className="relative w-full md:w-72">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-                <Search className="w-4 h-4" />
+            {/* Actions & Search */}
+            <div className="flex items-center gap-3 w-full md:w-auto">
+              {activeTab === "announced" && (
+                <button
+                  onClick={openReorderModal}
+                  className="flex items-center gap-2 px-4 py-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl font-bold text-xs uppercase tracking-wider border border-emerald-200 transition-colors shadow-sm whitespace-nowrap"
+                >
+                  <ListOrdered className="w-4 h-4" />
+                  Reorder Announced
+                </button>
+              )}
+
+              {/* Search */}
+              <div className="relative w-full md:w-72">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                  <Search className="w-4 h-4" />
+                </div>
+                <input
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/50 text-slate-900 placeholder-slate-400 transition-all shadow-sm"
+                  placeholder="Search events..."
+                />
               </div>
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/50 text-slate-900 placeholder-slate-400 transition-all shadow-sm"
-                placeholder="Search events..."
-              />
             </div>
           </div>
 
@@ -217,10 +271,12 @@ export default function AnnouncerDashboard() {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredEvents.map((event, index) => (
+              {filteredEvents.map((event, index) => {
+                const itemNum = activeTab === "events" ? announcedCount + 1 : (event.announcedNumber || index + 1);
+                return (
                 <Link 
                   key={event.id} 
-                  href={`/announcer/${event.id}?num=${activeTab === "events" ? announcedCount + 1 : index + 1}`}
+                  href={`/announcer/${event.id}?num=${itemNum}`}
                   className="group block relative"
                 >
                   <div className={`p-6 rounded-2xl border transition-all duration-300 h-full flex flex-col ${
@@ -231,7 +287,7 @@ export default function AnnouncerDashboard() {
                     
                     <div className="flex justify-between items-start mb-4">
                       <span className="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-slate-100 text-slate-600">
-                        {activeTab === "announced" ? `#${index + 1} \u00B7 ` : ""}{event.category}
+                        {activeTab === "announced" ? `#${itemNum} \u00B7 ` : ""}{event.category}
                       </span>
                       
                       {event.status === 'announced' ? (
@@ -257,9 +313,88 @@ export default function AnnouncerDashboard() {
                     </div>
                   </div>
                 </Link>
-              ))}
+                );
+              })}
             </div>
           )}
+        </div>
+      )}
+
+      {/* Reorder Modal */}
+      {isReorderOpen && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-2xl rounded-3xl p-6 shadow-2xl flex flex-col max-h-[85vh]">
+            <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+              <div>
+                <h3 className="text-xl font-black text-slate-900 flex items-center gap-2">
+                  <ListOrdered className="w-5 h-5 text-emerald-600" />
+                  Reorder Announced Events ({reorderList.length})
+                </h3>
+                <p className="text-xs text-slate-500 mt-1">Move events up or down to set their official sequence (#1 to #{reorderList.length})</p>
+              </div>
+              <button 
+                onClick={() => setIsReorderOpen(false)}
+                className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="overflow-y-auto flex-1 my-4 space-y-2 pr-1">
+              {reorderList.map((ev, idx) => (
+                <div 
+                  key={ev.id} 
+                  className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 hover:bg-slate-100 border border-slate-200 transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-800 font-black text-xs flex items-center justify-center">
+                      #{idx + 1}
+                    </span>
+                    <div>
+                      <p className="font-bold text-slate-900 text-sm">{ev.name}</p>
+                      <span className="text-[10px] uppercase font-bold text-slate-400">{ev.category}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => moveItem(idx, 'up')}
+                      disabled={idx === 0}
+                      className="p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 disabled:opacity-30 disabled:pointer-events-none shadow-sm"
+                      title="Move Up"
+                    >
+                      <ArrowUp className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => moveItem(idx, 'down')}
+                      disabled={idx === reorderList.length - 1}
+                      className="p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 disabled:opacity-30 disabled:pointer-events-none shadow-sm"
+                      title="Move Down"
+                    >
+                      <ArrowDown className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
+              <button
+                onClick={() => setIsReorderOpen(false)}
+                className="px-5 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-100 rounded-xl"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={saveReorder}
+                disabled={savingOrder}
+                className="flex items-center gap-2 px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold rounded-xl shadow-md transition-all disabled:opacity-50"
+              >
+                {savingOrder ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                Save Order
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

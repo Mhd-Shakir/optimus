@@ -12,18 +12,24 @@ const normalizeString = (str: string) => {
 export async function GET() {
     try {
         // Fetch all announced events, sorted by created_at
-        const { data: events, error: eventsError } = await supabaseAdmin
+        const { data: eventsData, error: eventsError } = await supabaseAdmin
             .from('events')
             .select('*')
-            .eq('status', 'announced')
-            .order('created_at', { ascending: true });
+            .eq('status', 'announced');
 
         if (eventsError) throw eventsError;
 
         // If no events, return empty milestones
-        if (!events || events.length === 0) {
-            return NextResponse.json({ milestones: [] });
+        if (!eventsData || eventsData.length === 0) {
+            return NextResponse.json({ current: { ventus: 0, ignis: 0, count: 0 }, milestones: [] });
         }
+
+        const getAnnouncedTime = (event: any) => {
+            const marker = (event.topics || []).find((t: string) => typeof t === 'string' && t.startsWith('__announced_at:'));
+            return marker ? parseInt(marker.split(':')[1]) : new Date(event.created_at).getTime();
+        };
+
+        const events = eventsData.sort((a: any, b: any) => getAnnouncedTime(a) - getAnnouncedTime(b));
 
         // Fetch all students to map to teams
         const { data: students } = await supabaseAdmin.from('students').select('id, team');
@@ -85,8 +91,11 @@ export async function GET() {
             }
         }
 
-        // Return the milestones
-        return NextResponse.json({ milestones: milestones.reverse() }); // Reverse to show latest first
+        // Return the milestones and the current exact total
+        return NextResponse.json({
+            current: { count: events.length, ventus: librasScore, ignis: aurisScore },
+            milestones: milestones.reverse() 
+        }); // Reverse to show latest first
 
     } catch (error) {
         console.error("History API Error:", error);

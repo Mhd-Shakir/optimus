@@ -22,6 +22,11 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: "Event not found" }, { status: 404 });
     }
 
+    const judgeMarker = (event.topics || []).find((t: string) => typeof t === 'string' && t.startsWith('__judge_name:'));
+    const judgeName = judgeMarker ? judgeMarker.replace('__judge_name:', '').trim() : '';
+    event.judgeName = judgeName;
+    event.topics = (event.topics || []).filter((t: string) => typeof t === 'string' && !t.startsWith('__announced_at:') && !t.startsWith('__judge_name:'));
+
     const { data: registrations, error: regError } = await supabaseAdmin
       .from('registrations')
       .select('*, students:student_id(id, name, chest_no, team)')
