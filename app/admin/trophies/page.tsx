@@ -18,26 +18,8 @@ export default function TrophyDistributionPage() {
     const [searchTerm, setSearchTerm] = useState("")
     const [activeTab, setActiveTab] = useState("All")
     const [activeClass, setActiveClass] = useState("All")
-    const [viewType, setViewType] = useState<'events' | 'students' | 'distributed'>('events')
-    const [distributedEvents, setDistributedEvents] = useState<string[]>([])
-
-    // Load distributed events from localStorage on mount
-    useEffect(() => {
-        const stored = localStorage.getItem('distributedTrophies')
-        if (stored) {
-            try {
-                setDistributedEvents(JSON.parse(stored))
-            } catch (e) {}
-        }
-    }, [])
-
-    const toggleDistributed = (eventId: string) => {
-        const newDist = distributedEvents.includes(eventId)
-            ? distributedEvents.filter(id => id !== eventId)
-            : [...distributedEvents, eventId];
-        setDistributedEvents(newDist);
-        localStorage.setItem('distributedTrophies', JSON.stringify(newDist));
-    }
+    const [viewType, setViewType] = useState<'events' | 'students' | 'distributed' | 'announced'>('announced')
+    // Distributed state is now managed globally per event via DB using topics array.
     
     const tabs = ["All", "Protons", "Nexus", "Cosmos", "General-A", "General-B"]
 
@@ -53,7 +35,24 @@ export default function TrophyDistributionPage() {
                 // Filter only completed or announced events
                 const completedEvents = eventsRes.data.filter((ev: any) => ev.status === "completed" || ev.status === "announced");
                 
-                // Sort by name or category
+                // Assign announcedNumber to announced events exactly as announcer portal does
+                const getAnnouncedTime = (event: any) => {
+                    const marker = (event.topics || []).find((t: string) => typeof t === 'string' && t.startsWith('__announced_at:'));
+                    return marker ? parseInt(marker.split(':')[1]) : new Date(event.createdAt || event.created_at || 0).getTime();
+                };
+                
+                const announcedEvents = completedEvents.filter((e: any) => e.status === 'announced');
+                announcedEvents.sort((a: any, b: any) => getAnnouncedTime(a) - getAnnouncedTime(b));
+                
+                announcedEvents.forEach((e: any, index: number) => {
+                    e.announcedNumber = index + 1;
+                });
+                
+                completedEvents.forEach((e: any) => {
+                    e.isDistributed = (e.topics || []).includes('__distributed:true');
+                });
+                
+                // Sort by name or category for default views
                 completedEvents.sort((a: any, b: any) => a.category.localeCompare(b.category) || a.name.localeCompare(b.name));
 
                 setEvents(completedEvents)
@@ -167,17 +166,49 @@ export default function TrophyDistributionPage() {
         )
     }
 
-    const filteredEvents = events.filter(ev => {
+    const toggleDistributed = async (event: any) => {
+        const isDist = !event.isDistributed;
+        
+        // Optimistic update
+        setEvents(prev => prev.map(e => e._id === event._id ? { ...e, isDistributed: isDist } : e));
+
+        try {
+            let newTopics = event.topics || [];
+            if (isDist) {
+                if (!newTopics.includes('__distributed:true')) newTopics.push('__distributed:true');
+            } else {
+                newTopics = newTopics.filter((t: string) => t !== '__distributed:true');
+            }
+            
+            await axios.patch('/api/events', {
+                id: event._id,
+                topics: newTopics
+            });
+            
+            toast({ title: isDist ? "Marked as Distributed" : "Unmarked Distributed" });
+        } catch (error) {
+            // Revert on error
+            setEvents(prev => prev.map(e => e._id === event._id ? { ...e, isDistributed: !isDist } : e));
+            toast({ variant: "destructive", title: "Error", description: "Failed to update distribution status." });
+        }
+    }
+
+    let filteredEvents = events.filter(ev => {
         const matchesSearch = ev.name.toLowerCase().includes(searchTerm.toLowerCase())
         if (!matchesSearch) return false;
         if (activeTab !== "All" && ev.category !== activeTab) return false;
         
-        const isDistributed = distributedEvents.includes(ev._id);
-        if (viewType === 'events' && isDistributed) return false;
+        const isDistributed = ev.isDistributed;
+        if (viewType === 'events' && (isDistributed || ev.status === 'announced')) return false;
         if (viewType === 'distributed' && !isDistributed) return false;
+        if (viewType === 'announced' && (ev.status !== 'announced' || isDistributed)) return false;
 
         return true;
-    })
+    });
+
+    if (viewType === 'announced') {
+        filteredEvents.sort((a, b) => (a.announcedNumber || Infinity) - (b.announcedNumber || Infinity));
+    }
 
     const filteredStudentWinnersList = studentWinnersList.filter(item => {
         if (!item.student) return false;
@@ -239,6 +270,12 @@ export default function TrophyDistributionPage() {
                             className={`px-4 py-2 text-sm font-bold rounded-md transition-all whitespace-nowrap ${viewType === 'events' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
                         >
                             Pending
+                        </button>
+                        <button
+                            onClick={() => setViewType('announced')}
+                            className={`px-4 py-2 text-sm font-bold rounded-md transition-all whitespace-nowrap ${viewType === 'announced' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-blue-600'}`}
+                        >
+                            Announced
                         </button>
                         <button
                             onClick={() => setViewType('distributed')}
@@ -311,12 +348,12 @@ export default function TrophyDistributionPage() {
                 </div>
             </div>
 
-            {viewType === 'events' || viewType === 'distributed' ? (
+            {viewType === 'events' || viewType === 'distributed' || viewType === 'announced' ? (
                 filteredEvents.length === 0 ? (
                     <Card className="print:hidden">
                         <CardContent className="py-12 text-center text-slate-500">
                             <Trophy className="w-12 h-12 mx-auto mb-3 opacity-20" />
-                            <p>No {viewType === 'events' ? 'pending' : 'distributed'} events matching your filters were found.</p>
+                            <p>No {viewType === 'events' ? 'pending' : viewType === 'announced' ? 'announced' : 'distributed'} events matching your filters were found.</p>
                         </CardContent>
                     </Card>
                 ) : (
@@ -325,14 +362,14 @@ export default function TrophyDistributionPage() {
                             const hasWinners = ev.results && (ev.results.first || ev.results.second || ev.results.third);
                             if (!hasWinners) return null;
 
-                            const isDistributed = distributedEvents.includes(ev._id);
+                            const isDistributed = ev.isDistributed;
 
                             return (
                                 <Card key={ev._id} className={`overflow-hidden border-2 shadow-sm break-inside-avoid transition-all ${isDistributed ? 'opacity-75 bg-slate-50 grayscale-[0.2]' : ''}`}>
                                     <CardHeader className="bg-slate-100 py-3 border-b flex flex-row items-center justify-between">
                                         <div className="flex items-center gap-2 overflow-hidden">
                                             <span className="bg-slate-800 text-white text-[10px] font-black px-2 py-0.5 rounded-full shrink-0">
-                                                #{index + 1}
+                                                #{viewType === 'announced' && ev.announcedNumber ? ev.announcedNumber : index + 1}
                                             </span>
                                             <CardTitle className="text-base flex items-center">
                                                 <span className="font-bold text-slate-800 truncate">{ev.name}</span>
@@ -347,7 +384,7 @@ export default function TrophyDistributionPage() {
                                                 <input 
                                                     type="checkbox" 
                                                     checked={isDistributed} 
-                                                    onChange={() => toggleDistributed(ev._id)} 
+                                                    onChange={() => toggleDistributed(ev)} 
                                                     className="w-3.5 h-3.5 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500 cursor-pointer"
                                                 />
                                                 <span className={`text-[10px] font-bold uppercase tracking-wider ${isDistributed ? 'text-emerald-600' : 'text-slate-500'}`}>

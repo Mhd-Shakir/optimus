@@ -98,7 +98,7 @@ export async function GET() {
         teamLimit: dbEvent.team_limit,
         judgeId: dbEvent.judge_id,
         topic: dbEvent.topic,
-        topics: (dbEvent.topics || []).filter((t: string) => typeof t === 'string' && !t.startsWith('__announced_at:') && !t.startsWith('__judge_name:')),
+        topics: (dbEvent.topics || []).filter((t: string) => typeof t === 'string' && !t.startsWith('__judge_name:')),
         createdAt: dbEvent.created_at,
         results: { first, second, third, others }
       };

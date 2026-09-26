@@ -81,6 +81,9 @@ export async function POST(req: Request) {
 
     if (error) throw error;
 
+    // 🚀 NEW LINE: Ping the public website to instantly trigger the sync
+    fetch("https://optimusfest.in/api/webhooks/sync", { method: "POST" }).catch(console.error);
+
     return NextResponse.json({ message: "Event marked as announced" });
   } catch (error: any) {
     console.error("Mark Announced Error:", error);
