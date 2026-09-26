@@ -100,7 +100,8 @@ export default function PresentationScreen({ params }: { params: Promise<{ event
     if (isGroup) {
       const grouped = new Map();
       winnersArray.forEach(w => {
-        const key = w.groupNo || w.team || 'unknown';
+        // Group numbers are assigned within each team, not across the event.
+        const key = JSON.stringify([w.team || 'unknown', w.groupNo || 'unassigned']);
         if (!grouped.has(key)) grouped.set(key, []);
         grouped.get(key).push(w);
       });

@@ -16,9 +16,13 @@ export async function POST(req: Request) {
       .from('users')
       .select('*')
       .eq('username', normalizedUsername)
-      .single();
+      .maybeSingle();
 
-    if (error || !user) {
+    if (error) {
+      return NextResponse.json({ error: "Unable to connect to the login service. Please try again." }, { status: 503 });
+    }
+
+    if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
